@@ -1,0 +1,32 @@
+{
+  "name": "@codecity/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@codecity/ui": "workspace:*",
+    "@codecity/db": "workspace:*",
+    "@codecity/core": "workspace:*",
+    "next-auth": "5.0.0-beta.25",
+    "@auth/prisma-adapter": "^2.8.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "@tailwindcss/postcss": "^4.2.1",
+    "tailwindcss": "^4.2.1",
+    "postcss": "^8.5.0"
+  }
+}
