@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json(projects)
   }
 
+  // Personal projects
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
   const body = await request.json()
   const { repoUrl, visibility } = body
 
+  // Extract repo name from URL
   const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/)
   const name = match ? match[1] : repoUrl
 
