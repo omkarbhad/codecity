@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { Loader2 } from "lucide-react"
 
 const QUICK_PICKS = [
   "excalidraw/excalidraw",
@@ -14,19 +14,30 @@ const QUICK_PICKS = [
 
 export function RepoInput() {
   const [url, setUrl] = useState("")
+  const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
-  const { data: session } = useSession()
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!url.trim()) return
-
-    if (!session) {
-      router.push("/login")
-      return
+    if (!url.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoUrl: url, visibility: "PUBLIC" }),
+      })
+      if (res.status === 401) {
+        router.push("/login")
+        return
+      }
+      const data = await res.json()
+      if (data.projectId) {
+        router.push(`/analyze/${data.projectId}`)
+      }
+    } catch {
+      setSubmitting(false)
     }
-
-    router.push(`/dashboard?analyze=${encodeURIComponent(url)}`)
   }
 
   return (
@@ -38,13 +49,22 @@ export function RepoInput() {
             placeholder="https://github.com/owner/repo"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="flex-1 rounded-lg border border-border/50 bg-background/50 px-4 py-3 font-mono text-sm placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 focus:outline-none"
+            disabled={submitting}
+            className="flex-1 rounded-lg border border-border/50 bg-background/50 px-4 py-3 font-mono text-sm placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"
-            className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 glow-red"
+            disabled={submitting}
+            className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 glow-red disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Analyze &rarr;
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>Analyze &rarr;</>
+            )}
           </button>
         </form>
 
@@ -53,7 +73,8 @@ export function RepoInput() {
             <button
               key={pick}
               onClick={() => setUrl(`https://github.com/${pick}`)}
-              className="rounded-md border border-border/30 bg-card/30 px-3 py-1 font-mono text-xs text-muted-foreground transition-all hover:text-primary hover:border-primary/30 cursor-pointer"
+              disabled={submitting}
+              className="rounded-md border border-border/30 bg-card/30 px-3 py-1 font-mono text-xs text-muted-foreground transition-all hover:text-primary hover:border-primary/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pick}
             </button>
