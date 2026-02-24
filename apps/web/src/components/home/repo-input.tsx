@@ -3,19 +3,17 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { ArrowRight } from "lucide-react"
 
 const QUICK_PICKS = [
-  { name: "zustand", url: "https://github.com/pmndrs/zustand" },
-  { name: "tRPC", url: "https://github.com/trpc/trpc" },
-  { name: "excalidraw", url: "https://github.com/excalidraw/excalidraw" },
-  { name: "create-t3-app", url: "https://github.com/t3-oss/create-t3-app" },
-  { name: "next.js", url: "https://github.com/vercel/next.js" },
+  "excalidraw/excalidraw",
+  "vercel/next.js",
+  "pmndrs/zustand",
+  "trpc/trpc",
+  "t3-oss/create-t3-app",
 ]
 
 export function RepoInput() {
   const [url, setUrl] = useState("")
-  const [focused, setFocused] = useState(false)
   const router = useRouter()
   const { data: session } = useSession()
 
@@ -32,47 +30,32 @@ export function RepoInput() {
   }
 
   return (
-    <section className="relative border-t border-border/30 py-20 animate-fade-up delay-400">
-      <div className="mx-auto max-w-2xl px-6 text-center">
-        <h2 className="font-mono text-xs tracking-[0.2em] uppercase text-accent text-glow-amber">
-          Try it now
-        </h2>
-        <p className="mt-2 text-lg font-medium text-foreground">
-          Paste a GitHub repository URL
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-8 flex gap-3">
-          <div className={`relative flex-1 transition-all duration-300 ${focused ? "glow-cyan" : ""}`}>
-            <input
-              type="url"
-              placeholder="https://github.com/owner/repo"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              className="w-full rounded-lg border border-border/50 bg-card/50 px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 backdrop-blur-sm focus:outline-none focus:border-primary/50 transition-colors"
-            />
-          </div>
+    <section className="relative py-16">
+      <div className="mx-auto max-w-2xl px-6">
+        <form onSubmit={handleSubmit} className="flex gap-3">
+          <input
+            type="url"
+            placeholder="https://github.com/owner/repo"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1 rounded-lg border border-border/50 bg-background/50 px-4 py-3 font-mono text-sm placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 focus:outline-none"
+          />
           <button
             type="submit"
-            className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-6 py-3 font-mono text-sm font-medium text-accent transition-all hover:bg-accent/20 hover:border-accent/50 glow-amber"
+            className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 glow-red"
           >
-            Analyze
-            <ArrowRight className="h-4 w-4" />
+            Analyze &rarr;
           </button>
         </form>
 
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground/50">
-            Quick picks
-          </span>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {QUICK_PICKS.map((pick) => (
             <button
-              key={pick.name}
-              onClick={() => setUrl(pick.url)}
-              className="rounded-md border border-border/30 bg-card/30 px-3 py-1 font-mono text-[11px] text-muted-foreground transition-all hover:border-primary/30 hover:text-primary hover:bg-primary/5"
+              key={pick}
+              onClick={() => setUrl(`https://github.com/${pick}`)}
+              className="rounded-md border border-border/30 bg-card/30 px-3 py-1 font-mono text-xs text-muted-foreground transition-all hover:text-primary hover:border-primary/30 cursor-pointer"
             >
-              {pick.name}
+              {pick}
             </button>
           ))}
         </div>
