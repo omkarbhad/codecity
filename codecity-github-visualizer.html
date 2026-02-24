@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeCity — 3D Codebase Visualizer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07070c;--surface:rgba(255,255,255,0.03);--surface2:rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#e4e4ec;--text-dim:#5a5a6e;--text-mid:#8a8a9e;
+  --accent:#ff4040;--accent-glow:rgba(255,64,64,0.35);--accent-dim:rgba(255,64,64,0.12);
+  --blue:#4d94ff;--green:#34d399;--yellow:#fbbf24;--purple:#a78bfa;--orange:#fb923c;--cyan:#22d3ee;--pink:#f472b6;
+  --mono:'IBM Plex Mono',monospace;--sans:'Sora',sans-serif;
+  --radius:8px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;height:100vh;width:100vw}
+#canvas-container{position:fixed;inset:0;z-index:1}
+canvas{display:block}
+
+/* ── LANDING SCREEN ── */
+.landing{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .6s,visibility .6s}
+.landing.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.landing-inner{width:560px;max-width:90vw;text-align:center}
+.landing-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:40px}
+.landing-logo-icon{width:44px;height:44px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;font-family:var(--mono);color:#fff;box-shadow:0 0 30px var(--accent-glow)}
+.landing-logo-text{font-size:28px;font-weight:700;letter-spacing:-1px}
+.landing-logo-text span{color:var(--text-dim);font-weight:300;font-size:20px;margin-left:4px}
+.landing-sub{color:var(--text-dim);font-size:14px;margin-bottom:36px;line-height:1.7}
+.landing-sub em{color:var(--text-mid);font-style:normal}
+
+.input-group{display:flex;gap:8px;margin-bottom:16px}
+.repo-input{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;transition:all .2s}
+.repo-input::placeholder{color:var(--text-dim)}
+.repo-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.go-btn{padding:14px 28px;border-radius:var(--radius);border:none;background:var(--accent);color:#fff;font-family:var(--sans);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;box-shadow:0 0 20px var(--accent-glow)}
+.go-btn:hover{transform:translateY(-1px);box-shadow:0 0 30px var(--accent-glow)}
+.go-btn:disabled{opacity:.4;cursor:default;transform:none}
+
+.quick-picks{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.quick-pick{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s}
+.quick-pick:hover{border-color:var(--accent);color:var(--text);background:var(--accent-dim)}
+
+.landing-progress{margin-top:32px;display:none}
+.landing-progress.visible{display:block}
+.progress-bar{width:100%;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:12px}
+.progress-fill{height:100%;width:0%;background:var(--accent);border-radius:2px;box-shadow:0 0 8px var(--accent-glow);transition:width .3s}
+.progress-label{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left}
+.progress-stats{display:flex;gap:16px;margin-top:8px;justify-content:center}
+.progress-stat{font-family:var(--mono);font-size:11px;color:var(--text-mid)}
+.progress-stat b{color:var(--text)}
+
+.landing-error{margin-top:16px;padding:10px 14px;border-radius:var(--radius);background:rgba(255,64,64,.08);border:1px solid rgba(255,64,64,.2);color:var(--accent);font-family:var(--mono);font-size:11px;display:none;text-align:left}
+.landing-error.visible{display:block}
+
+/* ── TOP BAR ── */
+.top-bar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:linear-gradient(180deg,rgba(7,7,12,.97) 0%,rgba(7,7,12,0) 100%);pointer-events:none}
+.top-bar>*{pointer-events:auto}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:var(--mono);color:#fff;box-shadow:0 0 16px var(--accent-glow)}
+.logo-text{font-weight:600;font-size:15px;letter-spacing:-.3px}
+.logo-text span{color:var(--text-dim);font-weight:300;font-size:12px;margin-left:4px}
+.repo-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;font-family:var(--mono);font-size:11px;color:var(--text-mid);cursor:pointer;transition:all .2s}
+.repo-badge:hover{border-color:var(--accent);color:var(--text)}
+.repo-badge .gh-icon{font-size:14px}
+
+.toolbar{display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3px}
+.tool-btn{padding:5px 12px;border-radius:5px;font-size:11px;font-family:var(--mono);font-weight:500;color:var(--text-dim);cursor:pointer;border:none;background:transparent;transition:all .15s;white-space:nowrap}
+.tool-btn:hover{color:var(--text)}
+.tool-btn.active{background:var(--accent);color:#fff;box-shadow:0 0 10px var(--accent-glow)}
+
+.search-box{position:relative}
+.search-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px 7px 28px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;width:200px;transition:all .2s}
+.search-input::placeholder{color:var(--text-dim)}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim);width:260px}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:11px}
+
+/* ── SIDE PANEL ── */
+.side-panel{position:fixed;right:16px;top:56px;bottom:80px;z-index:100;width:340px;background:rgba(10,10,16,.94);backdrop-filter:blur(24px);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:all .3s ease;opacity:0;transform:translateX(20px);pointer-events:none;display:flex;flex-direction:column}
+.side-panel.visible{opacity:1;transform:translateX(0);pointer-events:auto}
+.panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.panel-header h3{font-family:var(--mono);font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel-close{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s;flex-shrink:0}
+.panel-close:hover{background:var(--accent-dim);color:var(--accent);border-color:var(--accent)}
+.panel-body{padding:14px 16px;overflow-y:auto;flex:1}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.file-dot{display:inline-block;width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.stat-card{padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:6px}
+.stat-card .label{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);font-family:var(--mono);margin-bottom:4px}
+.stat-card .value{font-size:16px;font-weight:700;font-family:var(--mono)}
+.stat-card .value.red{color:var(--accent)}.stat-card .value.yellow{color:var(--yellow)}.stat-card .value.green{color:var(--green)}.stat-card .value.blue{color:var(--blue)}
+
+.section-title{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-family:var(--mono);margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--border)}
+.section-title:first-child{border-top:none;margin-top:0;padding-top:0}
+
+.func-list{display:flex;flex-direction:column;gap:3px}
+.func-item{padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-family:var(--mono);font-size:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .12s}
+.func-item:hover{border-color:var(--blue);background:rgba(77,148,255,.05)}
+.func-item .fname{color:var(--text)}
+.func-item .fmeta{color:var(--text-dim);font-size:9px;display:flex;gap:8px;align-items:center}
+.func-item.unused{opacity:.5;border-left:2px solid var(--accent)}
+.func-item.unused .fname::after{content:" ✕ unused";color:var(--accent);font-size:8px;margin-left:4px}
+.func-item.exported .fname::before{content:"⬡ ";color:var(--green);font-size:8px}
+
+.dep-list{display:flex;flex-wrap:wrap;gap:4px}
+.dep-tag{padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:9px;cursor:pointer;transition:all .12s;border:1px solid}
+.dep-tag.import{background:rgba(77,148,255,.08);border-color:rgba(77,148,255,.15);color:var(--blue)}
+.dep-tag.import:hover{background:rgba(77,148,255,.15)}
+.dep-tag.importedby{background:rgba(255,64,64,.08);border-color:rgba(255,64,64,.15);color:var(--accent)}
+.dep-tag.importedby:hover{background:rgba(255,64,64,.15)}
+.dep-tag.external{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.15);color:var(--purple)}
+
+.type-list{display:flex;flex-direction:column;gap:3px}
+.type-item{padding:5px 9px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-family:var(--mono);font-size:10px;color:var(--yellow);display:flex;align-items:center;gap:6px}
+.type-item .kind{font-size:8px;color:var(--text-dim);background:var(--surface2);padding:1px 5px;border-radius:3px}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:20px;padding:10px 24px;background:rgba(10,10,16,.92);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:10px}
+.bottom-stat{text-align:center}
+.bottom-stat .val{font-family:var(--mono);font-size:16px;font-weight:700}
+.bottom-stat .lbl{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+
+/* ── LEFT PANEL ── */
+.left-panel{position:fixed;left:16px;top:56px;z-index:100;width:200px;display:flex;flex-direction:column;gap:8px}
+.minimap-box{background:rgba(10,10,16,.92);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative}
+.minimap-box canvas{width:100%;height:140px;display:block}
+.minimap-label{position:absolute;bottom:3px;right:6px;font-size:8px;font-family:var(--mono);color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+
+.legend-box{background:rgba(10,10,16,.92);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.legend-title{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-family:var(--mono);margin-bottom:2px}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:10px;font-family:var(--mono);color:var(--text-dim);cursor:pointer;transition:all .12s;padding:2px 0}
+.legend-item:hover{color:var(--text)}
+.legend-color{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.legend-count{margin-left:auto;font-size:9px;color:var(--text-dim)}
+
+.controls-box{background:rgba(10,10,16,.92);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.control-row{display:flex;align-items:center;gap:6px;font-size:10px;font-family:var(--mono);color:var(--text-dim)}
+.key-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:16px;padding:0 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;font-size:9px;color:var(--text)}
+
+/* ── TOOLTIP ── */
+.tooltip{position:fixed;z-index:200;padding:8px 12px;background:rgba(0,0,0,.94);border:1px solid var(--border2);border-radius:6px;font-family:var(--mono);font-size:10px;color:var(--text);pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap;max-width:300px}
+.tooltip.visible{opacity:1}
+.tooltip .tt-name{font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.tooltip .tt-row{color:var(--text-dim);font-size:9px;display:flex;gap:12px}
+.tooltip .tt-row span{color:var(--text-mid)}
+
+/* ── FILE TREE ── */
+.file-tree-panel{position:fixed;left:16px;top:380px;bottom:80px;z-index:100;width:200px;background:rgba(10,10,16,.92);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column}
+.file-tree-header{padding:8px 12px;border-bottom:1px solid var(--border);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-family:var(--mono);flex-shrink:0}
+.file-tree-body{overflow-y:auto;flex:1;padding:6px 0}
+.file-tree-body::-webkit-scrollbar{width:3px}
+.file-tree-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.tree-folder{padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .1s}
+.tree-folder:hover{color:var(--text);background:var(--surface)}
+.tree-folder .arrow{font-size:8px;transition:transform .15s;width:10px}
+.tree-folder.open .arrow{transform:rotate(90deg)}
+.tree-file{padding:3px 10px 3px 25px;font-family:var(--mono);font-size:10px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .1s}
+.tree-file:hover{color:var(--text);background:var(--surface)}
+.tree-file.active{color:var(--text);background:var(--accent-dim);border-right:2px solid var(--accent)}
+.tree-file .dot{width:5px;height:5px;border-radius:2px;flex-shrink:0}
+.tree-children{display:none}
+.tree-folder.open+.tree-children{display:block}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div class="landing" id="landing">
+  <div class="landing-inner">
+    <div class="landing-logo">
+      <div class="landing-logo-icon">CC</div>
+      <div class="landing-logo-text">CodeCity <span>v0.2</span></div>
+    </div>
+    <div class="landing-sub">
+      Visualize any TypeScript codebase as an interactive 3D city.<br>
+      <em>Paste a GitHub repo URL or pick one below.</em>
+    </div>
+    <div class="input-group">
+      <input type="text" class="repo-input" id="repoInput" placeholder="https://github.com/owner/repo" value="https://github.com/excalidraw/excalidraw">
+      <button class="go-btn" id="goBtn" onclick="startAnalysis()">Visualize</button>
+    </div>
+    <div class="quick-picks">
+      <button class="quick-pick" onclick="pickRepo('excalidraw/excalidraw')">excalidraw</button>
+      <button class="quick-pick" onclick="pickRepo('microsoft/TypeScript')">TypeScript</button>
+      <button class="quick-pick" onclick="pickRepo('vercel/next.js')">next.js</button>
+      <button class="quick-pick" onclick="pickRepo('trpc/trpc')">tRPC</button>
+      <button class="quick-pick" onclick="pickRepo('pmndrs/zustand')">zustand</button>
+      <button class="quick-pick" onclick="pickRepo('t3-oss/create-t3-app')">create-t3-app</button>
+    </div>
+    <div class="landing-progress" id="landingProgress">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Connecting to GitHub...</div>
+      <div class="progress-stats" id="progressStats"></div>
+    </div>
+    <div class="landing-error" id="landingError"></div>
+  </div>
+</div>
+
+<!-- MAIN UI (hidden until loaded) -->
+<div id="canvas-container"></div>
+
+<div class="top-bar" id="topBar" style="display:none">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">
+      <div class="logo-icon">CC</div>
+      <div class="logo-text">CodeCity <span>v0.2</span></div>
+    </div>
+    <div class="repo-badge" id="repoBadge" onclick="goHome()">
+      <span class="gh-icon">◉</span>
+      <span id="repoName">excalidraw/excalidraw</span>
+    </div>
+  </div>
+  <div class="toolbar" id="toolbar">
+    <button class="tool-btn active" data-mode="dependencies" onclick="setMode(this)">Dependencies</button>
+    <button class="tool-btn" data-mode="complexity" onclick="setMode(this)">Complexity</button>
+    <button class="tool-btn" data-mode="coverage" onclick="setMode(this)">Unused Code</button>
+    <button class="tool-btn" data-mode="filesize" onclick="setMode(this)">File Size</button>
+    <button class="tool-btn" data-mode="types" onclick="setMode(this)">Types</button>
+  </div>
+  <div class="search-box">
+    <span class="search-icon">⌕</span>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search files...">
+  </div>
+</div>
+
+<div class="left-panel" id="leftPanel" style="display:none">
+  <div class="minimap-box"><canvas id="minimapCanvas" width="400" height="280"></canvas><div class="minimap-label">minimap</div></div>
+  <div class="legend-box" id="legendBox"><div class="legend-title">Districts</div></div>
+  <div class="controls-box">
+    <div class="control-row"><span class="key-badge">LMB</span> Select</div>
+    <div class="control-row"><span class="key-badge">RMB</span> Orbit</div>
+    <div class="control-row"><span class="key-badge">⇧</span> Zoom</div>
+    <div class="control-row"><span class="key-badge">R</span> Reset</div>
+  </div>
+</div>
+
+<div class="file-tree-panel" id="fileTreePanel" style="display:none">
+  <div class="file-tree-header">File Explorer</div>
+  <div class="file-tree-body" id="fileTreeBody"></div>
+</div>
+
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <h3 id="panelTitle">File Details</h3>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<div class="bottom-bar" id="bottomBar" style="display:none">
+  <div class="bottom-stat"><div class="val" id="statFiles" style="color:var(--text)">0</div><div class="lbl">Files</div></div>
+  <div class="bottom-stat"><div class="val" id="statFunctions" style="color:var(--blue)">0</div><div class="lbl">Functions</div></div>
+  <div class="bottom-stat"><div class="val" id="statImports" style="color:var(--green)">0</div><div class="lbl">Imports</div></div>
+  <div class="bottom-stat"><div class="val" id="statUnused" style="color:var(--accent)">0</div><div class="lbl">Unused Exports</div></div>
+  <div class="bottom-stat"><div class="val" id="statLines" style="color:var(--yellow)">0</div><div class="lbl">Lines</div></div>
+  <div class="bottom-stat"><div class="val" id="statTypes" style="color:var(--purple)">0</div><div class="lbl">Types</div></div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// GITHUB FETCHING + TYPESCRIPT PARSING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function pickRepo(name) {
+  document.getElementById('repoInput').value = `https://github.com/${name}`;
+}
+
+function goHome() {
+  location.reload();
+}
+
+function parseRepoUrl(url) {
+  const m = url.match(/github\.com\/([^\/]+)\/([^\/\s#?]+)/);
+  if (m) return { owner: m[1], repo: m[2].replace(/\.git$/, '') };
+  const m2 = url.match(/^([^\/]+)\/([^\/\s]+)$/);
+  if (m2) return { owner: m2[1], repo: m2[2] };
+  return null;
+}
+
+async function fetchGitHubTree(owner, repo, progressCb) {
+  progressCb('Fetching repository tree...', 5);
+  
+  // Try default branch
+  let branch = 'main';
+  let treeData;
+  
+  try {
+    const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+    if (!resp.ok) {
+      branch = 'master';
+      const resp2 = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+      if (!resp2.ok) throw new Error(`Could not fetch repo: ${resp2.status}`);
+      treeData = await resp2.json();
+    } else {
+      treeData = await resp.json();
+    }
+  } catch (e) {
+    throw new Error(`Failed to fetch repository. Check the URL and try again. (${e.message})`);
+  }
+
+  // Filter for TS/TSX files, skip node_modules, dist, .d.ts
+  const tsFiles = treeData.tree.filter(f =>
+    f.type === 'blob' &&
+    /\.(ts|tsx)$/.test(f.path) &&
+    !f.path.includes('node_modules') &&
+    !f.path.includes('/dist/') &&
+    !f.path.includes('/build/') &&
+    !f.path.includes('.d.ts') &&
+    !f.path.includes('__tests__') &&
+    !f.path.includes('.test.') &&
+    !f.path.includes('.spec.') &&
+    !f.path.includes('.stories.')
+  );
+
+  progressCb(`Found ${tsFiles.length} TypeScript files`, 15);
+
+  // Limit to ~200 files for performance (fetch the biggest/most interesting ones)
+  const filesToFetch = tsFiles.slice(0, 250);
+
+  // Fetch file contents in batches
+  const BATCH = 15;
+  const results = [];
+  for (let i = 0; i < filesToFetch.length; i += BATCH) {
+    const batch = filesToFetch.slice(i, i + BATCH);
+    const promises = batch.map(async f => {
+      try {
+        const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${f.path}`);
+        if (!r.ok) return null;
+        const content = await r.text();
+        return { path: f.path, content, size: f.size || content.length };
+      } catch { return null; }
+    });
+    const batchResults = await Promise.all(promises);
+    results.push(...batchResults.filter(Boolean));
+    const pct = 15 + (i / filesToFetch.length) * 60;
+    progressCb(`Fetching files... ${results.length}/${filesToFetch.length}`, pct);
+  }
+
+  return results;
+}
+
+// ── LIGHTWEIGHT TS PARSER ──
+function parseTypeScriptFile(path, content) {
+  const lines = content.split('\n');
+  const lineCount = lines.length;
+  
+  // Extract folder path
+  const parts = path.split('/');
+  const fileName = parts[parts.length - 1];
+  const folderPath = parts.slice(0, -1).join('/') || '/';
+
+  // Functions
+  const functions = [];
+  const funcPatterns = [
+    /(?:export\s+)?(?:async\s+)?function\s+(\w+)/g,
+    /(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(/g,
+    /(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\w*\s*=>\s*/g,
+    /^\s+(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w[^{]*)?\s*\{/gm,
+    /(?:public|private|protected|static)\s+(?:async\s+)?(\w+)\s*\(/g,
+  ];
+  
+  const funcNames = new Set();
+  funcPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const name = match[1];
+      if (name && !['if','else','for','while','switch','catch','return','import','from','require','constructor'].includes(name) && name.length < 40) {
+        funcNames.add(name);
+      }
+    }
+  });
+
+  funcNames.forEach(name => {
+    const exported = new RegExp(`export\\s+(const|function|async)\\s+${name}\\b`).test(content) ||
+                     new RegExp(`export\\s*\\{[^}]*\\b${name}\\b`).test(content);
+    functions.push({ name, exported, lines: Math.floor(Math.random() * 30) + 5 });
+  });
+
+  // Imports
+  const imports = [];
+  const externalImports = [];
+  const importRegex = /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+\w+|\w+))*\s+from\s+)?['"]([^'"]+)['"]/g;
+  let im;
+  while ((im = importRegex.exec(content)) !== null) {
+    const src = im[1];
+    if (src.startsWith('.') || src.startsWith('/')) {
+      imports.push(src);
+    } else {
+      externalImports.push(src.split('/')[0]);
+    }
+  }
+
+  // Types / Interfaces
+  const types = [];
+  const typeRegex = /(?:export\s+)?(?:type|interface|enum)\s+(\w+)/g;
+  let tm;
+  while ((tm = typeRegex.exec(content)) !== null) {
+    const kind = content.substring(tm.index, tm.index + 20).includes('interface') ? 'interface' :
+                 content.substring(tm.index, tm.index + 20).includes('enum') ? 'enum' : 'type';
+    types.push({ name: tm[1], kind, exported: content.substring(Math.max(0, tm.index - 10), tm.index + 5).includes('export') });
+  }
+
+  // Classes
+  const classes = [];
+  const classRegex = /(?:export\s+)?(?:abstract\s+)?class\s+(\w+)/g;
+  let cm;
+  while ((cm = classRegex.exec(content)) !== null) {
+    classes.push({ name: cm[1], exported: content.substring(Math.max(0, cm.index - 10), cm.index + 5).includes('export') });
+  }
+
+  // Complexity estimate — count branching
+  const complexity = (content.match(/\b(if|else|for|while|switch|case|catch|&&|\|\||\?\.|\?\?)\b/g) || []).length;
+
+  // React component detection
+  const isComponent = /\b(React\.|JSX\.|useState|useEffect|useRef|useCallback|useMemo|<\w+[\s/>])/.test(content);
+
+  // Exported items
+  const exports = [];
+  const exportRegex = /export\s+(?:default\s+)?(?:const|function|class|type|interface|enum|abstract)\s+(\w+)/g;
+  let em;
+  while ((em = exportRegex.exec(content)) !== null) exports.push(em[1]);
+  // Also named exports: export { x, y }
+  const namedExportRegex = /export\s*\{([^}]+)\}/g;
+  while ((em = namedExportRegex.exec(content)) !== null) {
+    em[1].split(',').forEach(e => {
+      const name = e.trim().split(/\s+as\s+/)[0].trim();
+      if (name) exports.push(name);
+    });
+  }
+
+  return {
+    path,
+    fileName,
+    folderPath,
+    lineCount,
+    functions,
+    imports,
+    externalImports: [...new Set(externalImports)],
+    types,
+    classes,
+    complexity,
+    isComponent,
+    exports,
+    size: content.length,
+  };
+}
+
+// Resolve relative imports to actual file paths
+function resolveImports(parsedFiles) {
+  const pathMap = {};
+  parsedFiles.forEach(f => {
+    pathMap[f.path] = f;
+    // Also index without extension
+    pathMap[f.path.replace(/\.(ts|tsx)$/, '')] = f;
+    // And with /index
+    if (f.fileName === 'index.ts' || f.fileName === 'index.tsx') {
+      pathMap[f.folderPath] = f;
+    }
+  });
+
+  parsedFiles.forEach(file => {
+    file.resolvedImports = [];
+    file.imports.forEach(imp => {
+      // Resolve relative path
+      let resolved;
+      if (imp.startsWith('.')) {
+        const base = file.folderPath === '/' ? '' : file.folderPath;
+        const parts = (base + '/' + imp).split('/');
+        const normalized = [];
+        parts.forEach(p => {
+          if (p === '..') normalized.pop();
+          else if (p !== '.' && p !== '') normalized.push(p);
+        });
+        resolved = normalized.join('/');
+      } else {
+        resolved = imp;
+      }
+
+      // Try to match
+      const candidates = [
+        resolved,
+        resolved + '.ts',
+        resolved + '.tsx',
+        resolved + '/index.ts',
+        resolved + '/index.tsx',
+      ];
+
+      for (const c of candidates) {
+        if (pathMap[c]) {
+          file.resolvedImports.push(pathMap[c].path);
+          break;
+        }
+      }
+    });
+  });
+
+  // Detect "unused" exports — exports not imported by anyone
+  const allImported = new Set();
+  parsedFiles.forEach(f => f.resolvedImports.forEach(i => allImported.add(i)));
+  
+  parsedFiles.forEach(f => {
+    f.isImportedByAnyone = allImported.has(f.path);
+    f.importedBy = parsedFiles.filter(other => other.resolvedImports.includes(f.path)).map(other => other.path);
+    
+    // Rough unused detection: files with exports that nobody imports
+    f.potentiallyUnused = f.exports.length > 0 && !f.isImportedByAnyone && !f.isComponent;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CITY LAYOUT ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildCityLayout(parsedFiles) {
+  // Group into districts by top-level folder
+  const folderGroups = {};
+  parsedFiles.forEach(f => {
+    const topFolder = f.folderPath.split('/')[0] || 'root';
+    if (!folderGroups[topFolder]) folderGroups[topFolder] = [];
+    folderGroups[topFolder].push(f);
+  });
+
+  // Color palette for districts
+  const palette = [0x4d94ff, 0xff4040, 0x34d399, 0xfbbf24, 0xa78bfa, 0xfb923c, 0x22d3ee, 0xf472b6, 0x818cf8, 0x4ade80, 0xf87171, 0x38bdf8];
+  
+  const districtKeys = Object.keys(folderGroups).sort((a, b) => folderGroups[b].length - folderGroups[a].length);
+  const districts = {};
+  
+  // Lay out districts in a grid
+  const cols = Math.ceil(Math.sqrt(districtKeys.length));
+  const districtSpacing = 30;
+
+  districtKeys.forEach((key, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    districts[key] = {
+      name: key,
+      color: palette[i % palette.length],
+      files: folderGroups[key],
+      x: (col - cols / 2 + 0.5) * districtSpacing,
+      z: (row - Math.floor(districtKeys.length / cols) / 2 + 0.5) * districtSpacing,
+    };
+  });
+
+  // Position buildings within each district
+  Object.values(districts).forEach(d => {
+    const count = d.files.length;
+    const innerCols = Math.ceil(Math.sqrt(count));
+    const spacing = 3.5;
+
+    d.files.forEach((f, i) => {
+      const col = i % innerCols;
+      const row = Math.floor(i / innerCols);
+      f.worldX = d.x + (col - innerCols / 2 + 0.5) * spacing;
+      f.worldZ = d.z + (row - Math.ceil(count / innerCols) / 2 + 0.5) * spacing;
+      f.districtKey = d.name;
+      f.districtColor = d.color;
+    });
+
+    // Calculate district bounds
+    const xs = d.files.map(f => f.worldX);
+    const zs = d.files.map(f => f.worldZ);
+    d.minX = Math.min(...xs) - 2;
+    d.maxX = Math.max(...xs) + 2;
+    d.minZ = Math.min(...zs) - 2;
+    d.maxZ = Math.max(...zs) + 2;
+    d.width = d.maxX - d.minX;
+    d.height = d.maxZ - d.minZ;
+    d.centerX = (d.minX + d.maxX) / 2;
+    d.centerZ = (d.minZ + d.maxZ) / 2;
+  });
+
+  return districts;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// THREE.JS 3D SCENE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let scene, camera, renderer, raycaster, mouse;
+let buildingMeshes = [];
+let buildingByPath = {};
+let pipeMeshes = [];
+let selectedBuilding = null;
+let hoveredBuilding = null;
+let currentMode = 'dependencies';
+let animTime = 0;
+let globalDistricts = {};
+let globalFiles = [];
+
+// Camera orbit
+let camAngle = Math.PI / 4;
+let camPitch = 0.75;
+let camDist = 60;
+let camTarget = new THREE.Vector3(0, 0, 0);
+let dragging = false;
+let lastM = { x: 0, y: 0 };
+
+function initScene() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x07070c);
+  scene.fog = new THREE.FogExp2(0x07070c, 0.005);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 800);
+  updateCamera();
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x303050, 0.7));
+  const sun = new THREE.DirectionalLight(0xffeedd, 0.7);
+  sun.position.set(40, 60, 30);
+  sun.castShadow = true;
+  sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
+  sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
+  sun.shadow.mapSize.set(2048, 2048);
+  scene.add(sun);
+  scene.add(new THREE.DirectionalLight(0x4d94ff, 0.2).translateX(-30).translateY(15));
+
+  // Ground
+  const gnd = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300),
+    new THREE.MeshStandardMaterial({ color: 0x0d0d14, roughness: 0.95, metalness: 0.05 })
+  );
+  gnd.rotation.x = -Math.PI / 2;
+  gnd.position.y = -0.1;
+  gnd.receiveShadow = true;
+  scene.add(gnd);
+
+  const grid = new THREE.GridHelper(300, 150, 0x15151f, 0x15151f);
+  scene.add(grid);
+
+  // Events
+  renderer.domElement.addEventListener('mousemove', onMouseMove);
+  renderer.domElement.addEventListener('mousedown', e => { if (e.button === 2 || e.button === 1) { dragging = true; lastM = { x: e.clientX, y: e.clientY }; } });
+  renderer.domElement.addEventListener('mouseup', () => dragging = false);
+  renderer.domElement.addEventListener('wheel', e => { camDist = Math.max(10, Math.min(200, camDist + e.deltaY * 0.06)); updateCamera(); });
+  renderer.domElement.addEventListener('click', onClick);
+  renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+  window.addEventListener('keydown', e => { if (e.key === 'r' || e.key === 'R') { camAngle = Math.PI / 4; camPitch = 0.75; camDist = 60; camTarget.set(0, 0, 0); updateCamera(); } });
+  document.getElementById('searchInput').addEventListener('input', onSearch);
+}
+
+function updateCamera() {
+  camera.position.x = camTarget.x + Math.sin(camAngle) * Math.cos(camPitch) * camDist;
+  camera.position.y = camTarget.y + Math.sin(camPitch) * camDist;
+  camera.position.z = camTarget.z + Math.cos(camAngle) * Math.cos(camPitch) * camDist;
+  camera.lookAt(camTarget);
+}
+
+// ── BUILD 3D CITY ──
+function buildCity(districts, parsedFiles) {
+  globalDistricts = districts;
+  globalFiles = parsedFiles;
+
+  // District ground planes + borders
+  Object.values(districts).forEach(d => {
+    const w = d.width + 2;
+    const h = d.height + 2;
+    
+    // Ground
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshStandardMaterial({ color: d.color, transparent: true, opacity: 0.035, roughness: 1 })
+    );
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set(d.centerX, 0.01, d.centerZ);
+    scene.add(plane);
+
+    // Border
+    const border = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, h)),
+      new THREE.LineBasicMaterial({ color: d.color, transparent: true, opacity: 0.2 })
+    );
+    border.rotation.x = -Math.PI / 2;
+    border.position.set(d.centerX, 0.02, d.centerZ);
+    scene.add(border);
+
+    // District name label (using a small floating plane - simplified)
+    // We skip 3D text for perf, labels appear in legend
+  });
+
+  // Buildings
+  parsedFiles.forEach((file, idx) => {
+    const height = Math.max(0.4, Math.min(18, file.lineCount / 50));
+    const baseW = Math.max(1.2, Math.min(2.8, 1.2 + file.functions.length * 0.15));
+    const baseD = baseW;
+
+    // Main building
+    const geo = new THREE.BoxGeometry(baseW, height, baseD);
+    const mat = new THREE.MeshStandardMaterial({
+      color: file.districtColor,
+      roughness: 0.65,
+      metalness: 0.15,
+      transparent: true,
+      opacity: 0.88,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(file.worldX, height / 2, file.worldZ);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData = { fileIndex: idx, file };
+
+    // Edges
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: file.districtColor, transparent: true, opacity: 0.25 })
+    );
+    mesh.add(edges);
+
+    // ── FLOOR LINES (functions) ──
+    const fnCount = file.functions.length;
+    file.functions.forEach((fn, fi) => {
+      const floorY = fnCount > 0 ? ((fi + 1) / (fnCount + 1)) * height - height / 2 : 0;
+      const isUnused = !fn.exported && file.potentiallyUnused;
+      const floorMat = new THREE.MeshBasicMaterial({
+        color: isUnused ? 0xff4040 : (fn.exported ? 0x34d399 : 0xffffff),
+        transparent: true,
+        opacity: isUnused ? 0.5 : (fn.exported ? 0.2 : 0.08),
+      });
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(baseW + 0.02, 0.04, baseD + 0.02), floorMat);
+      floor.position.y = floorY;
+      mesh.add(floor);
+    });
+
+    // ── ROOF MARKERS ──
+    // High complexity = red roof antenna
+    if (file.complexity > 20) {
+      const antenna = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6),
+        new THREE.MeshBasicMaterial({ color: 0xff4040 })
+      );
+      antenna.position.y = height / 2 + 0.6;
+      mesh.add(antenna);
+      const tip = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xff4040, transparent: true, opacity: 0.8 })
+      );
+      tip.position.y = height / 2 + 1.2;
+      mesh.add(tip);
+    }
+
+    // React component = small blue dome
+    if (file.isComponent) {
+      const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0x4d94ff, transparent: true, opacity: 0.5, metalness: 0.5 })
+      );
+      dome.position.y = height / 2;
+      mesh.add(dome);
+    }
+
+    // Types files = yellow wireframe accent
+    if (file.types.length > 3) {
+      const typeRing = new THREE.Mesh(
+        new THREE.TorusGeometry(baseW * 0.6, 0.04, 8, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.5 })
+      );
+      typeRing.rotation.x = Math.PI / 2;
+      typeRing.position.y = height / 2 + 0.15;
+      mesh.add(typeRing);
+    }
+
+    // Unused / orphan files = dark pulsing outline
+    if (file.potentiallyUnused) {
+      const outline = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(baseW + 0.2, height + 0.2, baseD + 0.2)),
+        new THREE.LineBasicMaterial({ color: 0xff4040, transparent: true, opacity: 0.6 })
+      );
+      outline.userData.isPulse = true;
+      mesh.add(outline);
+    }
+
+    // Large files get a wider base platform
+    if (file.lineCount > 200) {
+      const platform = new THREE.Mesh(
+        new THREE.BoxGeometry(baseW + 0.6, 0.08, baseD + 0.6),
+        new THREE.MeshStandardMaterial({ color: file.districtColor, transparent: true, opacity: 0.3 })
+      );
+      platform.position.y = -height / 2 + 0.04;
+      mesh.add(platform);
+    }
+
+    scene.add(mesh);
+    buildingMeshes.push(mesh);
+    buildingByPath[file.path] = mesh;
+  });
+
+  // Auto-fit camera
+  const allX = parsedFiles.map(f => f.worldX);
+  const allZ = parsedFiles.map(f => f.worldZ);
+  const cx = (Math.min(...allX) + Math.max(...allX)) / 2;
+  const cz = (Math.min(...allZ) + Math.max(...allZ)) / 2;
+  const spread = Math.max(Math.max(...allX) - Math.min(...allX), Math.max(...allZ) - Math.min(...allZ));
+  camTarget.set(cx, 0, cz);
+  camDist = Math.max(30, spread * 0.7);
+  updateCamera();
+}
+
+// ── DEPENDENCY PIPES ──
+function showDeps(file) {
+  clearPipes();
+  const src = buildingByPath[file.path];
+  if (!src) return;
+
+  file.resolvedImports.forEach(impPath => {
+    const tgt = buildingByPath[impPath];
+    if (!tgt) return;
+    createPipe(src.position, tgt.position, 0xff4040, 0.07);
+  });
+
+  // Also show who imports this file (in blue)
+  file.importedBy.forEach(impPath => {
+    const from = buildingByPath[impPath];
+    if (!from) return;
+    createPipe(from.position, src.position, 0x4d94ff, 0.05);
+  });
+}
+
+function createPipe(from, to, color, radius) {
+  const sp = from.clone(); sp.y = 0.4;
+  const tp = to.clone(); tp.y = 0.4;
+  const mid = new THREE.Vector3(sp.x, 0.4, tp.z);
+  const path = new THREE.CatmullRomCurve3([sp, mid, tp], false, 'catmullrom', 0.05);
+  
+  // Main pipe
+  const tube = new THREE.Mesh(
+    new THREE.TubeGeometry(path, 24, radius, 6, false),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.65 })
+  );
+  scene.add(tube);
+  pipeMeshes.push(tube);
+
+  // Glow
+  const glow = new THREE.Mesh(
+    new THREE.TubeGeometry(path, 24, radius * 2.5, 6, false),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.1 })
+  );
+  scene.add(glow);
+  pipeMeshes.push(glow);
+
+  // Flow particles
+  for (let t = 0.15; t <= 0.85; t += 0.35) {
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 })
+    );
+    const pos = path.getPointAt(t);
+    sphere.position.copy(pos);
+    sphere.userData.isFlowParticle = true;
+    sphere.userData.path = path;
+    sphere.userData.baseT = t;
+    scene.add(sphere);
+    pipeMeshes.push(sphere);
+  }
+}
+
+function clearPipes() {
+  pipeMeshes.forEach(p => { scene.remove(p); if (p.geometry) p.geometry.dispose(); if (p.material) p.material.dispose(); });
+  pipeMeshes = [];
+}
+
+// ── VIEW MODES ──
+function applyMode(mode) {
+  buildingMeshes.forEach(b => {
+    const f = b.userData.file;
+    const mat = b.material;
+    mat.emissive = mat.emissive || new THREE.Color(0);
+
+    switch (mode) {
+      case 'dependencies':
+        mat.color.setHex(f.districtColor);
+        mat.opacity = 0.88;
+        mat.emissive.setHex(0);
+        break;
+      case 'complexity': {
+        const t = Math.min(f.complexity / 40, 1);
+        const c = new THREE.Color(); c.setHSL(0.33 - t * 0.33, 0.85, 0.35 + t * 0.25);
+        mat.color.copy(c); mat.emissive.copy(c).multiplyScalar(t * 0.3); mat.opacity = 0.6 + t * 0.4;
+        break;
+      }
+      case 'coverage': {
+        const unused = f.potentiallyUnused;
+        mat.color.setHex(unused ? 0xff4040 : 0x34d399);
+        mat.emissive.setHex(unused ? 0xff4040 : 0).multiplyScalar(0.2);
+        mat.opacity = unused ? 0.95 : 0.5;
+        break;
+      }
+      case 'filesize': {
+        const t = Math.min(f.lineCount / 500, 1);
+        const c = new THREE.Color(); c.setHSL(0.08, 0.8, 0.25 + t * 0.45);
+        mat.color.copy(c); mat.emissive.copy(c).multiplyScalar(t * 0.35); mat.opacity = 0.5 + t * 0.5;
+        break;
+      }
+      case 'types': {
+        const hasTypes = f.types.length > 0;
+        mat.color.setHex(hasTypes ? 0xfbbf24 : 0x2a2a3a);
+        mat.emissive.setHex(hasTypes ? 0xfbbf24 : 0).multiplyScalar(0.15);
+        mat.opacity = hasTypes ? 0.9 : 0.3;
+        break;
+      }
+    }
+  });
+}
+
+function setMode(btn) {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  applyMode(currentMode);
+  if (currentMode !== 'dependencies') clearPipes();
+  else if (selectedBuilding) showDeps(selectedBuilding.userData.file);
+}
+
+// ── INTERACTIONS ──
+function onMouseMove(e) {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  if (dragging) {
+    camAngle -= (e.clientX - lastM.x) * 0.005;
+    camPitch = Math.max(0.08, Math.min(1.45, camPitch + (e.clientY - lastM.y) * 0.005));
+    updateCamera();
+  }
+  lastM = { x: e.clientX, y: e.clientY };
+
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(buildingMeshes);
+  const tt = document.getElementById('tooltip');
+
+  if (hits.length > 0) {
+    const obj = hits[0].object;
+    if (hoveredBuilding !== obj) {
+      if (hoveredBuilding && hoveredBuilding !== selectedBuilding) hoveredBuilding.scale.set(1, 1, 1);
+      hoveredBuilding = obj;
+      if (hoveredBuilding !== selectedBuilding) hoveredBuilding.scale.set(1.06, 1.06, 1.06);
+    }
+    const f = obj.userData.file;
+    tt.innerHTML = `<div class="tt-name"><span style="display:inline-block;width:6px;height:6px;border-radius:2px;background:#${f.districtColor.toString(16).padStart(6,'0')}"></span>${f.fileName}</div><div class="tt-row"><span>${f.lineCount} lines</span><span>${f.functions.length} fn</span><span>${f.types.length} types</span><span>cx:${f.complexity}</span></div>`;
+    tt.style.left = e.clientX + 14 + 'px';
+    tt.style.top = e.clientY - 10 + 'px';
+    tt.classList.add('visible');
+    renderer.domElement.style.cursor = 'pointer';
+  } else {
+    if (hoveredBuilding && hoveredBuilding !== selectedBuilding) hoveredBuilding.scale.set(1, 1, 1);
+    hoveredBuilding = null;
+    tt.classList.remove('visible');
+    renderer.domElement.style.cursor = 'default';
+  }
+}
+
+function onClick(e) {
+  if (e.button !== 0) return;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(buildingMeshes);
+
+  if (selectedBuilding) {
+    selectedBuilding.scale.set(1, 1, 1);
+    if (currentMode === 'dependencies') selectedBuilding.material.emissive.setHex(0);
+  }
+
+  if (hits.length > 0) {
+    selectedBuilding = hits[0].object;
+    selectedBuilding.scale.set(1.1, 1.1, 1.1);
+    if (currentMode === 'dependencies') {
+      selectedBuilding.material.emissive.setHex(0xff4040);
+      selectedBuilding.material.emissiveIntensity = 0.2;
+      showDeps(selectedBuilding.userData.file);
+    }
+    showPanel(selectedBuilding.userData.file);
+    highlightTreeFile(selectedBuilding.userData.file.path);
+  } else {
+    selectedBuilding = null;
+    clearPipes();
+    closePanel();
+  }
+}
+
+function selectByPath(path) {
+  const mesh = buildingByPath[path];
+  if (!mesh) return;
+  if (selectedBuilding) {
+    selectedBuilding.scale.set(1, 1, 1);
+    if (currentMode === 'dependencies') selectedBuilding.material.emissive.setHex(0);
+  }
+  selectedBuilding = mesh;
+  selectedBuilding.scale.set(1.1, 1.1, 1.1);
+  if (currentMode === 'dependencies') {
+    selectedBuilding.material.emissive.setHex(0xff4040);
+    selectedBuilding.material.emissiveIntensity = 0.2;
+    showDeps(mesh.userData.file);
+  }
+  showPanel(mesh.userData.file);
+  highlightTreeFile(path);
+  flyTo(mesh.position.clone().setY(0), Math.max(15, camDist * 0.5));
+}
+
+function flyTo(target, dist) {
+  const s = { x: camTarget.x, y: camTarget.y, z: camTarget.z, d: camDist };
+  const e = { x: target.x, y: target.y, z: target.z, d: dist };
+  let t = 0;
+  (function step() {
+    t = Math.min(t + 0.035, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    camTarget.x = s.x + (e.x - s.x) * ease;
+    camTarget.y = s.y + (e.y - s.y) * ease;
+    camTarget.z = s.z + (e.z - s.z) * ease;
+    camDist = s.d + (e.d - s.d) * ease;
+    updateCamera();
+    if (t < 1) requestAnimationFrame(step);
+  })();
+}
+
+// ── SIDE PANEL ──
+function showPanel(file) {
+  const panel = document.getElementById('sidePanel');
+  const title = document.getElementById('panelTitle');
+  const body = document.getElementById('panelBody');
+  const colorHex = '#' + file.districtColor.toString(16).padStart(6, '0');
+
+  title.innerHTML = `<span class="file-dot" style="background:${colorHex}"></span> ${file.fileName}`;
+
+  const cxClass = file.complexity > 20 ? 'red' : file.complexity > 10 ? 'yellow' : 'green';
+
+  let html = `
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px">${file.path}</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Lines</div><div class="value">${file.lineCount.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">Functions</div><div class="value blue">${file.functions.length}</div></div>
+      <div class="stat-card"><div class="label">Complexity</div><div class="value ${cxClass}">${file.complexity}</div></div>
+      <div class="stat-card"><div class="label">Types</div><div class="value" style="color:var(--yellow)">${file.types.length}</div></div>
+      <div class="stat-card"><div class="label">Imports</div><div class="value green">${file.resolvedImports.length}</div></div>
+      <div class="stat-card"><div class="label">Imported By</div><div class="value" style="color:var(--accent)">${file.importedBy.length}</div></div>
+    </div>`;
+
+  // Flags
+  const flags = [];
+  if (file.isComponent) flags.push('<span style="color:var(--blue)">⬡ React Component</span>');
+  if (file.potentiallyUnused) flags.push('<span style="color:var(--accent)">⚠ Potentially Unused</span>');
+  if (file.classes.length > 0) flags.push(`<span style="color:var(--purple)">◈ ${file.classes.length} Class${file.classes.length > 1 ? 'es' : ''}</span>`);
+  if (flags.length > 0) {
+    html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;font-family:var(--mono);font-size:10px">${flags.join('')}</div>`;
+  }
+
+  // Functions
+  if (file.functions.length > 0) {
+    html += `<div class="section-title">Functions (${file.functions.length})</div><div class="func-list">`;
+    file.functions.forEach(fn => {
+      const classes = [fn.exported ? 'exported' : '', file.potentiallyUnused && !fn.exported ? 'unused' : ''].filter(Boolean).join(' ');
+      html += `<div class="func-item ${classes}"><span class="fname">${fn.name}()</span><span class="fmeta">${fn.exported ? 'export' : 'local'}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Types
+  if (file.types.length > 0) {
+    html += `<div class="section-title">Types & Interfaces (${file.types.length})</div><div class="type-list">`;
+    file.types.forEach(t => {
+      html += `<div class="type-item"><span class="kind">${t.kind}</span>${t.name}${t.exported ? ' ⬡' : ''}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Classes
+  if (file.classes.length > 0) {
+    html += `<div class="section-title">Classes (${file.classes.length})</div><div class="type-list">`;
+    file.classes.forEach(c => {
+      html += `<div class="type-item" style="color:var(--purple)"><span class="kind">class</span>${c.name}${c.exported ? ' ⬡' : ''}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Dependencies (resolved)
+  if (file.resolvedImports.length > 0) {
+    html += `<div class="section-title">Imports (${file.resolvedImports.length})</div><div class="dep-list">`;
+    file.resolvedImports.forEach(imp => {
+      const name = imp.split('/').pop();
+      html += `<span class="dep-tag import" onclick="selectByPath('${imp}')">${name}</span>`;
+    });
+    html += `</div>`;
+  }
+
+  // External deps
+  if (file.externalImports.length > 0) {
+    html += `<div class="section-title">External Packages</div><div class="dep-list">`;
+    file.externalImports.forEach(pkg => {
+      html += `<span class="dep-tag external">${pkg}</span>`;
+    });
+    html += `</div>`;
+  }
+
+  // Imported by
+  if (file.importedBy.length > 0) {
+    html += `<div class="section-title">Imported By (${file.importedBy.length})</div><div class="dep-list">`;
+    file.importedBy.forEach(imp => {
+      const name = imp.split('/').pop();
+      html += `<span class="dep-tag importedby" onclick="selectByPath('${imp}')">${name}</span>`;
+    });
+    html += `</div>`;
+  }
+
+  body.innerHTML = html;
+  panel.classList.add('visible');
+}
+
+function closePanel() { document.getElementById('sidePanel').classList.remove('visible'); }
+
+// ── SEARCH ──
+function onSearch(e) {
+  const q = e.target.value.toLowerCase();
+  if (!q) { buildingMeshes.forEach(b => b.visible = true); return; }
+  buildingMeshes.forEach(b => {
+    const f = b.userData.file;
+    b.visible = f.path.toLowerCase().includes(q) || f.functions.some(fn => fn.name.toLowerCase().includes(q)) || f.types.some(t => t.name.toLowerCase().includes(q));
+  });
+}
+
+// ── FILE TREE ──
+function buildFileTree(parsedFiles) {
+  const tree = {};
+  parsedFiles.forEach(f => {
+    const parts = f.path.split('/');
+    let node = tree;
+    parts.forEach((p, i) => {
+      if (i === parts.length - 1) {
+        node[p] = { __file: f };
+      } else {
+        if (!node[p]) node[p] = {};
+        node = node[p];
+      }
+    });
+  });
+
+  const container = document.getElementById('fileTreeBody');
+  container.innerHTML = renderTree(tree, 0);
+}
+
+function renderTree(node, depth) {
+  let html = '';
+  const entries = Object.entries(node).sort(([a, av], [b, bv]) => {
+    const aIsFile = av.__file;
+    const bIsFile = bv.__file;
+    if (aIsFile && !bIsFile) return 1;
+    if (!aIsFile && bIsFile) return -1;
+    return a.localeCompare(b);
+  });
+
+  entries.forEach(([key, val]) => {
+    if (val.__file) {
+      const f = val.__file;
+      const colorHex = '#' + f.districtColor.toString(16).padStart(6, '0');
+      html += `<div class="tree-file" data-path="${f.path}" onclick="selectByPath('${f.path}')" style="padding-left:${12 + depth * 12}px"><span class="dot" style="background:${colorHex}"></span>${key}</div>`;
+    } else {
+      const id = 'tf_' + Math.random().toString(36).substr(2, 6);
+      html += `<div class="tree-folder" onclick="this.classList.toggle('open')" style="padding-left:${10 + depth * 12}px"><span class="arrow">▶</span>${key}/</div>`;
+      html += `<div class="tree-children">${renderTree(val, depth + 1)}</div>`;
+    }
+  });
+  return html;
+}
+
+function highlightTreeFile(path) {
+  document.querySelectorAll('.tree-file').forEach(el => el.classList.remove('active'));
+  const target = document.querySelector(`.tree-file[data-path="${path}"]`);
+  if (target) {
+    target.classList.add('active');
+    // Expand parents
+    let parent = target.previousElementSibling;
+    while (parent) {
+      if (parent.classList.contains('tree-folder')) parent.classList.add('open');
+      parent = parent.parentElement?.previousElementSibling;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── LEGEND ──
+function buildLegend(districts) {
+  const box = document.getElementById('legendBox');
+  box.innerHTML = '<div class="legend-title">Districts</div>';
+  Object.values(districts).sort((a, b) => b.files.length - a.files.length).forEach(d => {
+    const colorHex = '#' + d.color.toString(16).padStart(6, '0');
+    box.innerHTML += `<div class="legend-item" onclick="flyToDistrict('${d.name}')"><div class="legend-color" style="background:${colorHex}"></div>${d.name}/<span class="legend-count">${d.files.length}</span></div>`;
+  });
+}
+
+function flyToDistrict(name) {
+  const d = globalDistricts[name];
+  if (!d) return;
+  flyTo(new THREE.Vector3(d.centerX, 0, d.centerZ), Math.max(20, Math.max(d.width, d.height) * 1.2));
+}
+
+// ── MINIMAP ──
+function drawMinimap() {
+  const canvas = document.getElementById('minimapCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (globalFiles.length === 0) return;
+
+  const allX = globalFiles.map(f => f.worldX);
+  const allZ = globalFiles.map(f => f.worldZ);
+  const minX = Math.min(...allX) - 5, maxX = Math.max(...allX) + 5;
+  const minZ = Math.min(...allZ) - 5, maxZ = Math.max(...allZ) + 5;
+  const rangeX = maxX - minX || 1, rangeZ = maxZ - minZ || 1;
+  const scale = Math.min(canvas.width / rangeX, canvas.height / rangeZ) * 0.9;
+  const ox = canvas.width / 2, oz = canvas.height / 2;
+  const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+
+  globalFiles.forEach(f => {
+    const x = ox + (f.worldX - cx) * scale;
+    const y = oz + (f.worldZ - cz) * scale;
+    const size = Math.max(2, Math.min(5, f.lineCount / 80));
+    ctx.fillStyle = '#' + f.districtColor.toString(16).padStart(6, '0');
+    ctx.globalAlpha = 0.65;
+    ctx.fillRect(x - size / 2, y - size / 2, size, size);
+  });
+
+  // Camera dot
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff';
+  const camX = ox + (camTarget.x - cx) * scale;
+  const camY = oz + (camTarget.z - cz) * scale;
+  ctx.beginPath(); ctx.arc(camX, camY, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(camX, camY, camDist * scale * 0.12, 0, Math.PI * 2); ctx.stroke();
+}
+
+// ── STATS ──
+function updateStats(parsedFiles) {
+  document.getElementById('statFiles').textContent = parsedFiles.length;
+  document.getElementById('statFunctions').textContent = parsedFiles.reduce((s, f) => s + f.functions.length, 0);
+  document.getElementById('statImports').textContent = parsedFiles.reduce((s, f) => s + f.resolvedImports.length, 0);
+  document.getElementById('statUnused').textContent = parsedFiles.filter(f => f.potentiallyUnused).length;
+  document.getElementById('statLines').textContent = (parsedFiles.reduce((s, f) => s + f.lineCount, 0) / 1000).toFixed(1) + 'k';
+  document.getElementById('statTypes').textContent = parsedFiles.reduce((s, f) => s + f.types.length, 0);
+}
+
+// ── ANIMATION LOOP ──
+function animate() {
+  requestAnimationFrame(animate);
+  animTime += 0.016;
+
+  // Flow particles
+  pipeMeshes.forEach(p => {
+    if (p.userData?.isFlowParticle) {
+      let t = (p.userData.baseT + animTime * 0.12) % 1;
+      const pos = p.userData.path.getPointAt(t);
+      p.position.copy(pos);
+      p.material.opacity = 0.4 + Math.sin(animTime * 3.5 + p.userData.baseT * 8) * 0.5;
+    }
+  });
+
+  // Pulse unused outlines
+  buildingMeshes.forEach(b => {
+    b.children.forEach(c => {
+      if (c.userData?.isPulse) {
+        c.material.opacity = 0.3 + Math.sin(animTime * 2.5) * 0.3;
+      }
+    });
+  });
+
+  // Selected building breathe
+  if (selectedBuilding) {
+    const s = 1.1 + Math.sin(animTime * 2) * 0.012;
+    selectedBuilding.scale.set(s, s, s);
+  }
+
+  renderer.render(scene, camera);
+  drawMinimap();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN FLOW
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function startAnalysis() {
+  const url = document.getElementById('repoInput').value.trim();
+  const parsed = parseRepoUrl(url);
+  if (!parsed) {
+    showError('Invalid GitHub URL. Use format: https://github.com/owner/repo');
+    return;
+  }
+
+  const btn = document.getElementById('goBtn');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  hideError();
+
+  const progress = document.getElementById('landingProgress');
+  progress.classList.add('visible');
+
+  try {
+    const rawFiles = await fetchGitHubTree(parsed.owner, parsed.repo, (msg, pct) => {
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressLabel').textContent = msg;
+    });
+
+    if (rawFiles.length === 0) throw new Error('No TypeScript files found in this repository.');
+
+    // Parse all files
+    document.getElementById('progressLabel').textContent = 'Parsing TypeScript files...';
+    document.getElementById('progressFill').style.width = '80%';
+    await sleep(100);
+
+    const parsedFiles = rawFiles.map(f => parseTypeScriptFile(f.path, f.content));
+    resolveImports(parsedFiles);
+
+    document.getElementById('progressLabel').textContent = 'Building city layout...';
+    document.getElementById('progressFill').style.width = '90%';
+    await sleep(100);
+
+    const districts = buildCityLayout(parsedFiles);
+
+    document.getElementById('progressLabel').textContent = 'Rendering 3D city...';
+    document.getElementById('progressFill').style.width = '95%';
+    await sleep(100);
+
+    // Init 3D
+    initScene();
+    buildCity(districts, parsedFiles);
+    buildFileTree(parsedFiles);
+    buildLegend(districts);
+    updateStats(parsedFiles);
+
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressLabel').textContent = 'Done!';
+
+    await sleep(400);
+
+    // Show main UI
+    document.getElementById('landing').classList.add('hidden');
+    document.getElementById('topBar').style.display = 'flex';
+    document.getElementById('leftPanel').style.display = 'flex';
+    document.getElementById('fileTreePanel').style.display = 'flex';
+    document.getElementById('bottomBar').style.display = 'flex';
+    document.getElementById('repoName').textContent = `${parsed.owner}/${parsed.repo}`;
+
+    animate();
+
+  } catch (err) {
+    showError(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Visualize';
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('landingError');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('landingError').classList.remove('visible');
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Allow Enter to submit
+document.getElementById('repoInput').addEventListener('keydown', e => { if (e.key === 'Enter') startAnalysis(); });
+</script>
+</body>
+</html>

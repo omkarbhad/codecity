@@ -5,7 +5,7 @@ import authConfig from "./auth.config"
 
 declare module "next-auth" {
   interface User {
-    role: "USER" | "ADMIN"
+    role?: "USER" | "ADMIN"
   }
   interface Session {
     user: {
@@ -16,7 +16,7 @@ declare module "next-auth" {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   session: { strategy: "database" },
   pages: {
     signIn: "/login",
