@@ -66,7 +66,7 @@ export function ExploreTab() {
           {filtered.map((project) => (
             <a
               key={project.id}
-              href={`/city/${project.id}`}
+              href={`/project/${project.id}`}
               className="group rounded-xl border border-border/30 bg-card/20 p-4 transition-all hover:border-primary/30 hover:bg-card/40"
             >
               <div className="relative aspect-video overflow-hidden rounded-lg bg-background/50 border border-border/20">

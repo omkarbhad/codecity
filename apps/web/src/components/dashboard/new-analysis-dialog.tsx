@@ -11,20 +11,25 @@ export function NewAnalysisDialog({ onClose }: { onClose: () => void }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!url.trim()) return
-
     setSubmitting(true)
-    await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repoUrl: url, visibility }),
-    })
-
-    window.location.reload()
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoUrl: url, visibility }),
+      })
+      const data = await res.json()
+      if (data.projectId) {
+        window.location.href = `/project/${data.projectId}`
+      }
+    } catch {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md rounded-xl border border-border/50 bg-card/80 p-6 shadow-2xl backdrop-blur-xl glow-cyan animate-fade-up">
+      <div className="w-full max-w-md rounded-xl border border-border/50 bg-card/80 p-6 shadow-2xl backdrop-blur-xl glow-red animate-fade-up">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">New Analysis</h2>
@@ -81,7 +86,7 @@ export function NewAnalysisDialog({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg border border-accent/30 bg-accent/10 py-2.5 font-mono text-sm font-medium text-accent transition-all hover:bg-accent/20 hover:border-accent/50 disabled:opacity-50 glow-amber"
+            className="w-full rounded-lg border border-primary/30 bg-primary/10 py-2.5 font-mono text-sm font-medium text-primary transition-all hover:bg-primary/20 hover:border-primary/50 disabled:opacity-50 glow-red"
           >
             {submitting ? "Starting..." : "Start Analysis"}
           </button>

@@ -65,7 +65,7 @@ export function MyProjectsTab() {
         </p>
         <button
           onClick={() => setShowNewDialog(true)}
-          className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-xs font-medium text-accent transition-all hover:bg-accent/20 hover:border-accent/50 glow-amber"
+          className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 font-mono text-xs font-medium text-primary transition-all hover:bg-primary/20 hover:border-primary/50 glow-red"
         >
           <Plus className="h-3.5 w-3.5" />
           New Analysis
@@ -87,8 +87,9 @@ export function MyProjectsTab() {
       ) : (
         <div className="mt-4 space-y-2">
           {projects.map((project) => (
-            <div
+            <a
               key={project.id}
+              href={`/project/${project.id}`}
               className="group flex items-center justify-between rounded-lg border border-border/30 bg-card/20 px-4 py-3 transition-all hover:border-border/50 hover:bg-card/40"
             >
               <div className="flex items-center gap-3">
@@ -142,7 +143,7 @@ export function MyProjectsTab() {
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       )}
