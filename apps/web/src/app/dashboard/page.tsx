@@ -34,7 +34,7 @@ export default async function DashboardPage({
         >
           My Projects
           {activeTab === "projects" && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary glow-cyan" />
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary glow-red" />
           )}
         </a>
         <a
@@ -47,7 +47,7 @@ export default async function DashboardPage({
         >
           Explore
           {activeTab === "explore" && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary glow-cyan" />
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary glow-red" />
           )}
         </a>
       </div>

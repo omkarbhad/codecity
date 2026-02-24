@@ -10,7 +10,7 @@ export default function LoginPage() {
       </div>
 
       <div className="relative w-full max-w-sm animate-fade-up">
-        <div className="rounded-xl border border-border/50 bg-card/60 p-8 backdrop-blur-xl glow-cyan">
+        <div className="rounded-xl border border-border/50 bg-card/60 p-8 backdrop-blur-xl glow-red">
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
               <svg className="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

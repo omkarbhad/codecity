@@ -58,7 +58,7 @@ export default function AdminSettingsPage() {
           className={`rounded-lg border px-5 py-2 font-mono text-xs font-medium transition-all disabled:opacity-50 ${
             saved
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-              : "border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent/50 glow-amber"
+              : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 glow-red"
           }`}
         >
           {saving ? "Saving..." : saved ? "\u2713 Saved" : "Save Changes"}
@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
                   <div
                     className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${
                       settings[key]
-                        ? "left-[18px] bg-primary glow-cyan"
+                        ? "left-[18px] bg-primary glow-red"
                         : "left-0.5 bg-muted-foreground/50"
                     }`}
                   />
