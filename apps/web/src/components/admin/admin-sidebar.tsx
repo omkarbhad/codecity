@@ -5,23 +5,23 @@ import { usePathname } from "next/navigation"
 import { Users, Activity, Shield, Settings } from "lucide-react"
 
 const NAV_ITEMS = [
-  { href: "/admin", icon: Activity, label: "Overview" },
-  { href: "/admin/users", icon: Users, label: "Users" },
-  { href: "/admin/moderation", icon: Shield, label: "Moderation" },
-  { href: "/admin/settings", icon: Settings, label: "Settings" },
+  { href: "/admin", icon: Activity, label: "Overview", tag: "SYS" },
+  { href: "/admin/users", icon: Users, label: "Users", tag: "USR" },
+  { href: "/admin/moderation", icon: Shield, label: "Moderation", tag: "MOD" },
+  { href: "/admin/settings", icon: Settings, label: "Settings", tag: "CFG" },
 ]
 
 export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-56 shrink-0 border-r border-border bg-card">
-      <div className="p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Admin
-        </h2>
+    <aside className="w-52 shrink-0 border-r border-border/30 bg-card/20">
+      <div className="px-4 py-5">
+        <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-primary/40">
+          Admin Console
+        </p>
       </div>
-      <nav className="space-y-1 px-2">
+      <nav className="space-y-0.5 px-2">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/admin"
@@ -32,14 +32,17 @@ export function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all ${
                 isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                  ? "bg-primary/5 text-primary border-l-2 border-primary"
+                  : "text-muted-foreground hover:bg-card/50 hover:text-foreground border-l-2 border-transparent"
               }`}
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-xs">{item.label}</span>
+              <span className={`font-mono text-[9px] tracking-wider ${isActive ? "text-primary/50" : "text-muted-foreground/30"}`}>
+                {item.tag}
+              </span>
             </Link>
           )
         })}

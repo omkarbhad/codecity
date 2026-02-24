@@ -15,29 +15,40 @@ export default async function DashboardPage({
   const activeTab = params.tab ?? "projects"
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+    <div className="animate-fade-up">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-mono text-xs tracking-[0.2em] uppercase text-primary/50">Control Panel</p>
+          <h1 className="mt-1 text-2xl font-bold text-foreground">Dashboard</h1>
+        </div>
+      </div>
 
-      <div className="mt-6 flex gap-1 border-b border-border">
+      <div className="mt-8 flex gap-0 border-b border-border/30">
         <a
           href="/dashboard?tab=projects"
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
+          className={`relative px-4 py-2.5 font-mono text-xs tracking-wider uppercase transition-colors ${
             activeTab === "projects"
-              ? "border-b-2 border-primary text-foreground"
+              ? "text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
           My Projects
+          {activeTab === "projects" && (
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary glow-cyan" />
+          )}
         </a>
         <a
           href="/dashboard?tab=explore"
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
+          className={`relative px-4 py-2.5 font-mono text-xs tracking-wider uppercase transition-colors ${
             activeTab === "explore"
-              ? "border-b-2 border-primary text-foreground"
+              ? "text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Explore
+          {activeTab === "explore" && (
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary glow-cyan" />
+          )}
         </a>
       </div>
 
