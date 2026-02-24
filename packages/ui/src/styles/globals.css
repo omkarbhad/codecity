@@ -1,36 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  /* Deep navy/slate base with electric cyan + amber accents */
-  --color-background: oklch(0.11 0.025 255);
-  --color-foreground: oklch(0.93 0.01 240);
-  --color-card: oklch(0.15 0.02 255);
-  --color-card-foreground: oklch(0.93 0.01 240);
-  --color-primary: oklch(0.72 0.15 195);
-  --color-primary-foreground: oklch(0.11 0.025 255);
-  --color-secondary: oklch(0.19 0.02 255);
-  --color-secondary-foreground: oklch(0.85 0.01 240);
-  --color-muted: oklch(0.19 0.015 255);
-  --color-muted-foreground: oklch(0.55 0.02 250);
-  --color-accent: oklch(0.75 0.15 75);
-  --color-accent-foreground: oklch(0.11 0.025 255);
-  --color-destructive: oklch(0.6 0.2 25);
-  --color-destructive-foreground: oklch(0.97 0 0);
-  --color-border: oklch(0.22 0.02 255);
-  --color-input: oklch(0.18 0.02 255);
-  --color-ring: oklch(0.72 0.15 195);
+  /* ── Near-black base with neon red (#ff4040) accent ── */
+  --color-background: #07070c;
+  --color-foreground: #e4e4ec;
+
+  --color-card: #0d0d14;
+  --color-card-foreground: #e4e4ec;
+
+  --color-primary: #ff4040;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #12121a;
+  --color-secondary-foreground: #e4e4ec;
+
+  --color-muted: #12121a;
+  --color-muted-foreground: #5a5a6e;
+
+  --color-accent: #1a1a2e;
+  --color-accent-foreground: #e4e4ec;
+
+  --color-border: #1a1a2e;
+  --color-input: #1a1a2e;
+  --color-ring: #ff4040;
+
+  --color-destructive: #ff4040;
+  --color-destructive-foreground: #ffffff;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+}
 
-  /* Custom glow values */
-  --color-glow-cyan: oklch(0.72 0.15 195 / 0.3);
-  --color-glow-amber: oklch(0.75 0.15 75 / 0.25);
+/* ── District color palette ── */
+:root {
+  --district-cyan: #22d3ee;
+  --district-green: #34d399;
+  --district-blue: #4d94ff;
+  --district-yellow: #fbbf24;
+  --district-purple: #a78bfa;
+  --district-orange: #fb923c;
+  --district-pink: #f472b6;
+  --district-teal: #2dd4bf;
+  --district-lime: #84cc16;
+  --district-red: #ef4444;
+  --district-indigo: #818cf8;
+  --district-amber: #f59e0b;
 }
 
 @layer base {
@@ -45,37 +64,29 @@
 /* ── Topographic grid background ── */
 .bg-grid {
   background-image:
-    linear-gradient(oklch(0.22 0.02 255 / 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.22 0.02 255 / 0.5) 1px, transparent 1px);
+    linear-gradient(rgba(26, 26, 46, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 26, 46, 0.5) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
 .bg-grid-fine {
   background-image:
-    linear-gradient(oklch(0.20 0.015 255 / 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.20 0.015 255 / 0.3) 1px, transparent 1px);
+    linear-gradient(rgba(26, 26, 46, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 26, 46, 0.3) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* ── Glow effects ── */
-.glow-cyan {
-  box-shadow: 0 0 20px oklch(0.72 0.15 195 / 0.15), 0 0 60px oklch(0.72 0.15 195 / 0.05);
+/* ── Glow effects (neon red) ── */
+.glow-red {
+  box-shadow: 0 0 20px rgba(255, 64, 64, 0.15), 0 0 60px rgba(255, 64, 64, 0.05);
 }
 
-.glow-cyan-strong {
-  box-shadow: 0 0 30px oklch(0.72 0.15 195 / 0.25), 0 0 80px oklch(0.72 0.15 195 / 0.1);
+.glow-red-strong {
+  box-shadow: 0 0 30px rgba(255, 64, 64, 0.25), 0 0 80px rgba(255, 64, 64, 0.1);
 }
 
-.glow-amber {
-  box-shadow: 0 0 20px oklch(0.75 0.15 75 / 0.15), 0 0 60px oklch(0.75 0.15 75 / 0.05);
-}
-
-.text-glow-cyan {
-  text-shadow: 0 0 20px oklch(0.72 0.15 195 / 0.4), 0 0 40px oklch(0.72 0.15 195 / 0.15);
-}
-
-.text-glow-amber {
-  text-shadow: 0 0 20px oklch(0.75 0.15 75 / 0.4), 0 0 40px oklch(0.75 0.15 75 / 0.15);
+.text-glow-red {
+  text-shadow: 0 0 20px rgba(255, 64, 64, 0.4), 0 0 40px rgba(255, 64, 64, 0.15);
 }
 
 /* ── Animations ── */
@@ -105,9 +116,9 @@
   to { background-position: 60px 60px; }
 }
 
-@keyframes scan-line {
-  from { transform: translateY(-100%); }
-  to { transform: translateY(100vh); }
+@keyframes breathing {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
 
 .animate-fade-up {
@@ -124,6 +135,10 @@
 
 .animate-grid-scroll {
   animation: grid-scroll 20s linear infinite;
+}
+
+.animate-breathing {
+  animation: breathing 3s ease-in-out infinite;
 }
 
 /* Staggered delays */
@@ -147,22 +162,22 @@
 
 /* ── Status badges ── */
 .status-completed { @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20; }
-.status-processing { @apply bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+.status-processing { @apply bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse; }
 .status-pending { @apply bg-sky-500/10 text-sky-400 border border-sky-500/20; }
 .status-failed { @apply bg-red-500/10 text-red-400 border border-red-500/20; }
 
-/* ── Scrollbar styling ── */
+/* ── Scrollbar styling (dark theme) ── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: oklch(0.13 0.02 255);
+  background: #0a0a12;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.28 0.02 255);
+  background: #2a2a3e;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.35 0.02 255);
+  background: #3a3a52;
 }
