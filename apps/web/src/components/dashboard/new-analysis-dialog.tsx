@@ -1,72 +1,141 @@
 "use client"
 
 import { useState } from "react"
-import { X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Loader2, Globe, Lock, Sparkles } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@codecity/ui/components/dialog"
+import { Input } from "@codecity/ui/components/input"
+import { Button } from "@codecity/ui/components/button"
 
-export function NewAnalysisDialog({ onClose }: { onClose: () => void }) {
+const QUICK_REPOS = [
+  "https://github.com/vercel/next.js",
+  "https://github.com/pmndrs/zustand",
+  "https://github.com/trpc/trpc",
+]
+
+export function NewAnalysisDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const [url, setUrl] = useState("")
   const [visibility, setVisibility] = useState<"PUBLIC" | "PRIVATE">("PRIVATE")
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!url.trim()) return
     setSubmitting(true)
+    setError(null)
+
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ repoUrl: url, visibility }),
       })
+
+      if (res.status === 401) {
+        router.push("/login")
+        return
+      }
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error ?? "Failed to start analysis")
+        setSubmitting(false)
+        return
+      }
+
       const data = await res.json()
       if (data.projectId) {
-        window.location.href = `/project/${data.projectId}`
+        onOpenChange(false)
+        router.push(`/analyze/${data.projectId}`)
       }
     } catch {
+      setError("Network error. Please try again.")
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md rounded-xl border border-border/50 bg-card/80 p-6 shadow-2xl backdrop-blur-xl glow-red animate-fade-up">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">New Analysis</h2>
-            <p className="font-mono text-[10px] tracking-wider text-muted-foreground/50">CREATE PROJECT</p>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          setUrl("")
+          setError(null)
+          setSubmitting(false)
+          setVisibility("PRIVATE")
+        } else {
+          setError(null)
+          setSubmitting(false)
+        }
+        onOpenChange(next)
+      }}
+    >
+      <DialogContent className="sm:max-w-lg border-border/50 bg-card/95 backdrop-blur-xl">
+        <DialogHeader>
+          <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary/60">
+            <Sparkles className="h-3 w-3" />
+            New City
           </div>
-          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-card transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+          <DialogTitle className="text-xl font-semibold text-foreground">Create a new analysis</DialogTitle>
+          <DialogDescription className="font-mono text-xs text-muted-foreground">
+            Paste a GitHub repository URL and we&apos;ll generate a 3D city layout.
+          </DialogDescription>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-2 space-y-5">
           <div>
-            <label className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">
+            <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground block mb-1.5">
               Repository URL
             </label>
-            <input
+            <Input
               type="url"
               placeholder="https://github.com/owner/repo"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-border/50 bg-background/50 px-4 py-2.5 font-mono text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/50 transition-colors"
+              disabled={submitting}
+              className="h-11 border-border/40 bg-background/60 font-mono text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/40 focus-visible:ring-primary/30"
               required
             />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {QUICK_REPOS.map((repo) => (
+                <button
+                  key={repo}
+                  type="button"
+                  onClick={() => setUrl(repo)}
+                  className="rounded-full border border-border/35 px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  {repo.replace("https://github.com/", "")}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">
+            <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground block mb-1.5">
               Visibility
             </label>
-            <div className="mt-1.5 flex gap-3">
+            <div className="flex gap-2">
               {(["PRIVATE", "PUBLIC"] as const).map((v) => (
                 <label
                   key={v}
-                  className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 font-mono text-xs transition-all ${
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs uppercase tracking-wide transition-all ${
                     visibility === v
-                      ? "border-primary/30 bg-primary/5 text-primary"
-                      : "border-border/30 bg-card/30 text-muted-foreground hover:border-border/50"
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border/40 bg-background/50 text-muted-foreground hover:border-muted-foreground/30"
                   }`}
                 >
                   <input
@@ -77,21 +146,44 @@ export function NewAnalysisDialog({ onClose }: { onClose: () => void }) {
                     onChange={() => setVisibility(v)}
                     className="sr-only"
                   />
+                  {v === "PRIVATE" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
                   {v.toLowerCase()}
                 </label>
               ))}
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg border border-primary/30 bg-primary/10 py-2.5 font-mono text-sm font-medium text-primary transition-all hover:bg-primary/20 hover:border-primary/50 disabled:opacity-50 glow-red"
-          >
-            {submitting ? "Starting..." : "Start Analysis"}
-          </button>
+          {error && (
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-400">
+              {error}
+            </p>
+          )}
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              onClick={() => onOpenChange(false)}
+              variant="outline"
+              className="border-border/40 bg-background/40"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="min-w-40 bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-sm"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                "Start Analysis"
+              )}
+            </Button>
+          </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

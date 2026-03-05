@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo, useState } from "react"
+import { useRef, useMemo, useEffect } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { FileData, CitySnapshot } from "@/lib/types/city"
@@ -68,14 +68,12 @@ export function Building({ file, snapshot }: BuildingProps) {
   const { selectedFile, hoveredFile, visualizationMode, selectFile, hoverFile } =
     useCityStore()
 
-  const [pointerOver, setPointerOver] = useState(false)
-
   const isSelected = selectedFile === file.path
   const isHovered = hoveredFile === file.path
 
   // ── Dimensions ──
-  const height = clamp(file.lines / 50, 0.4, 18)
-  const width = clamp(1.2 + file.functions.length * 0.15, 1.2, 2.8)
+  const height = clamp(file.lines / 60, 0.3, 12)
+  const width = clamp(1.0 + file.functions.length * 0.12, 1.0, 2.2)
   const depth = width
 
   // ── Colour ──
@@ -89,13 +87,18 @@ export function Building({ file, snapshot }: BuildingProps) {
     [file, visualizationMode, districtColor]
   )
 
-  // ── Geometries (memoised) ──
+  // ── Geometries (memoised + disposed on unmount) ──
   const edgesGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(width, height, depth)
     const edges = new THREE.EdgesGeometry(box)
     box.dispose()
     return edges
   }, [width, height, depth])
+
+  // Dispose edges geometry on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => edgesGeometry.dispose()
+  }, [edgesGeometry])
 
   // Floor line positions — one per function, evenly spaced
   const floorLines = useMemo(() => {
@@ -140,13 +143,11 @@ export function Building({ file, snapshot }: BuildingProps) {
       position={[file.position.x, height / 2, file.position.z]}
       onPointerOver={(e) => {
         e.stopPropagation()
-        setPointerOver(true)
         hoverFile(file.path)
         document.body.style.cursor = "pointer"
       }}
       onPointerOut={(e) => {
         e.stopPropagation()
-        setPointerOver(false)
         hoverFile(null)
         document.body.style.cursor = "auto"
       }}
@@ -173,8 +174,10 @@ export function Building({ file, snapshot }: BuildingProps) {
         <boxGeometry args={[width, height, depth]} />
         <meshStandardMaterial
           color={color}
-          metalness={0.15}
-          roughness={0.65}
+          emissive={color}
+          emissiveIntensity={0.1}
+          metalness={0.25}
+          roughness={0.4}
         />
       </mesh>
 

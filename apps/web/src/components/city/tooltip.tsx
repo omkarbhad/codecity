@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function CityTooltip({ snapshot }: Props) {
-  const { hoveredFile } = useCityStore()
+  const hoveredFile = useCityStore((s) => s.hoveredFile)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   useEffect(() => {

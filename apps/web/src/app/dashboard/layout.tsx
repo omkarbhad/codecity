@@ -8,7 +8,7 @@ export default function DashboardLayout({
   return (
     <>
       <Navbar />
-      <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+      <div className="page-shell">{children}</div>
     </>
   )
 }

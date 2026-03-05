@@ -91,7 +91,8 @@ function ExpandableSection({
 }
 
 export function FileDetails({ snapshot }: FileDetailsProps) {
-  const { selectedFile, selectFile } = useCityStore()
+  const selectedFile = useCityStore((s) => s.selectedFile)
+  const selectFile = useCityStore((s) => s.selectFile)
 
   const file = useMemo(() => {
     if (!selectedFile) return null

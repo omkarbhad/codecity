@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, useEffect, useCallback } from "react"
-import { ChevronRight, ChevronDown, FileCode } from "lucide-react"
+import { ChevronRight, ChevronDown, Folder, FolderOpen, Maximize2, Minimize2, Eye, EyeOff } from "lucide-react"
 import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore } from "./use-city-store"
 
@@ -15,10 +15,11 @@ interface TreeNode {
   isFile: boolean
   children: TreeNode[]
   districtColor?: string
+  fileCount: number
 }
 
 function buildTree(snapshot: CitySnapshot): TreeNode {
-  const root: TreeNode = { name: "root", path: "", isFile: false, children: [] }
+  const root: TreeNode = { name: "root", path: "", isFile: false, children: [], fileCount: 0 }
 
   const districtColorMap = new Map<string, string>()
   for (const file of snapshot.files) {
@@ -45,6 +46,7 @@ function buildTree(snapshot: CitySnapshot): TreeNode {
           isFile: isLast,
           children: [],
           districtColor: isLast ? districtColorMap.get(file.path) : undefined,
+          fileCount: 0,
         }
         current.children.push(child)
       }
@@ -52,17 +54,34 @@ function buildTree(snapshot: CitySnapshot): TreeNode {
     }
   }
 
-  // Sort: folders first, then alphabetically
-  function sortTree(node: TreeNode) {
+  function sortAndCount(node: TreeNode): number {
+    if (node.isFile) {
+      node.fileCount = 1
+      return 1
+    }
     node.children.sort((a, b) => {
       if (a.isFile !== b.isFile) return a.isFile ? 1 : -1
       return a.name.localeCompare(b.name)
     })
-    node.children.forEach(sortTree)
+    let total = 0
+    for (const child of node.children) {
+      total += sortAndCount(child)
+    }
+    node.fileCount = total
+    return total
   }
-  sortTree(root)
+  sortAndCount(root)
 
   return root
+}
+
+function getAllFolderPaths(node: TreeNode): string[] {
+  const paths: string[] = []
+  if (!node.isFile && node.path) paths.push(node.path)
+  for (const child of node.children) {
+    paths.push(...getAllFolderPaths(child))
+  }
+  return paths
 }
 
 function getAncestorPaths(filePath: string): Set<string> {
@@ -79,63 +98,122 @@ function TreeNodeItem({
   depth,
   expandedFolders,
   toggleFolder,
+  searchQuery,
 }: {
   node: TreeNode
   depth: number
   expandedFolders: Set<string>
   toggleFolder: (path: string) => void
+  searchQuery: string
 }) {
-  const { selectedFile, selectFile } = useCityStore()
+  const selectedFile = useCityStore((s) => s.selectedFile)
+  const selectFile = useCityStore((s) => s.selectFile)
+  const hiddenPaths = useCityStore((s) => s.hiddenPaths)
+  const togglePathVisibility = useCityStore((s) => s.togglePathVisibility)
   const isSelected = selectedFile === node.path
   const isExpanded = expandedFolders.has(node.path)
+  const isHidden = hiddenPaths.has(node.path)
+
+  // Highlight search matches
+  const isMatch = searchQuery && node.name.toLowerCase().includes(searchQuery.toLowerCase())
 
   if (node.isFile) {
     return (
-      <button
-        onClick={() => selectFile(node.path)}
+      <div
         className={`
-          flex items-center gap-1.5 w-full text-left py-1 px-2 rounded-sm
-          font-mono text-xs transition-colors duration-100 cursor-pointer
-          ${
-            isSelected
-              ? "bg-white/10 text-white"
-              : "text-white/60 hover:text-white/90 hover:bg-white/5"
+          flex items-center gap-1 group py-0.5 px-1.5 rounded-md
+          font-mono text-[11px] transition-colors duration-100
+          ${isSelected
+            ? "bg-white/10 text-white"
+            : isHidden
+              ? "text-white/20"
+              : isMatch
+                ? "text-primary/80 bg-primary/[0.06]"
+                : "text-white/50 hover:text-white/80 hover:bg-white/[0.04]"
           }
         `}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${depth * 12 + 6}px` }}
       >
-        {node.districtColor ? (
-          <span
-            className="inline-block w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: node.districtColor }}
-          />
-        ) : (
-          <FileCode className="w-3 h-3 shrink-0 text-white/30" />
-        )}
-        <span className="truncate">{node.name}</span>
-      </button>
+        <button
+          onClick={() => selectFile(node.path)}
+          className="flex items-center gap-1 flex-1 min-w-0 cursor-pointer"
+        >
+          {node.districtColor ? (
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isHidden ? "opacity-30" : ""}`}
+              style={{ backgroundColor: node.districtColor }}
+            />
+          ) : (
+            <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0 bg-white/20" />
+          )}
+          <span className={`truncate ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            togglePathVisibility(node.path)
+          }}
+          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all cursor-pointer
+            ${isHidden
+              ? "text-white/30 opacity-100"
+              : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
+            }`}
+          title={isHidden ? "Show file" : "Hide file"}
+        >
+          {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+        </button>
+      </div>
     )
   }
 
   return (
     <div>
-      <button
-        onClick={() => toggleFolder(node.path)}
-        className="flex items-center gap-1 w-full text-left py-1 px-2 rounded-sm
-          font-mono text-xs text-white/70 hover:text-white/90 hover:bg-white/5
-          transition-colors duration-100 cursor-pointer"
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+      <div
+        className={`flex items-center gap-0.5 group py-0.5 px-1.5 rounded-md
+          font-mono text-[11px] hover:bg-white/[0.04]
+          transition-colors duration-100
+          ${isHidden
+            ? "text-white/25"
+            : isMatch
+              ? "text-primary/80"
+              : "text-white/60 hover:text-white/80"
+          }`}
+        style={{ paddingLeft: `${depth * 12 + 6}px` }}
       >
-        {isExpanded ? (
-          <ChevronDown className="w-3 h-3 shrink-0" />
-        ) : (
-          <ChevronRight className="w-3 h-3 shrink-0" />
-        )}
-        <span className="truncate">{node.name}</span>
-        <span className="text-white/30 ml-auto text-[10px] shrink-0">
-          {node.children.length}
-        </span>
-      </button>
+        <button
+          onClick={() => toggleFolder(node.path)}
+          className="flex items-center gap-0.5 flex-1 min-w-0 cursor-pointer"
+        >
+          {isExpanded ? (
+            <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${isHidden ? "text-amber-400/20" : "text-amber-400/60"}`} />
+          ) : (
+            <Folder className={`w-3.5 h-3.5 shrink-0 ${isHidden ? "text-amber-400/15" : "text-amber-400/40"}`} />
+          )}
+          <span className={`truncate flex-1 ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
+          <span className="text-white/20 text-[10px] shrink-0 ml-1">
+            {node.fileCount}
+          </span>
+          {isExpanded ? (
+            <ChevronDown className="w-3 h-3 shrink-0 text-white/20" />
+          ) : (
+            <ChevronRight className="w-3 h-3 shrink-0 text-white/20" />
+          )}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            togglePathVisibility(node.path)
+          }}
+          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all cursor-pointer
+            ${isHidden
+              ? "text-white/30 opacity-100"
+              : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
+            }`}
+          title={isHidden ? "Show folder" : "Hide folder"}
+        >
+          {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+        </button>
+      </div>
       {isExpanded &&
         node.children.map((child) => (
           <TreeNodeItem
@@ -144,6 +222,7 @@ function TreeNodeItem({
             depth={depth + 1}
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
+            searchQuery={searchQuery}
           />
         ))}
     </div>
@@ -151,13 +230,16 @@ function TreeNodeItem({
 }
 
 export function FileTree({ snapshot }: FileTreeProps) {
-  const { selectedFile } = useCityStore()
+  const selectedFile = useCityStore((s) => s.selectedFile)
+  const searchQuery = useCityStore((s) => s.searchQuery)
+  const hiddenPaths = useCityStore((s) => s.hiddenPaths)
+  const showAllPaths = useCityStore((s) => s.showAllPaths)
   const tree = useMemo(() => buildTree(snapshot), [snapshot])
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set<string>()
-  )
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set<string>())
 
-  // Auto-expand parent folders when a file is selected in 3D
+  const allFolderPaths = useMemo(() => getAllFolderPaths(tree), [tree])
+
+  // Auto-expand parent folders when a file is selected
   useEffect(() => {
     if (selectedFile) {
       const ancestors = getAncestorPaths(selectedFile)
@@ -175,6 +257,13 @@ export function FileTree({ snapshot }: FileTreeProps) {
     }
   }, [selectedFile])
 
+  // Auto-expand all when search is active
+  useEffect(() => {
+    if (searchQuery) {
+      setExpandedFolders(new Set(allFolderPaths))
+    }
+  }, [searchQuery, allFolderPaths])
+
   const toggleFolder = useCallback((path: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev)
@@ -187,14 +276,48 @@ export function FileTree({ snapshot }: FileTreeProps) {
     })
   }, [])
 
+  const expandAll = useCallback(() => {
+    setExpandedFolders(new Set(allFolderPaths))
+  }, [allFolderPaths])
+
+  const collapseAll = useCallback(() => {
+    setExpandedFolders(new Set())
+  }, [])
+
   return (
-    <div className="bg-card/30 backdrop-blur-xl rounded-lg border border-border/30 overflow-hidden">
-      <div className="px-3 py-2 border-b border-border/30">
-        <span className="font-mono text-xs text-white/50 uppercase tracking-wider">
+    <div className="bg-white/[0.02] backdrop-blur-xl rounded-lg border border-white/[0.06] overflow-hidden">
+      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
+        <span className="font-mono text-[10px] text-white/40 uppercase tracking-wider">
           Files
+          <span className="ml-1.5 text-white/20">{snapshot.files.length}</span>
         </span>
+        <div className="flex items-center gap-1">
+          {hiddenPaths.size > 0 && (
+            <button
+              onClick={showAllPaths}
+              className="text-[9px] font-mono text-amber-400/50 hover:text-amber-400 transition-colors px-1"
+              title="Show All Hidden"
+            >
+              Show all
+            </button>
+          )}
+          <button
+            onClick={expandAll}
+            className="p-0.5 rounded hover:bg-white/10 text-white/25 hover:text-white/50 transition-colors"
+            title="Expand All"
+          >
+            <Maximize2 className="w-3 h-3" />
+          </button>
+          <button
+            onClick={collapseAll}
+            className="p-0.5 rounded hover:bg-white/10 text-white/25 hover:text-white/50 transition-colors"
+            title="Collapse All"
+          >
+            <Minimize2 className="w-3 h-3" />
+          </button>
+        </div>
       </div>
-      <div className="overflow-y-auto max-h-[60vh] py-1">
+      <div className="overflow-y-auto max-h-[50vh] py-0.5">
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}
@@ -202,9 +325,17 @@ export function FileTree({ snapshot }: FileTreeProps) {
             depth={0}
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
+            searchQuery={searchQuery}
           />
         ))}
       </div>
+      {hiddenPaths.size > 0 && (
+        <div className="px-3 py-1 border-t border-white/[0.06]">
+          <span className="font-mono text-[9px] text-amber-400/40">
+            {hiddenPaths.size} hidden
+          </span>
+        </div>
+      )}
     </div>
   )
 }

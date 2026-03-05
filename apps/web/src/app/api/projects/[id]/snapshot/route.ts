@@ -1,43 +1,23 @@
-import { auth } from "@/auth"
-import { prisma } from "@codecity/db"
-import { NextRequest, NextResponse } from "next/server"
+import { analysisCache } from "@/lib/cache"
+import { getSnapshot } from "@/lib/project-store"
 
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-    select: { visibility: true, userId: true, status: true },
-  })
-
-  if (!project) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 })
+  // Try in-memory cache first (hot data from recent analyses)
+  const cached = analysisCache.get(`project:${id}`)
+  if (cached) {
+    return Response.json(cached)
   }
 
-  // Auth check: public projects visible to anyone, private requires owner
-  if (project.visibility === "PRIVATE") {
-    const session = await auth()
-    if (!session?.user || (session.user.id !== project.userId && session.user.role !== "ADMIN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-  }
-
-  if (project.status !== "COMPLETED") {
-    return NextResponse.json({ error: "Analysis not complete", status: project.status }, { status: 400 })
-  }
-
-  const snapshot = await prisma.snapshot.findFirst({
-    where: { projectId: id },
-    orderBy: { createdAt: "desc" },
-    select: { data: true },
-  })
-
+  // Fall back to database
+  const snapshot = await getSnapshot(id)
   if (!snapshot) {
-    return NextResponse.json({ error: "Snapshot not found" }, { status: 404 })
+    return Response.json({ error: "Snapshot not found" }, { status: 404 })
   }
 
-  return NextResponse.json(snapshot.data)
+  return Response.json(snapshot.data)
 }

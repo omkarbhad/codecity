@@ -1,17 +1,23 @@
 import { Project, SyntaxKind } from "ts-morph"
 import type { SourceFile } from "ts-morph"
 import * as path from "path"
+import type { FileType, TypeData } from "../types/city"
+import { parsePythonFile } from "./python-parser"
+import { parseGenericFile } from "./generic-parser"
 
 export interface ParsedFile {
   path: string
   lines: number
   functions: { name: string; exported: boolean; lines: number }[]
-  types: { name: string; kind: "type" | "interface" | "enum" }[]
+  types: TypeData[]
   classes: { name: string }[]
   imports: string[]
+  externalImports: string[]
+  decorators: string[]
   complexity: number
   isReactComponent: boolean
   hasUnusedExports: boolean
+  fileType: FileType
 }
 
 /** SyntaxKinds that contribute to cyclomatic complexity */
@@ -24,8 +30,8 @@ const COMPLEXITY_KINDS = new Set([
   SyntaxKind.DoStatement,
   SyntaxKind.CaseClause,
   SyntaxKind.CatchClause,
-  SyntaxKind.ConditionalExpression, // ternary
-  SyntaxKind.BinaryExpression, // checked for && and ||
+  SyntaxKind.ConditionalExpression,
+  SyntaxKind.BinaryExpression,
 ])
 
 /** SyntaxKinds that indicate JSX usage */
@@ -35,10 +41,6 @@ const JSX_KINDS = new Set([
   SyntaxKind.JsxFragment,
 ])
 
-/**
- * Resolve a relative import specifier to a normalized file path.
- * E.g., "./foo" from "src/bar/baz.ts" resolves to "src/bar/foo"
- */
 function resolveImportPath(
   importSpecifier: string,
   currentFilePath: string,
@@ -53,7 +55,6 @@ function resolveImportPath(
     path.posix.join(currentDir, importSpecifier)
   )
 
-  // Try exact matches with extensions, then index files
   const candidates = [
     resolved,
     `${resolved}.ts`,
@@ -68,26 +69,24 @@ function resolveImportPath(
     }
   }
 
-  // Return the resolved path with .ts as best guess
   return `${resolved}.ts`
 }
 
-/**
- * Parse a single TypeScript file and extract structural information.
- */
 export function parseTypeScriptFile(
   filePath: string,
   content: string,
   project: Project,
   allPaths: Set<string>
 ): ParsedFile {
+  const ext = filePath.split(".").pop() ?? ""
+  const fileType: FileType = ["ts", "tsx"].includes(ext) ? "typescript" : "javascript"
+
   let sourceFile: SourceFile
   try {
     sourceFile = project.createSourceFile(filePath, content, {
       overwrite: true,
     })
   } catch {
-    // If file creation fails, return minimal data
     return {
       path: filePath,
       lines: content.split("\n").length,
@@ -95,27 +94,28 @@ export function parseTypeScriptFile(
       types: [],
       classes: [],
       imports: [],
+      externalImports: [],
+      decorators: [],
       complexity: 1,
       isReactComponent: false,
       hasUnusedExports: false,
+      fileType,
     }
   }
 
   const lines = sourceFile.getEndLineNumber()
 
-  // 1. Extract functions (top-level + class methods)
+  // Extract functions
   const functions: ParsedFile["functions"] = []
 
   for (const fn of sourceFile.getFunctions()) {
     const name = fn.getName() ?? "anonymous"
-    const exported =
-      fn.hasExportKeyword() || fn.hasDefaultKeyword()
+    const exported = fn.hasExportKeyword() || fn.hasDefaultKeyword()
     const startLine = fn.getStartLineNumber()
     const endLine = fn.getEndLineNumber()
     functions.push({ name, exported, lines: endLine - startLine + 1 })
   }
 
-  // Also extract arrow functions / const declarations that are exported function expressions
   for (const varStmt of sourceFile.getVariableStatements()) {
     const isExported = varStmt.hasExportKeyword()
     for (const decl of varStmt.getDeclarations()) {
@@ -139,7 +139,6 @@ export function parseTypeScriptFile(
     }
   }
 
-  // Class methods
   for (const cls of sourceFile.getClasses()) {
     for (const method of cls.getMethods()) {
       const name = `${cls.getName() ?? "Anonymous"}.${method.getName()}`
@@ -153,9 +152,8 @@ export function parseTypeScriptFile(
     }
   }
 
-  // 2. Extract types
+  // Extract types
   const types: ParsedFile["types"] = []
-
   for (const ta of sourceFile.getTypeAliases()) {
     types.push({ name: ta.getName(), kind: "type" })
   }
@@ -166,13 +164,15 @@ export function parseTypeScriptFile(
     types.push({ name: en.getName(), kind: "enum" })
   }
 
-  // 3. Extract classes
+  // Extract classes
   const classes = sourceFile
     .getClasses()
     .map((cls) => ({ name: cls.getName() ?? "Anonymous" }))
 
-  // 4. Extract imports (only relative)
+  // Extract imports (relative + external)
   const imports: string[] = []
+  const externalImports: string[] = []
+
   for (const importDecl of sourceFile.getImportDeclarations()) {
     const specifier = importDecl.getModuleSpecifierValue()
     if (specifier.startsWith(".") || specifier.startsWith("..")) {
@@ -180,18 +180,31 @@ export function parseTypeScriptFile(
       if (resolved) {
         imports.push(resolved)
       }
+    } else {
+      externalImports.push(specifier.split("/")[0])
     }
   }
 
-  // 5. Compute complexity
-  let complexity = 1 // base complexity
+  // Extract decorators (only classes and class methods have decorators in TS)
+  const decorators: string[] = []
+  for (const cls of sourceFile.getClasses()) {
+    for (const dec of cls.getDecorators()) {
+      decorators.push(dec.getName())
+    }
+    for (const method of cls.getMethods()) {
+      for (const dec of method.getDecorators()) {
+        decorators.push(dec.getName())
+      }
+    }
+  }
+
+  // Compute complexity
+  let complexity = 1
   sourceFile.forEachDescendant((node) => {
     const kind = node.getKind()
     if (COMPLEXITY_KINDS.has(kind)) {
       if (kind === SyntaxKind.BinaryExpression) {
-        const opKind = node
-          .getChildAtIndex(1)
-          ?.getKind()
+        const opKind = node.getChildAtIndex(1)?.getKind()
         if (
           opKind === SyntaxKind.AmpersandAmpersandToken ||
           opKind === SyntaxKind.BarBarToken
@@ -204,17 +217,13 @@ export function parseTypeScriptFile(
     }
   })
 
-  // 6. Detect React component
+  // Detect React component
   let isReactComponent = false
-
-  // Check for JSX syntax
   sourceFile.forEachDescendant((node) => {
     if (JSX_KINDS.has(node.getKind())) {
       isReactComponent = true
     }
   })
-
-  // Also check for React import
   if (!isReactComponent) {
     for (const importDecl of sourceFile.getImportDeclarations()) {
       const specifier = importDecl.getModuleSpecifierValue()
@@ -225,9 +234,6 @@ export function parseTypeScriptFile(
     }
   }
 
-  // 7. hasUnusedExports: set false initially, resolved in batch step
-  const hasUnusedExports = false
-
   return {
     path: filePath,
     lines,
@@ -235,27 +241,37 @@ export function parseTypeScriptFile(
     types,
     classes,
     imports,
+    externalImports: [...new Set(externalImports)],
+    decorators: [...new Set(decorators)],
     complexity,
     isReactComponent,
-    hasUnusedExports,
+    hasUnusedExports: false,
+    fileType,
   }
 }
 
-/**
- * Parse all files and compute cross-file relationships (unused exports).
- */
+function getFileTypeFromExt(ext: string): FileType {
+  if (["ts", "tsx"].includes(ext)) return "typescript"
+  if (["js", "jsx", "mjs", "cjs"].includes(ext)) return "javascript"
+  if (ext === "py") return "python"
+  if (["css", "scss", "less", "sass"].includes(ext)) return "css"
+  if (["json", "yaml", "yml", "toml", "ini", "env"].includes(ext)) return "config"
+  if (["html", "htm", "xml", "svg", "md", "mdx"].includes(ext)) return "markup"
+  return "other"
+}
+
 export function parseAllFiles(
   files: Map<string, string>,
   onProgress?: (progress: number) => void
-): ParsedFile[] {
+): { parsed: ParsedFile[]; warnings: string[] } {
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
       allowJs: true,
-      jsx: 2, // React
-      target: 99, // ESNext
-      module: 99, // ESNext
-      moduleResolution: 100, // Bundler
+      jsx: 2,
+      target: 99,
+      module: 99,
+      moduleResolution: 100,
       strict: false,
       noEmit: true,
       skipLibCheck: true,
@@ -264,17 +280,48 @@ export function parseAllFiles(
 
   const allPaths = new Set(files.keys())
   const parsed: ParsedFile[] = []
+  const warnings: string[] = []
   let completed = 0
   const total = files.size
 
   for (const [filePath, content] of files) {
-    const result = parseTypeScriptFile(filePath, content, project, allPaths)
-    parsed.push(result)
+    const ext = filePath.split(".").pop()?.toLowerCase() ?? ""
+
+    try {
+      let result: ParsedFile
+      if (["ts", "tsx"].includes(ext)) {
+        result = parseTypeScriptFile(filePath, content, project, allPaths)
+      } else if (ext === "py") {
+        result = parsePythonFile(filePath, content, allPaths)
+      } else {
+        result = parseGenericFile(filePath, content, allPaths)
+      }
+      parsed.push(result)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`Parse error for ${filePath}: ${msg}`)
+      warnings.push(`${filePath}: ${msg}`)
+      parsed.push({
+        path: filePath,
+        lines: content.split("\n").length,
+        functions: [],
+        types: [],
+        classes: [],
+        imports: [],
+        externalImports: [],
+        decorators: [],
+        complexity: 1,
+        isReactComponent: false,
+        hasUnusedExports: false,
+        fileType: getFileTypeFromExt(ext),
+      })
+    }
+
     completed++
     onProgress?.(completed / total)
   }
 
-  // Build a set of all imported paths across all files
+  // Cross-file unused exports detection
   const allImportedPaths = new Set<string>()
   for (const file of parsed) {
     for (const imp of file.imports) {
@@ -282,9 +329,6 @@ export function parseAllFiles(
     }
   }
 
-  // Detect unused exports:
-  // A file has unused exports if it has exported declarations
-  // but is not imported by any other file
   for (const file of parsed) {
     const hasExports =
       file.functions.some((f) => f.exported) ||
@@ -296,5 +340,5 @@ export function parseAllFiles(
     }
   }
 
-  return parsed
+  return { parsed, warnings }
 }

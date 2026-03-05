@@ -1,8 +1,8 @@
 "use client"
 
-import { useRef, useEffect, useMemo } from "react"
+import { useRef, useEffect, useMemo, useCallback } from "react"
 import type { CitySnapshot } from "@/lib/types/city"
-import { useCityStore } from "./use-city-store"
+import { useCityStore, isPathHidden } from "./use-city-store"
 
 interface MinimapProps {
   snapshot: CitySnapshot
@@ -10,9 +10,12 @@ interface MinimapProps {
 
 export function Minimap({ snapshot }: MinimapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { selectedFile } = useCityStore()
+  const selectedFile = useCityStore((s) => s.selectedFile)
+  const hoveredFile = useCityStore((s) => s.hoveredFile)
+  const selectFile = useCityStore((s) => s.selectFile)
+  const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
+  const hiddenPaths = useCityStore((s) => s.hiddenPaths)
 
-  // Compute world bounds for normalization
   const bounds = useMemo(() => {
     let minX = Infinity
     let minZ = Infinity
@@ -21,13 +24,13 @@ export function Minimap({ snapshot }: MinimapProps) {
 
     for (const district of snapshot.districts) {
       const { x, z, width, depth } = district.bounds
+      if (width === 0) continue
       minX = Math.min(minX, x)
       minZ = Math.min(minZ, z)
       maxX = Math.max(maxX, x + width)
       maxZ = Math.max(maxZ, z + depth)
     }
 
-    // Fallback if no districts
     if (!isFinite(minX)) {
       for (const file of snapshot.files) {
         minX = Math.min(minX, file.position.x)
@@ -41,15 +44,58 @@ export function Minimap({ snapshot }: MinimapProps) {
       return { minX: 0, minZ: 0, maxX: 100, maxZ: 100 }
     }
 
-    // Add padding
-    const pad = 2
-    return {
-      minX: minX - pad,
-      minZ: minZ - pad,
-      maxX: maxX + pad,
-      maxZ: maxZ + pad,
-    }
+    const pad = 4
+    return { minX: minX - pad, minZ: minZ - pad, maxX: maxX + pad, maxZ: maxZ + pad }
   }, [snapshot])
+
+  // Click-to-navigate: find closest file to click position
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const rect = canvas.getBoundingClientRect()
+      const clickX = e.clientX - rect.left
+      const clickY = e.clientY - rect.top
+
+      const displayWidth = canvas.clientWidth
+      const displayHeight = canvas.clientHeight
+      const worldW = bounds.maxX - bounds.minX
+      const worldH = bounds.maxZ - bounds.minZ
+      const scaleX = displayWidth / worldW
+      const scaleZ = displayHeight / worldH
+      const scale = Math.min(scaleX, scaleZ)
+      const offsetX = (displayWidth - worldW * scale) / 2
+      const offsetZ = (displayHeight - worldH * scale) / 2
+
+      // Convert click to world coords
+      const worldClickX = (clickX - offsetX) / scale + bounds.minX
+      const worldClickZ = (clickY - offsetZ) / scale + bounds.minZ
+
+      // Find nearest file
+      let bestDist = Infinity
+      let bestFile: string | null = null
+      let bestIndex = -1
+
+      for (let i = 0; i < snapshot.files.length; i++) {
+        const file = snapshot.files[i]
+        const dx = file.position.x - worldClickX
+        const dz = file.position.z - worldClickZ
+        const dist = dx * dx + dz * dz
+        if (dist < bestDist) {
+          bestDist = dist
+          bestFile = file.path
+          bestIndex = i
+        }
+      }
+
+      // Only select if click was reasonably close (within ~5 world units)
+      if (bestFile && bestDist < 25) {
+        selectFile(bestFile, bestIndex)
+      }
+    },
+    [bounds, snapshot.files, selectFile]
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -82,67 +128,112 @@ export function Minimap({ snapshot }: MinimapProps) {
       ]
     }
 
-    // Clear
     ctx.clearRect(0, 0, displayWidth, displayHeight)
 
-    // Draw districts
+    // Draw district regions
     for (const district of snapshot.districts) {
+      if (district.bounds.width === 0) continue
       const [dx, dz] = toCanvas(district.bounds.x, district.bounds.z)
       const dw = district.bounds.width * scale
       const dd = district.bounds.depth * scale
 
-      ctx.fillStyle = district.color + "20" // 12.5% opacity
+      ctx.fillStyle = district.color + "18"
       ctx.fillRect(dx, dz, dw, dd)
 
-      ctx.strokeStyle = district.color + "40"
+      ctx.strokeStyle = district.color + "35"
       ctx.lineWidth = 1
       ctx.strokeRect(dx, dz, dw, dd)
     }
 
-    // Draw files as small dots
-    for (const file of snapshot.files) {
-      const [fx, fz] = toCanvas(file.position.x, file.position.z)
-      const district = snapshot.districts.find((d) => d.name === file.district)
-      const color = district?.color ?? "#888888"
+    // PERF: Build district color map once instead of .find() per file
+    const districtColorMap = new Map<string, string>()
+    for (const d of snapshot.districts) districtColorMap.set(d.name, d.color)
 
-      ctx.fillStyle = color + "80"
+    // Draw file dots
+    for (const file of snapshot.files) {
+      const ext = file.path.includes(".") ? file.path.slice(file.path.lastIndexOf(".")).toLowerCase() : ".other"
+      const isFiltered = hiddenExtensions.has(ext)
+      if (isFiltered) continue
+      // Skip files hidden via path visibility toggle
+      if (isPathHidden(file.path, hiddenPaths)) continue
+
+      const [fx, fz] = toCanvas(file.position.x, file.position.z)
+      const color = districtColorMap.get(file.district) ?? "#888888"
+      const isHovered = file.path === hoveredFile
+
+      ctx.fillStyle = isHovered ? "#ffffff" : color + "90"
       ctx.beginPath()
-      ctx.arc(fx, fz, 1.5, 0, Math.PI * 2)
+      ctx.arc(fx, fz, isHovered ? 3 : 2, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    // Draw selected file
+    // Draw dependency lines and selected file highlight on minimap
     if (selectedFile) {
-      const file = snapshot.files.find((f) => f.path === selectedFile)
-      if (file) {
-        const [sx, sz] = toCanvas(file.position.x, file.position.z)
+      const srcFile = snapshot.files.find((f) => f.path === selectedFile)
+      if (srcFile) {
+        const [sx, sz] = toCanvas(srcFile.position.x, srcFile.position.z)
+
+        // Draw outgoing imports (warm red)
+        for (const imp of srcFile.imports) {
+          const target = snapshot.files.find((f) => f.path === imp)
+          if (!target) continue
+          const [tx, tz] = toCanvas(target.position.x, target.position.z)
+          ctx.strokeStyle = "#ff6b6b50"
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(sx, sz)
+          ctx.lineTo(tx, tz)
+          ctx.stroke()
+          // Small dot at target
+          ctx.fillStyle = "#ff6b6b60"
+          ctx.beginPath()
+          ctx.arc(tx, tz, 2.5, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        // Draw incoming importedBy (cool blue)
+        for (const dep of srcFile.importedBy) {
+          const source = snapshot.files.find((f) => f.path === dep)
+          if (!source) continue
+          const [dx, dz] = toCanvas(source.position.x, source.position.z)
+          ctx.strokeStyle = "#4dabf750"
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(dx, dz)
+          ctx.lineTo(sx, sz)
+          ctx.stroke()
+          // Small dot at source
+          ctx.fillStyle = "#4dabf760"
+          ctx.beginPath()
+          ctx.arc(dx, dz, 2.5, 0, Math.PI * 2)
+          ctx.fill()
+        }
 
         // Outer glow
-        ctx.fillStyle = "#ff404060"
+        ctx.fillStyle = "#ff505080"
         ctx.beginPath()
-        ctx.arc(sx, sz, 5, 0, Math.PI * 2)
+        ctx.arc(sx, sz, 6, 0, Math.PI * 2)
         ctx.fill()
 
         // Inner dot
-        ctx.fillStyle = "#ff4040"
+        ctx.fillStyle = "#ff5050"
         ctx.beginPath()
-        ctx.arc(sx, sz, 3, 0, Math.PI * 2)
+        ctx.arc(sx, sz, 3.5, 0, Math.PI * 2)
         ctx.fill()
       }
     }
-  }, [snapshot, selectedFile, bounds])
+  }, [snapshot, selectedFile, hoveredFile, bounds, hiddenExtensions, hiddenPaths])
 
   return (
-    <div className="bg-card/30 backdrop-blur-xl rounded-lg border border-border/30 overflow-hidden">
-      <div className="px-3 py-2 border-b border-border/30">
-        <span className="font-mono text-xs text-white/50 uppercase tracking-wider">
-          Minimap
-        </span>
+    <div className="bg-white/[0.02] backdrop-blur-xl rounded-lg border border-white/[0.06] overflow-hidden">
+      <div className="px-3 py-1.5 border-b border-white/[0.06]">
+        <span className="font-mono text-[10px] text-white/40 uppercase tracking-wider">Minimap</span>
       </div>
       <canvas
         ref={canvasRef}
-        className="w-full"
-        style={{ height: 160 }}
+        className="w-full cursor-crosshair"
+        style={{ height: 140 }}
+        onClick={handleClick}
       />
     </div>
   )

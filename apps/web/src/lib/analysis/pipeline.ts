@@ -10,15 +10,15 @@ export type ProgressCallback = (
 ) => void
 
 /**
- * Full analysis pipeline: fetches a GitHub repository, parses TypeScript files,
+ * Full analysis pipeline: fetches a GitHub repository, parses source files,
  * and computes a city layout visualization.
  *
  * Stages:
- *   1. fetching-tree   — resolve repo URL and fetch file tree
- *   2. downloading-files — download TypeScript source files
- *   3. parsing          — parse AST with ts-morph
- *   4. computing-layout — arrange files into city districts
- *   5. complete         — done
+ *   1. fetching-tree    — resolve repo URL and fetch file tree
+ *   2. downloading-files — download source files
+ *   3. parsing           — parse AST / regex
+ *   4. computing-layout  — arrange files into city districts
+ *   5. complete          — done
  */
 export async function analyzeRepository(
   repoUrl: string,
@@ -33,13 +33,13 @@ export async function analyzeRepository(
   onProgress(
     "downloading-files",
     0.1,
-    `Found ${tree.length} TypeScript files`
+    `Found ${tree.length} source files`
   )
 
   if (tree.length === 0) {
     throw new Error(
-      `No TypeScript files found in ${owner}/${repo}. ` +
-        `The repository may not contain .ts or .tsx files, or all files are in excluded directories.`
+      `No supported source files found in ${owner}/${repo}. ` +
+        `Supported: TypeScript, JavaScript, Python, CSS, HTML, JSON, Go, Rust, Java, and more.`
     )
   }
 
@@ -55,16 +55,20 @@ export async function analyzeRepository(
         `Downloading files... ${Math.round(p * 100)}%`
       )
   )
-  onProgress("parsing", 0.5, "Parsing TypeScript...")
+  onProgress("parsing", 0.5, "Parsing source files...")
 
   // 4. Parse all files
-  const parsed = parseAllFiles(files, (p) =>
+  const { parsed, warnings } = parseAllFiles(files, (p) =>
     onProgress(
       "parsing",
       0.5 + p * 0.3,
       `Parsing files... ${Math.round(p * 100)}%`
     )
   )
+
+  if (warnings.length > 0) {
+    console.warn(`${warnings.length} file(s) had parse errors (still included as stubs)`)
+  }
 
   // 5. Compute layout
   onProgress("computing-layout", 0.8, "Computing city layout...")
@@ -73,5 +77,5 @@ export async function analyzeRepository(
   const stats = computeStats(laidOut)
 
   onProgress("complete", 1, "Analysis complete!")
-  return { files: laidOut, districts, stats }
+  return { files: laidOut, districts, stats, warnings: warnings.length > 0 ? warnings : undefined }
 }

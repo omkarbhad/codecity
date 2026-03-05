@@ -4,6 +4,11 @@ dist/
 .turbo/
 .env
 .env.local
+.env.*.local
 *.log
 .DS_Store
 packages/db/src/generated/
+.claude
+.docs
+.playwright-mcp/
+*.tsbuildinfo

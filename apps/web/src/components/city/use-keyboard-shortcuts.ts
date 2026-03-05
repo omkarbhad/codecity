@@ -12,7 +12,8 @@ const MODE_KEYS: Record<string, VisualizationMode> = {
 }
 
 export function useKeyboardShortcuts() {
-  const { selectFile, setMode } = useCityStore()
+  const selectFile = useCityStore((s) => s.selectFile)
+  const setMode = useCityStore((s) => s.setMode)
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

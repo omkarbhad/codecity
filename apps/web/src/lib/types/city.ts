@@ -1,7 +1,12 @@
+export type FileType = "typescript" | "javascript" | "python" | "css" | "config" | "markup" | "other"
+
+export type LayoutMode = "folder" | "extension" | "semantic"
+
 export interface CitySnapshot {
   files: FileData[]
   districts: DistrictData[]
   stats: CityStats
+  warnings?: string[]
 }
 
 export interface FileData {
@@ -12,11 +17,15 @@ export interface FileData {
   classes: { name: string }[]
   imports: string[]
   importedBy: string[]
+  externalImports: string[]
+  decorators: string[]
   complexity: number
   isReactComponent: boolean
   hasUnusedExports: boolean
+  fileType: FileType
   position: { x: number; z: number }
   district: string
+  subFolder?: string
 }
 
 export interface FunctionData {
@@ -27,7 +36,14 @@ export interface FunctionData {
 
 export interface TypeData {
   name: string
-  kind: "type" | "interface" | "enum"
+  kind: "type" | "interface" | "enum" | "class" | "decorator" | "selector"
+}
+
+export interface SubDistrictData {
+  name: string
+  color: string
+  bounds: { x: number; z: number; width: number; depth: number }
+  subDistricts?: SubDistrictData[]  // Recursive nesting for deeper folder levels
 }
 
 export interface DistrictData {
@@ -35,6 +51,7 @@ export interface DistrictData {
   color: string
   files: string[]
   bounds: { x: number; z: number; width: number; depth: number }
+  subDistricts?: SubDistrictData[]
 }
 
 export interface CityStats {
@@ -47,7 +64,7 @@ export interface CityStats {
 }
 
 export const DISTRICT_COLORS = [
-  "#22d3ee", "#34d399", "#4d94ff", "#fbbf24",
-  "#a78bfa", "#fb923c", "#f472b6", "#2dd4bf",
-  "#84cc16", "#ef4444", "#818cf8", "#f59e0b",
+  "#00e5ff", "#00e676", "#448aff", "#ffea00",
+  "#b388ff", "#ff9100", "#ff4081", "#1de9b6",
+  "#aeea00", "#ff1744", "#8c9eff", "#ffc400",
 ] as const

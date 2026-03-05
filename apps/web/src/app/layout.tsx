@@ -22,8 +22,8 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen antialiased bg-grid noise-overlay relative">
-        <Providers>{children}</Providers>
+      <body className="min-h-screen antialiased bg-aurora noise-overlay relative">
+        <Providers skipAuth={process.env.SKIP_AUTH === "true"}>{children}</Providers>
       </body>
     </html>
   )

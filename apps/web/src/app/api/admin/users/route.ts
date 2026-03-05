@@ -1,25 +1,33 @@
-import { auth } from "@/auth"
-import { prisma } from "@codecity/db"
+import { getSessionUser } from "@/lib/auth-helpers"
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") {
+  const user = await getSessionUser()
+  if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      role: true,
-      createdAt: true,
-      _count: { select: { projects: true } },
+  // Mock data — replace with real DB queries when @codecity/db is configured
+  const users = [
+    {
+      id: "1",
+      name: "Demo User",
+      email: "demo@codecity.dev",
+      image: null,
+      role: "USER" as const,
+      createdAt: new Date().toISOString(),
+      _count: { projects: 3 },
     },
-    orderBy: { createdAt: "desc" },
-  })
+    {
+      id: "2",
+      name: user.name ?? "Admin",
+      email: user.email ?? "admin@codecity.dev",
+      image: null,
+      role: "ADMIN" as const,
+      createdAt: new Date().toISOString(),
+      _count: { projects: 5 },
+    },
+  ]
 
   return NextResponse.json(users)
 }

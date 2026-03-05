@@ -11,14 +11,12 @@ interface GitHubTreeItem {
 export function parseGitHubUrl(url: string): { owner: string; repo: string } {
   const trimmed = url.trim().replace(/\/+$/, "")
 
-  // Try full URL format: https://github.com/owner/repo or github.com/owner/repo
   const urlPattern = /^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/
   const urlMatch = trimmed.match(urlPattern)
   if (urlMatch) {
     return { owner: urlMatch[1], repo: urlMatch[2] }
   }
 
-  // Try shorthand: owner/repo
   const shortPattern = /^([^/\s]+)\/([^/\s]+)$/
   const shortMatch = trimmed.match(shortPattern)
   if (shortMatch) {
@@ -31,7 +29,6 @@ export function parseGitHubUrl(url: string): { owner: string; repo: string } {
   )
 }
 
-/** Paths that should be excluded from analysis */
 const SKIP_PATTERNS = [
   "node_modules",
   "dist",
@@ -41,14 +38,31 @@ const SKIP_PATTERNS = [
   ".test.",
   ".spec.",
   ".d.ts",
+  ".stories.",
+  "/build/",
+  "/coverage/",
+  ".min.",
+  "/vendor/",
+  "/__pycache__/",
+  "/.git/",
 ]
 
 function shouldSkipPath(path: string): boolean {
   return SKIP_PATTERNS.some((pattern) => path.includes(pattern))
 }
 
-function isTypeScriptFile(path: string): boolean {
-  return path.endsWith(".ts") || path.endsWith(".tsx")
+const SUPPORTED_EXTENSIONS = new Set([
+  "ts", "tsx", "js", "jsx", "mjs", "cjs",
+  "py",
+  "css", "scss", "less", "sass",
+  "html", "htm", "md", "mdx",
+  "json", "yaml", "yml",
+  "go", "rs", "java", "kt", "rb", "php", "swift",
+])
+
+function isSupportedFile(path: string): boolean {
+  const ext = path.split(".").pop()?.toLowerCase() ?? ""
+  return SUPPORTED_EXTENSIONS.has(ext)
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -59,9 +73,6 @@ function getAuthHeaders(): Record<string, string> {
   return {}
 }
 
-/**
- * Fetch the full file tree of a repository, filtered to TypeScript source files.
- */
 export async function fetchRepoTree(
   owner: string,
   repo: string
@@ -108,14 +119,11 @@ export async function fetchRepoTree(
   return data.tree.filter(
     (item) =>
       item.type === "blob" &&
-      isTypeScriptFile(item.path) &&
+      isSupportedFile(item.path) &&
       !shouldSkipPath(item.path)
   )
 }
 
-/**
- * Fetch the raw content of a single file from a repository.
- */
 export async function fetchFileContent(
   owner: string,
   repo: string,
@@ -136,9 +144,6 @@ export async function fetchFileContent(
   return response.text()
 }
 
-/**
- * Simple semaphore for concurrency limiting.
- */
 function createSemaphore(concurrency: number) {
   let running = 0
   const queue: Array<() => void> = []
@@ -166,10 +171,6 @@ function createSemaphore(concurrency: number) {
   return { acquire, release }
 }
 
-/**
- * Fetch multiple files with concurrency limiting and progress reporting.
- * Files that fail to download are skipped with a warning.
- */
 export async function fetchFileBatch(
   owner: string,
   repo: string,

@@ -1,54 +1,49 @@
-import { auth } from "@/auth"
-import { prisma } from "@codecity/db"
 import { NextResponse } from "next/server"
+import { getSessionUser } from "@/lib/auth-helpers"
+import { getProjectsByUser, getAllPublicProjects, createProject } from "@/lib/project-store"
+import { parseGitHubUrl } from "@/lib/analysis/github"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const tab = searchParams.get("tab")
 
   if (tab === "explore") {
-    const projects = await prisma.project.findMany({
-      where: { visibility: "PUBLIC", status: "COMPLETED" },
-      include: { user: { select: { name: true, image: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    })
+    const projects = await getAllPublicProjects()
     return NextResponse.json(projects)
   }
 
-  // Personal projects
-  const session = await auth()
-  if (!session?.user) {
+  const user = await getSessionUser()
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const projects = await prisma.project.findMany({
-    where: { userId: session.user.id },
-    orderBy: { updatedAt: "desc" },
-  })
+  const projects = await getProjectsByUser(user.id)
   return NextResponse.json(projects)
 }
 
 export async function POST(request: Request) {
-  const session = await auth()
-  if (!session?.user) {
+  const user = await getSessionUser()
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const body = await request.json()
   const { repoUrl, visibility } = body
 
-  // Extract repo name from URL
-  const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/)
-  const name = match ? match[1] : repoUrl
+  let name: string
+  try {
+    const { owner, repo } = parseGitHubUrl(repoUrl)
+    name = `${owner}/${repo}`
+  } catch {
+    name = repoUrl
+  }
 
-  const project = await prisma.project.create({
-    data: {
-      name,
-      repoUrl,
-      visibility: visibility ?? "PRIVATE",
-      userId: session.user.id,
-    },
+  const project = await createProject({
+    name,
+    repoUrl,
+    visibility: visibility ?? "PRIVATE",
+    status: "PROCESSING",
+    userId: user.id,
   })
 
   return NextResponse.json(project, { status: 201 })
