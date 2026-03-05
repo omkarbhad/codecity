@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_COOKIE = 'magnova_session';
-const LOGIN_URL = 'https://astrova.magnova.ai/login';
+const LOGIN_URL = 'https://auth.magnova.ai';
 const PROTECTED = ['/dashboard', '/project', '/settings', '/profile'];
 
 export async function middleware(req: NextRequest) {
