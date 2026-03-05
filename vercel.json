@@ -1,7 +1,6 @@
 {
-  "buildCommand": "cd ../.. && pnpm build --filter=@codecity/web...",
-  "installCommand": "cd ../.. && pnpm install",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet ."
+  "buildCommand": "pnpm build --filter=@codecity/web...",
+  "installCommand": "pnpm install",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs"
 }
