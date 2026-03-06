@@ -12,3 +12,4 @@ packages/db/src/generated/
 .docs
 .playwright-mcp/
 *.tsbuildinfo
+.vercel
