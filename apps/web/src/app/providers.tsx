@@ -6,8 +6,10 @@ import { useState } from "react"
 
 export function Providers({
   children,
+  skipAuth,
 }: {
   children: React.ReactNode
+  skipAuth?: boolean
 }) {
   const [queryClient] = useState(
     () =>
