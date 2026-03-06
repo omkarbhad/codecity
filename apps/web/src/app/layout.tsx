@@ -23,7 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen antialiased bg-aurora noise-overlay relative">
-        <Providers skipAuth={process.env.SKIP_AUTH === "true"}>{children}</Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
