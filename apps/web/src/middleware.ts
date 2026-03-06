@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_COOKIE = 'magnova_session';
-const LOGIN_URL = 'https://magnova.ai/login';
+const LOGIN_URL = 'https://auth.magnova.ai/codecity';
 const PROTECTED = ['/dashboard', '/project', '/settings', '/profile'];
 
 export async function middleware(req: NextRequest) {
