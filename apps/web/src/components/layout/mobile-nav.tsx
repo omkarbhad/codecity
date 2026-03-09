@@ -17,7 +17,7 @@ export function MobileNav({
     <div className="md:hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/40 bg-card/35 text-muted-foreground transition-colors hover:text-foreground hover:bg-card/60"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800/50 bg-zinc-900/50 text-zinc-400 transition-colors hover:text-white hover:bg-zinc-800/50"
         aria-label={open ? "Close menu" : "Open menu"}
       >
         {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -27,26 +27,26 @@ export function MobileNav({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 top-[3.75rem] z-40 bg-background/80 backdrop-blur-sm"
+            className="fixed inset-0 top-14 z-40 bg-zinc-950/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
 
           {/* Menu panel */}
-          <div className="fixed left-0 right-0 top-[3.75rem] z-50 border-b border-border/40 bg-background/95 backdrop-blur-xl animate-slide-up">
-            <div className="content-container py-4 space-y-1">
+          <div className="fixed left-0 right-0 top-14 z-50 border-b border-zinc-800/50 bg-zinc-950/95 backdrop-blur-xl animate-slide-up">
+            <div className="max-w-6xl mx-auto px-4 py-4 space-y-1">
               {isLoggedIn && userName && (
-                <div className="px-3 py-2 mb-2 border-b border-border/20 pb-3">
-                  <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground/50">
+                <div className="px-3 py-2 mb-2 border-b border-zinc-800/30 pb-4">
+                  <p className="font-mono text-xs uppercase tracking-wide text-zinc-600">
                     Signed in as
                   </p>
-                  <p className="font-mono text-xs text-foreground mt-0.5">{userName}</p>
+                  <p className="font-mono text-xs text-zinc-300 mt-1">{userName}</p>
                 </div>
               )}
 
               <Link
                 href="/explore"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-mono text-xs tracking-wide text-muted-foreground/70 transition-colors hover:bg-primary/10 hover:text-primary"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-mono text-xs font-medium tracking-wide text-zinc-400 transition-colors hover:bg-primary/10 hover:text-white"
               >
                 <Compass className="h-4 w-4" />
                 Explore
@@ -54,7 +54,7 @@ export function MobileNav({
               <Link
                 href="/dashboard"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-mono text-xs tracking-wide text-muted-foreground/70 transition-colors hover:bg-primary/10 hover:text-primary"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-mono text-xs font-medium tracking-wide text-zinc-400 transition-colors hover:bg-primary/10 hover:text-white"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
@@ -64,7 +64,7 @@ export function MobileNav({
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-mono text-xs tracking-wide text-primary transition-colors hover:bg-primary/10"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-mono text-xs font-medium tracking-wide text-primary transition-colors hover:bg-primary/10"
                 >
                   <LogIn className="h-4 w-4" />
                   Sign In

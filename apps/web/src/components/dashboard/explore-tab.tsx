@@ -61,7 +61,7 @@ function sortProjects(projects: PublicProject[], mode: SortMode): PublicProject[
 
 const SORT_OPTIONS: { value: SortMode; label: string; icon: typeof Clock }[] = [
   { value: "recent", label: "Recent", icon: Clock },
-  { value: "name", label: "A-Z", icon: ArrowDownAZ },
+  { value: "name", label: "Name", icon: ArrowDownAZ },
   { value: "size", label: "Size", icon: TrendingUp },
 ]
 
@@ -82,17 +82,17 @@ export function ExploreTab() {
   if (isLoading) {
     return (
       <div className="space-y-5">
-        <div className="panel-surface p-4">
-          <div className="h-4 w-32 rounded bg-muted/50 animate-pulse mb-2" />
-          <div className="h-3 w-48 rounded bg-muted/30 animate-pulse" />
+        <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-4">
+          <div className="h-4 w-32 rounded-lg bg-zinc-800/50 animate-pulse mb-2" />
+          <div className="h-3 w-48 rounded-lg bg-zinc-800/30 animate-pulse" />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border/35 bg-card/45 overflow-hidden">
-              <div className="aspect-[16/9] bg-muted/10 animate-pulse" />
+            <div key={i} className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 overflow-hidden">
+              <div className="aspect-[16/9] bg-zinc-800/20 animate-pulse" />
               <div className="p-3 space-y-2">
-                <div className="h-4 w-3/4 rounded bg-muted/30 animate-pulse" />
-                <div className="h-3 w-1/2 rounded bg-muted/20 animate-pulse" />
+                <div className="h-4 w-3/4 rounded-lg bg-zinc-800/30 animate-pulse" />
+                <div className="h-3 w-1/2 rounded-lg bg-zinc-800/20 animate-pulse" />
               </div>
             </div>
           ))}
@@ -103,8 +103,8 @@ export function ExploreTab() {
 
   return (
     <div className="space-y-5">
-      {/* Search + sort */}
-      <div className="panel-surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Search + sort header */}
+      <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
             Explore Cities
@@ -115,12 +115,12 @@ export function ExploreTab() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Sort buttons */}
-          <div className="flex items-center rounded-lg border border-border/40 bg-card/40 p-0.5">
+          <div className="flex items-center rounded-xl border border-zinc-800/50 bg-zinc-900 p-0.5">
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setSort(opt.value)}
-                className={`flex items-center gap-1 rounded-md px-2 py-1.5 font-mono text-[10px] uppercase tracking-wide transition-all ${
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide transition-all ${
                   sort === opt.value
                     ? "bg-primary text-white"
                     : "text-muted-foreground/60 hover:text-foreground"
@@ -138,16 +138,16 @@ export function ExploreTab() {
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 border-border/40 bg-background/55 pl-10 font-mono text-xs placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/30"
+              className="h-9 rounded-xl border-zinc-800/50 bg-zinc-950/60 pl-10 font-mono text-xs placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/30"
             />
           </div>
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <Card className="border-border/40 bg-card/55 backdrop-blur-sm">
+        <Card className="rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm">
           <CardContent className="flex flex-col items-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card border border-border">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800">
               <Users className="h-7 w-7 text-muted-foreground/50" />
             </div>
             <p className="mt-4 text-base font-semibold text-foreground">
@@ -164,9 +164,9 @@ export function ExploreTab() {
         <div className="mx-auto grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project) => (
             <Link key={project.id} href={`/project/${project.id}`}>
-              <Card className="group overflow-hidden border-border/35 bg-card/45 transition-all duration-200 hover:border-primary/45 hover:shadow-[0_14px_30px_rgba(0,0,0,0.32)]">
+              <Card className="group overflow-hidden rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:shadow-[0_14px_30px_rgba(0,0,0,0.32)]">
                 {/* Preview */}
-                <div className="relative aspect-[16/9] border-b border-border/30 bg-gradient-to-b from-primary/[0.08] to-transparent">
+                <div className="relative aspect-[16/9] border-b border-zinc-800/30 bg-gradient-to-b from-primary/[0.06] to-transparent">
                   <CityPreview name={project.name} />
                   <div className="absolute right-2.5 top-2.5">
                     <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -182,6 +182,7 @@ export function ExploreTab() {
                     {project.repoUrl}
                   </p>
 
+                  {/* File + line stats */}
                   <div className="mt-2.5 flex items-center gap-2.5">
                     <div className="flex items-center gap-1.5">
                       <FileCode className="h-3 w-3 text-muted-foreground" />
@@ -197,19 +198,24 @@ export function ExploreTab() {
                     </div>
                   </div>
 
-                  {/* Author */}
-                  <div className="mt-2.5 flex items-center gap-2 border-t border-border/30 pt-2.5">
-                    {project.user.image ? (
-                      <img src={project.user.image} alt="" className="h-5 w-5 rounded-full ring-1 ring-border" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                        <span className="font-mono text-[7px] font-bold text-primary">
-                          {(project.user.name ?? "A").charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {project.user.name ?? "Anonymous"}
+                  {/* Author + date */}
+                  <div className="mt-2.5 flex items-center justify-between border-t border-zinc-800/30 pt-2.5">
+                    <div className="flex items-center gap-2">
+                      {project.user.image ? (
+                        <img src={project.user.image} alt="" className="h-5 w-5 rounded-full ring-1 ring-zinc-800" />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                          <span className="font-mono text-[7px] font-bold text-primary">
+                            {(project.user.name ?? "A").charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {project.user.name ?? "Anonymous"}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] text-muted-foreground/50">
+                      {new Date(project.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                 </CardContent>

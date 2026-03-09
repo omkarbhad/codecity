@@ -63,7 +63,6 @@ export function NewAnalysisDialog({
       }
 
       if (data.projectId) {
-        // Cache in localStorage so project page can load it
         cacheProject({
           id: data.projectId,
           name: url.replace("https://github.com/", ""),
@@ -103,13 +102,15 @@ export function NewAnalysisDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-lg border-border/50 bg-card/95 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-lg rounded-2xl border-zinc-800/50 bg-zinc-900/95 backdrop-blur-xl">
         <DialogHeader>
           <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary/60">
             <Sparkles className="h-3 w-3" />
             New City
           </div>
-          <DialogTitle className="text-xl font-semibold text-foreground">Create a new analysis</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-foreground font-[family-name:var(--font-sora)]">
+            Create a new analysis
+          </DialogTitle>
           <DialogDescription className="font-mono text-xs text-muted-foreground">
             Paste a GitHub repository URL and we&apos;ll generate a 3D city layout.
           </DialogDescription>
@@ -126,7 +127,7 @@ export function NewAnalysisDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={submitting}
-              className="h-11 border-border/40 bg-background/60 font-mono text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/40 focus-visible:ring-primary/30"
+              className="h-11 rounded-xl border-zinc-800/50 bg-zinc-950/60 font-mono text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/40 focus-visible:ring-primary/30"
               required
             />
             {!submitting && (
@@ -136,7 +137,7 @@ export function NewAnalysisDialog({
                     key={repo}
                     type="button"
                     onClick={() => setUrl(repo)}
-                    className="rounded-full border border-border/35 px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                    className="rounded-full border border-zinc-800/50 px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     {repo.replace("https://github.com/", "")}
                   </button>
@@ -154,10 +155,10 @@ export function NewAnalysisDialog({
                 {(["PRIVATE", "PUBLIC"] as const).map((v) => (
                   <label
                     key={v}
-                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs uppercase tracking-wide transition-all ${
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-mono text-xs uppercase tracking-wide transition-all ${
                       visibility === v
                         ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-border/40 bg-background/50 text-muted-foreground hover:border-muted-foreground/30"
+                        : "border-zinc-800/50 bg-zinc-950/50 text-muted-foreground hover:border-zinc-700"
                     }`}
                   >
                     <input
@@ -206,7 +207,7 @@ export function NewAnalysisDialog({
           )}
 
           {error && (
-            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-400">
+            <p className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 font-mono text-xs text-primary">
               {error}
             </p>
           )}
@@ -214,9 +215,10 @@ export function NewAnalysisDialog({
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             {!submitting && (
               <Button
+                type="button"
                 onClick={() => onOpenChange(false)}
                 variant="outline"
-                className="border-border/40 bg-background/40"
+                className="rounded-xl border-zinc-800/50 bg-zinc-950/40 hover:bg-zinc-800/50"
               >
                 Cancel
               </Button>
@@ -224,7 +226,7 @@ export function NewAnalysisDialog({
             <Button
               type="submit"
               disabled={submitting}
-              className="min-w-40 bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-sm"
+              className="min-w-40 rounded-xl bg-primary text-white hover:bg-primary/90 font-mono text-sm"
             >
               {submitting ? (
                 <>
