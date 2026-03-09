@@ -1,6 +1,6 @@
 {
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "next build",
+  "buildCommand": "cd ../.. && pnpm --filter @codecity/db db:generate && cd apps/web && next build",
   "outputDirectory": ".next",
   "framework": "nextjs"
 }
