@@ -212,7 +212,7 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
                   flex items-center gap-1.5 font-mono text-xs w-full text-left
                   ${
                     isInternal
-                      ? "text-cyan-400/70 hover:text-cyan-400 cursor-pointer"
+                      ? "text-primary/70 hover:text-primary cursor-pointer"
                       : "text-white/40 cursor-default"
                   }
                 `}
@@ -232,8 +232,8 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
             <button
               key={imp}
               onClick={() => selectFile(imp)}
-              className="flex items-center gap-1.5 font-mono text-xs text-cyan-400/70
-                hover:text-cyan-400 cursor-pointer w-full text-left"
+              className="flex items-center gap-1.5 font-mono text-xs text-primary/70
+                hover:text-primary cursor-pointer w-full text-left"
             >
               <ArrowDownLeft className="w-3 h-3 shrink-0" />
               <span className="truncate">{imp}</span>

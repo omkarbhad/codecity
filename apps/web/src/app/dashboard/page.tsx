@@ -91,7 +91,7 @@ function DashboardContent() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-[0_0_20px_rgba(255,61,61,0.3)]">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
@@ -102,11 +102,11 @@ function DashboardContent() {
             </div>
             {/* New City button with pulse dot */}
             <div className="relative">
-              <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-cyan-500 animate-pulse z-10" />
+              <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary animate-pulse z-10" />
               <Button
                 onClick={openNewCityDialog}
                 size="sm"
-                className="gap-1.5 bg-cyan-500 text-white hover:bg-cyan-400 font-mono text-xs shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+                className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-mono text-xs shadow-[0_0_12px_rgba(255,61,61,0.3)] hover:shadow-[0_0_20px_rgba(255,61,61,0.4)]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New City
@@ -117,7 +117,7 @@ function DashboardContent() {
           {/* Stat cards row */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
-              { icon: Zap,       color: "text-cyan-500",     label: "Build Fast",   isText: true,  textValue: "Repo → City",  desc: "any repo in seconds",       numValue: 0 },
+              { icon: Zap,       color: "text-primary",     label: "Build Fast",   isText: true,  textValue: "Repo → City",  desc: "any repo in seconds",       numValue: 0 },
               { icon: BarChart3, color: "text-blue-400",     label: "Projects",     isText: false, textValue: "",             desc: "repositories analyzed",     numValue: projects.length },
               { icon: FolderGit2, color: "text-amber-400",   label: "Completed",    isText: false, textValue: "",             desc: "builds completed",          numValue: completedCount },
               { icon: Activity,  color: "text-emerald-400",  label: "Total Files",  isText: false, textValue: "",             desc: "files indexed",             numValue: totalFiles },
@@ -148,14 +148,14 @@ function DashboardContent() {
             <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-lg border border-zinc-800 bg-zinc-900 p-1 sm:w-fit">
               <TabsTrigger
                 value="projects"
-                className="gap-2 font-mono text-xs tracking-wide uppercase px-4 rounded-md text-zinc-400 data-[state=active]:bg-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-none"
+                className="gap-2 font-mono text-xs tracking-wide uppercase px-4 rounded-md text-zinc-400 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none"
               >
                 <FolderGit2 className="h-3.5 w-3.5" />
                 My Projects
               </TabsTrigger>
               <TabsTrigger
                 value="explore"
-                className="gap-2 font-mono text-xs tracking-wide uppercase px-4 rounded-md text-zinc-400 data-[state=active]:bg-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-none"
+                className="gap-2 font-mono text-xs tracking-wide uppercase px-4 rounded-md text-zinc-400 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none"
               >
                 <Compass className="h-3.5 w-3.5" />
                 Explore
