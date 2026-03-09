@@ -13,7 +13,7 @@ export async function Navbar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-mono text-[10px] font-bold text-white shadow-[0_0_12px_hsl(var(--primary)/0.25)] transition-shadow group-hover:shadow-[0_0_18px_hsl(var(--primary)/0.4)]">
             CC
           </div>
-          <span className="font-sans text-sm font-semibold tracking-[0.18em] uppercase text-zinc-300">
+          <span className="font-sans text-sm font-semibold tracking-widest uppercase text-zinc-300">
             CodeCity
           </span>
         </Link>
@@ -36,7 +36,7 @@ export async function Navbar() {
 
         <div className="flex items-center gap-2">
           {user ? (
-            <p className="hidden font-mono text-[10px] uppercase tracking-wider text-zinc-500 sm:block">
+            <p className="hidden font-mono text-xs uppercase tracking-wide text-zinc-500 sm:block">
               {user.name ?? "User"}
             </p>
           ) : (

@@ -36,7 +36,7 @@ export function MobileNav({
             <div className="content-container py-4 space-y-1">
               {isLoggedIn && userName && (
                 <div className="px-3 py-2 mb-2 border-b border-border/20 pb-3">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                  <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground/50">
                     Signed in as
                   </p>
                   <p className="font-mono text-xs text-foreground mt-0.5">{userName}</p>

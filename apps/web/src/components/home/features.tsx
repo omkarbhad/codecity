@@ -40,13 +40,13 @@ export function Features() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Section header */}
         <div className="text-center mb-16">
-          <p className="text-primary font-mono text-sm uppercase tracking-[0.2em] mb-4">
+          <p className="text-primary font-mono text-xs uppercase tracking-widest mb-4">
             Features
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Everything You Need to Understand Code
           </h2>
-          <p className="text-zinc-400 max-w-2xl mx-auto">
+          <p className="text-base text-zinc-400 max-w-2xl mx-auto">
             Powerful tools to visualize, analyze, and navigate complex codebases with ease.
           </p>
         </div>

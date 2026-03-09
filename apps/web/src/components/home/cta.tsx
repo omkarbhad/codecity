@@ -15,7 +15,7 @@ export function CTA() {
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-mono uppercase tracking-wider mb-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-mono uppercase tracking-widest mb-6">
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
           Free & Open Source
         </div>
