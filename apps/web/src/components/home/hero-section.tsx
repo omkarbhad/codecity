@@ -20,12 +20,12 @@ export function HeroSection() {
         }}
       />
 
-      {/* Radial cyan glow */}
+      {/* Radial primary glow */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-20"
         style={{
           background:
-            "radial-gradient(circle, rgba(6,182,212,0.4) 0%, rgba(6,182,212,0.1) 35%, transparent 70%)",
+            "radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, hsl(var(--primary) / 0.1) 35%, transparent 70%)",
         }}
       />
 
@@ -34,27 +34,17 @@ export function HeroSection() {
         className="absolute top-1/4 right-1/4 w-[400px] h-[400px] rounded-full opacity-10"
         style={{
           background:
-            "radial-gradient(circle, rgba(6,182,212,0.6) 0%, transparent 60%)",
+            "radial-gradient(circle, hsl(var(--primary) / 0.6) 0%, transparent 60%)",
         }}
       />
 
       {/* Content */}
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-        {/* Logo badge */}
-        <div className="inline-flex items-center gap-3 mb-8 px-4 py-2 rounded-full border border-zinc-800 bg-zinc-900/80 backdrop-blur-sm">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500 font-mono text-[10px] font-bold text-white shadow-[0_0_20px_rgba(6,182,212,0.4)]">
-            CC
-          </div>
-          <span className="font-mono text-xs tracking-[0.2em] uppercase text-zinc-400">
-            CodeCity
-          </span>
-        </div>
-
         {/* Main heading */}
         <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight">
           Visualize Your Code
           <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-600">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">
             As a Living City
           </span>
         </h1>
@@ -69,7 +59,7 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
             asChild
-            className="h-12 px-8 text-base bg-cyan-500 hover:bg-cyan-400 text-white font-semibold shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)] transition-all duration-300"
+            className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-white font-semibold shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:shadow-[0_0_40px_hsl(var(--primary)/0.5)] transition-all duration-300"
           >
             <Link href="/dashboard" className="flex items-center gap-2">
               Get Started
@@ -103,7 +93,7 @@ export function HeroSection() {
               <p className="text-2xl sm:text-3xl font-bold text-white">
                 {stat.value}
               </p>
-              <p className="text-xs sm:text-sm text-zinc-500 font-mono uppercase tracking-wider mt-1">
+              <p className="text-sm text-zinc-400 font-mono uppercase tracking-wide mt-1">
                 {stat.label}
               </p>
             </div>

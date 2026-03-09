@@ -1,6 +1,21 @@
 import type { Metadata } from "next"
+import { Sora, IBM_Plex_Mono } from "next/font/google"
 import "@codecity/ui/styles/globals.css"
 import { Providers } from "./providers"
+
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-sora",
+  display: "swap",
+})
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "CodeCity — Visualize Your Codebase",
@@ -13,15 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`dark ${sora.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-screen antialiased bg-aurora noise-overlay relative">
         <Providers>{children}</Providers>
       </body>

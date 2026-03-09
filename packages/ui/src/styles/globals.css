@@ -2,8 +2,8 @@
 @source "../";
 
 @theme {
-  --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 
   /* ── Deep dark base with electric accents ── */
   --color-background: #06060b;
@@ -12,7 +12,7 @@
   --color-card: #0c0c15;
   --color-card-foreground: #eaeaf2;
 
-  --color-primary: #ff3d3d;
+  --color-primary: #06b6d4;
   --color-primary-foreground: #ffffff;
 
   --color-secondary: #111119;
@@ -26,9 +26,9 @@
 
   --color-border: #1e1e38;
   --color-input: #1e1e38;
-  --color-ring: #ff3d3d;
+  --color-ring: #06b6d4;
 
-  --color-destructive: #ff3d3d;
+  --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
 
   --color-success: #00e676;
@@ -87,17 +87,17 @@
   background-size: 24px 24px;
 }
 
-/* ── Glow effects (neon red) ── */
-.glow-red {
-  box-shadow: 0 0 20px rgba(255, 61, 61, 0.15), 0 0 60px rgba(255, 61, 61, 0.05);
+/* ── Glow effects (cyan primary) ── */
+.glow-primary {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), 0 0 60px rgba(6, 182, 212, 0.05);
 }
 
-.glow-red-strong {
-  box-shadow: 0 0 30px rgba(255, 61, 61, 0.3), 0 0 80px rgba(255, 61, 61, 0.12);
+.glow-primary-strong {
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.3), 0 0 80px rgba(6, 182, 212, 0.12);
 }
 
-.text-glow-red {
-  text-shadow: 0 0 24px rgba(255, 61, 61, 0.5), 0 0 48px rgba(255, 61, 61, 0.2);
+.text-glow-primary {
+  text-shadow: 0 0 24px rgba(6, 182, 212, 0.5), 0 0 48px rgba(6, 182, 212, 0.2);
 }
 
 /* ── Animations ── */
@@ -170,8 +170,8 @@
 }
 
 @keyframes border-glow {
-  0%, 100% { border-color: rgba(255, 61, 61, 0.15); }
-  50% { border-color: rgba(255, 61, 61, 0.4); }
+  0%, 100% { border-color: rgba(6, 182, 212, 0.15); }
+  50% { border-color: rgba(6, 182, 212, 0.4); }
 }
 
 @keyframes gradient-shift {
@@ -320,7 +320,7 @@
   inset: 3.75rem 0 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 1080px 460px at 8% 0%, rgba(255, 86, 86, 0.2), transparent 64%),
+    radial-gradient(ellipse 1080px 460px at 8% 0%, rgba(6, 182, 212, 0.2), transparent 64%),
     radial-gradient(ellipse 940px 420px at 92% 0%, rgba(0, 226, 255, 0.17), transparent 66%),
     radial-gradient(ellipse 780px 360px at 50% 84%, rgba(131, 95, 255, 0.12), transparent 72%);
   z-index: -1;
@@ -397,7 +397,7 @@
 .mode-btn-active {
   background: theme(--color-primary);
   color: #fff;
-  box-shadow: 0 0 10px rgba(255, 61, 61, 0.35);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.35);
 }
 
 /* Search input expand on focus */
@@ -406,7 +406,7 @@
 }
 .search-expand:focus {
   border-color: theme(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 61, 61, 0.12);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.12);
 }
 
 /* Slide-in panel animation */

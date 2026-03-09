@@ -9,14 +9,14 @@ export function CTA() {
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20"
         style={{
-          background: 'radial-gradient(circle, rgba(6,182,212,0.3) 0%, transparent 60%)'
+          background: 'radial-gradient(circle, hsl(var(--primary) / 0.3) 0%, transparent 60%)'
         }}
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs font-mono uppercase tracking-wider mb-6">
-          <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-mono uppercase tracking-wider mb-6">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
           Free & Open Source
         </div>
 
@@ -32,7 +32,7 @@ export function CTA() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
             asChild
-            className="h-12 px-8 text-base bg-cyan-500 hover:bg-cyan-400 text-white font-semibold shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)] transition-all duration-300"
+            className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-white font-semibold shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:shadow-[0_0_40px_hsl(var(--primary)/0.5)] transition-all duration-300"
           >
             <Link href="/dashboard" className="flex items-center gap-2">
               Start Building
@@ -45,14 +45,14 @@ export function CTA() {
             variant="ghost"
             className="h-12 px-6 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
           >
-            <Link href="/explore">
+            <Link href="/dashboard?tab=explore">
               Browse Examples
             </Link>
           </Button>
         </div>
 
         {/* Trust badges */}
-        <div className="mt-12 flex items-center justify-center gap-6 text-zinc-600 text-sm">
+        <div className="mt-12 flex items-center justify-center gap-6 text-zinc-400 text-sm">
           <span>✓ No setup required</span>
           <span>✓ Works with any repo</span>
           <span>✓ Instant results</span>
