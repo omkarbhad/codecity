@@ -13,3 +13,4 @@ packages/db/src/generated/
 .playwright-mcp/
 *.tsbuildinfo
 .vercel
+apps/web/src/generated/
