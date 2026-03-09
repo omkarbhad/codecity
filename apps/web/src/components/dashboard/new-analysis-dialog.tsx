@@ -29,6 +29,7 @@ export function NewAnalysisDialog({
   const [url, setUrl] = useState("")
   const [visibility, setVisibility] = useState<"PUBLIC" | "PRIVATE">("PRIVATE")
   const [submitting, setSubmitting] = useState(false)
+  const [stage, setStage] = useState("")
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -37,6 +38,7 @@ export function NewAnalysisDialog({
     if (!url.trim()) return
     setSubmitting(true)
     setError(null)
+    setStage("Analyzing repository...")
 
     try {
       const res = await fetch("/api/analyze", {
@@ -50,21 +52,23 @@ export function NewAnalysisDialog({
         return
       }
 
+      const data = await res.json()
+
       if (!res.ok) {
-        const data = await res.json()
-        setError(data.error ?? "Failed to start analysis")
+        setError(data.error ?? "Failed to analyze repository")
         setSubmitting(false)
+        setStage("")
         return
       }
 
-      const data = await res.json()
       if (data.projectId) {
         onOpenChange(false)
-        router.push(`/analyze/${data.projectId}`)
+        router.push(`/project/${data.projectId}`)
       }
     } catch {
       setError("Network error. Please try again.")
       setSubmitting(false)
+      setStage("")
     }
   }
 
@@ -72,16 +76,18 @@ export function NewAnalysisDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (next) {
-          setUrl("")
-          setError(null)
-          setSubmitting(false)
-          setVisibility("PRIVATE")
-        } else {
-          setError(null)
-          setSubmitting(false)
+        if (!submitting) {
+          if (next) {
+            setUrl("")
+            setError(null)
+            setSubmitting(false)
+            setVisibility("PRIVATE")
+            setStage("")
+          } else {
+            setError(null)
+          }
+          onOpenChange(next)
         }
-        onOpenChange(next)
       }}
     >
       <DialogContent className="sm:max-w-lg border-border/50 bg-card/95 backdrop-blur-xl">
@@ -110,48 +116,81 @@ export function NewAnalysisDialog({
               className="h-11 border-border/40 bg-background/60 font-mono text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/40 focus-visible:ring-primary/30"
               required
             />
-            <div className="mt-2 flex flex-wrap gap-2">
-              {QUICK_REPOS.map((repo) => (
-                <button
-                  key={repo}
-                  type="button"
-                  onClick={() => setUrl(repo)}
-                  className="rounded-full border border-border/35 px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  {repo.replace("https://github.com/", "")}
-                </button>
-              ))}
-            </div>
+            {!submitting && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {QUICK_REPOS.map((repo) => (
+                  <button
+                    key={repo}
+                    type="button"
+                    onClick={() => setUrl(repo)}
+                    className="rounded-full border border-border/35 px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    {repo.replace("https://github.com/", "")}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground block mb-1.5">
-              Visibility
-            </label>
-            <div className="flex gap-2">
-              {(["PRIVATE", "PUBLIC"] as const).map((v) => (
-                <label
-                  key={v}
-                  className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs uppercase tracking-wide transition-all ${
-                    visibility === v
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border/40 bg-background/50 text-muted-foreground hover:border-muted-foreground/30"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="visibility"
-                    value={v}
-                    checked={visibility === v}
-                    onChange={() => setVisibility(v)}
-                    className="sr-only"
-                  />
-                  {v === "PRIVATE" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                  {v.toLowerCase()}
-                </label>
-              ))}
+          {!submitting && (
+            <div>
+              <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground block mb-1.5">
+                Visibility
+              </label>
+              <div className="flex gap-2">
+                {(["PRIVATE", "PUBLIC"] as const).map((v) => (
+                  <label
+                    key={v}
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs uppercase tracking-wide transition-all ${
+                      visibility === v
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border/40 bg-background/50 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value={v}
+                      checked={visibility === v}
+                      onChange={() => setVisibility(v)}
+                      className="sr-only"
+                    />
+                    {v === "PRIVATE" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                    {v.toLowerCase()}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {submitting && (
+            <div className="space-y-3">
+              {/* City building animation */}
+              <div className="flex items-end justify-center gap-[3px] h-16">
+                {Array.from({ length: 24 }, (_, i) => {
+                  const baseHeight = 12 + ((i * 7 + 3) % 48)
+                  return (
+                    <div
+                      key={i}
+                      className="w-1 rounded-t-[2px] bg-primary/60 animate-pulse"
+                      style={{
+                        height: `${baseHeight}px`,
+                        animationDelay: `${i * 80}ms`,
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <div className="text-center">
+                <p className="font-mono text-xs text-muted-foreground animate-pulse">
+                  {stage}
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground/40 mt-1">
+                  This may take 10–30 seconds depending on repo size
+                </p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-400">
@@ -160,13 +199,15 @@ export function NewAnalysisDialog({
           )}
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => onOpenChange(false)}
-              variant="outline"
-              className="border-border/40 bg-background/40"
-            >
-              Cancel
-            </Button>
+            {!submitting && (
+              <Button
+                onClick={() => onOpenChange(false)}
+                variant="outline"
+                className="border-border/40 bg-background/40"
+              >
+                Cancel
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={submitting}
@@ -175,7 +216,7 @@ export function NewAnalysisDialog({
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Starting...
+                  Building City...
                 </>
               ) : (
                 "Start Analysis"

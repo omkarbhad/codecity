@@ -3,8 +3,9 @@ import { getSessionUser } from "@/lib/auth-helpers"
 import { parseGitHubUrl } from "@/lib/analysis/github"
 import { analyzeRepository } from "@/lib/analysis/pipeline"
 import { analysisCache, CACHE_TTL } from "@/lib/cache"
-import { setProgress } from "@/lib/analysis/progress-store"
 import { createProject, updateProject, saveSnapshot } from "@/lib/project-store"
+
+export const maxDuration = 60 // Allow up to 60s on Vercel Pro (10s on Hobby)
 
 export async function POST(request: Request) {
   const user = await getSessionUser()
@@ -24,7 +25,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 })
   }
 
-  // Validate GitHub URL
   let owner: string, repo: string
   try {
     ;({ owner, repo } = parseGitHubUrl(repoUrl))
@@ -36,8 +36,26 @@ export async function POST(request: Request) {
   }
 
   const name = `${owner}/${repo}`
+  const cacheKey = `repo:${owner}/${repo}`
 
-  // Create project in DB
+  // Check cache first
+  const cached = analysisCache.get(cacheKey) as Record<string, unknown> | null
+  if (cached) {
+    const project = await createProject({
+      name,
+      repoUrl,
+      visibility: visibility === "PUBLIC" ? "PUBLIC" : "PRIVATE",
+      status: "COMPLETED",
+      fileCount: (cached.stats as Record<string, number>)?.totalFiles ?? 0,
+      lineCount: (cached.stats as Record<string, number>)?.totalLines ?? 0,
+      userId: user.id,
+    })
+    analysisCache.set(`project:${project.id}`, cached, CACHE_TTL.analysis)
+    await saveSnapshot(project.id, cached).catch(() => {})
+    return NextResponse.json({ projectId: project.id, snapshot: cached }, { status: 200 })
+  }
+
+  // Create project
   const project = await createProject({
     name,
     repoUrl,
@@ -46,77 +64,24 @@ export async function POST(request: Request) {
     userId: user.id,
   })
 
-  const projectId = project.id
+  try {
+    // Run analysis synchronously
+    const snapshot = await analyzeRepository(repoUrl)
 
-  // Check cache
-  const cacheKey = `repo:${owner}/${repo}`
-  const cached = analysisCache.get(cacheKey) as Record<string, any> | null
-  if (cached) {
-    analysisCache.set(`project:${projectId}`, cached, CACHE_TTL.analysis)
-    setProgress(projectId, {
-      stage: "complete",
-      progress: 1,
-      message: "Analysis complete (cached)!",
-      completed: true,
-    })
-    await updateProject(projectId, {
+    // Cache and persist
+    analysisCache.set(cacheKey, snapshot, CACHE_TTL.analysis)
+    analysisCache.set(`project:${project.id}`, snapshot, CACHE_TTL.analysis)
+    await updateProject(project.id, {
       status: "COMPLETED",
-      fileCount: cached.stats?.totalFiles ?? 0,
-      lineCount: cached.stats?.totalLines ?? 0,
+      fileCount: snapshot.stats.totalFiles,
+      lineCount: snapshot.stats.totalLines,
     })
-    // Save snapshot to DB
-    await saveSnapshot(projectId, cached).catch(() => {})
-    return NextResponse.json({ projectId }, { status: 201 })
+    await saveSnapshot(project.id, snapshot).catch(() => {})
+
+    return NextResponse.json({ projectId: project.id, snapshot }, { status: 201 })
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Analysis failed"
+    await updateProject(project.id, { status: "FAILED", error: errorMsg })
+    return NextResponse.json({ error: errorMsg }, { status: 500 })
   }
-
-  // Run analysis in background
-  setProgress(projectId, {
-    stage: "pending",
-    progress: 0,
-    message: "Starting analysis...",
-    completed: false,
-  })
-
-  analyzeRepository(repoUrl, (stage, progress, message) => {
-    setProgress(projectId, {
-      stage,
-      progress,
-      message,
-      completed: stage === "complete",
-    })
-  })
-    .then(async (snapshot) => {
-      // Cache both by repo and project ID
-      analysisCache.set(cacheKey, snapshot, CACHE_TTL.analysis)
-      analysisCache.set(`project:${projectId}`, snapshot, CACHE_TTL.analysis)
-      await updateProject(projectId, {
-        status: "COMPLETED",
-        fileCount: snapshot.stats.totalFiles,
-        lineCount: snapshot.stats.totalLines,
-      })
-      // Persist snapshot to DB
-      await saveSnapshot(projectId, snapshot).catch(() => {})
-      setProgress(projectId, {
-        stage: "complete",
-        progress: 1,
-        message: "Analysis complete!",
-        completed: true,
-      })
-    })
-    .catch(async (err) => {
-      const errorMsg = err instanceof Error ? err.message : "Unknown error"
-      setProgress(projectId, {
-        stage: "error",
-        progress: 0,
-        message: errorMsg,
-        error: errorMsg,
-        completed: false,
-      })
-      await updateProject(projectId, {
-        status: "FAILED",
-        error: errorMsg,
-      })
-    })
-
-  return NextResponse.json({ projectId }, { status: 201 })
 }
