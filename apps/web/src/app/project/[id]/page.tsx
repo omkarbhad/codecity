@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { ProjectVisualization } from "@/components/city/project-visualization"
 import { Building2, RotateCcw, ArrowLeft } from "lucide-react"
 import type { CitySnapshot } from "@/lib/types/city"
+import { getCachedProject, getCachedSnapshot } from "@/lib/client-cache"
 
 export default function ProjectPage() {
   const params = useParams()
@@ -17,50 +18,55 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
+    // Load from client-side cache (localStorage)
+    const project = getCachedProject(id)
+    const cachedSnapshot = getCachedSnapshot(id)
+
+    if (project && cachedSnapshot) {
+      setProjectName(project.name)
+      setSnapshot(cachedSnapshot)
+      setLoading(false)
+      return
+    }
+
+    // Fallback: try server API (may work if same Vercel instance)
+    async function loadFromServer() {
       try {
-        // Fetch project metadata
         const projectRes = await fetch(`/api/projects/${id}`)
         if (!projectRes.ok) {
-          setError("Project not found")
+          setError("Project not found. It may have expired — try analyzing again.")
           return
         }
-        const project = await projectRes.json()
-        setProjectName(project.name)
+        const projectData = await projectRes.json()
+        setProjectName(projectData.name)
 
-        if (project.status === "PROCESSING") {
-          router.push(`/analyze/${id}`)
-          return
-        }
-
-        if (project.status === "FAILED") {
-          setError(`Analysis failed for ${project.name}`)
+        if (projectData.status === "FAILED") {
+          setError(`Analysis failed for ${projectData.name}`)
           return
         }
 
-        // Fetch snapshot
         const snapshotRes = await fetch(`/api/projects/${id}/snapshot`)
         if (!snapshotRes.ok) {
-          setError("Snapshot not found. The analysis may still be in progress.")
+          setError("Snapshot not found. Try analyzing the repository again.")
           return
         }
         const data = await snapshotRes.json()
         setSnapshot(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load project")
+      } catch {
+        setError("Project not found in cache. Try analyzing the repository again.")
       } finally {
         setLoading(false)
       }
     }
-    load()
-  }, [id, router])
+    loadFromServer()
+  }, [id])
 
   if (loading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-          <p className="font-mono text-xs text-muted-foreground/50">Loading city...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          <p className="font-mono text-xs text-muted-foreground">Loading city...</p>
         </div>
       </div>
     )
@@ -68,30 +74,25 @@ export default function ProjectPage() {
 
   if (error) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-5 text-center max-w-sm px-6">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
-            <Building2 className="h-7 w-7 text-red-400" />
-          </div>
-          <div>
-            <p className="text-base font-semibold text-foreground">Unable to load city</p>
-            <p className="mt-1.5 text-sm text-muted-foreground">{error}</p>
-          </div>
-          <div className="flex items-center gap-3">
+      <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md space-y-4 text-center">
+          <Building2 className="mx-auto h-12 w-12 text-muted-foreground/30" />
+          <h2 className="text-lg font-semibold text-foreground">{error}</h2>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </button>
             <button
               onClick={() => window.location.reload()}
-              className="flex items-center gap-2 rounded-lg border border-border/50 bg-white/5 px-4 py-2 text-xs font-medium text-foreground hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-4 w-4" />
               Retry
             </button>
-            <a
-              href="/dashboard"
-              className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Dashboard
-            </a>
           </div>
         </div>
       </div>
@@ -100,10 +101,5 @@ export default function ProjectPage() {
 
   if (!snapshot) return null
 
-  return (
-    <ProjectVisualization
-      snapshot={snapshot}
-      projectName={projectName}
-    />
-  )
+  return <ProjectVisualization snapshot={snapshot} projectName={projectName} />
 }
