@@ -7,10 +7,8 @@ dist/
 .env.*.local
 *.log
 .DS_Store
-packages/db/src/generated/
 .claude
 .docs
 .playwright-mcp/
 *.tsbuildinfo
 .vercel
-apps/web/src/generated/

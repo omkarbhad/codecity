@@ -13,7 +13,6 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
     "@codecity/core": "workspace:*",
-    "@codecity/db": "workspace:*",
     "@codecity/ui": "workspace:*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",

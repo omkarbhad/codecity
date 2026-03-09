@@ -1,22 +1,13 @@
-import { prisma, Visibility, AnalysisStatus } from "@codecity/db"
+// In-memory project store — no database needed
+// Projects live in memory for the session. For a portfolio project, this is fine.
+// Add Neon/Turso later if persistence is needed.
 
-// Re-export a compatible interface so consumers don't break
+import { randomUUID } from "crypto"
+
+export type Visibility = "PUBLIC" | "PRIVATE"
+export type AnalysisStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+
 export interface ProjectRecord {
-  id: string
-  name: string
-  repoUrl: string
-  visibility: "PUBLIC" | "PRIVATE"
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
-  fileCount: number
-  lineCount: number
-  userId: string
-  error?: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-// Helper to convert Prisma model → ProjectRecord
-function toRecord(p: {
   id: string
   name: string
   repoUrl: string
@@ -25,116 +16,133 @@ function toRecord(p: {
   fileCount: number
   lineCount: number
   userId: string
-  error: string | null
-  createdAt: Date
-  updatedAt: Date
-}): ProjectRecord {
-  return {
-    id: p.id,
-    name: p.name,
-    repoUrl: p.repoUrl,
-    visibility: p.visibility,
-    status: p.status,
-    fileCount: p.fileCount,
-    lineCount: p.lineCount,
-    userId: p.userId,
-    error: p.error,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-  }
+  error?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
+interface SnapshotRecord {
+  id: string
+  projectId: string
+  name: string
+  data: unknown
+  createdAt: string
+}
+
+// In-memory stores
+const projects = new Map<string, ProjectRecord>()
+const snapshots = new Map<string, SnapshotRecord>()
+
 export async function getProject(id: string): Promise<ProjectRecord | null> {
-  const p = await prisma.project.findUnique({ where: { id } })
-  return p ? toRecord(p) : null
+  return projects.get(id) ?? null
 }
 
 export async function createProject(data: {
   id?: string
   name: string
   repoUrl: string
-  visibility?: "PUBLIC" | "PRIVATE"
-  status?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+  visibility?: Visibility
+  status?: AnalysisStatus
   fileCount?: number
   lineCount?: number
   userId: string
   error?: string
 }): Promise<ProjectRecord> {
-  const p = await prisma.project.create({
-    data: {
-      ...(data.id && { id: data.id }),
-      name: data.name,
-      repoUrl: data.repoUrl,
-      visibility: (data.visibility ?? "PRIVATE") as Visibility,
-      status: (data.status ?? "PENDING") as AnalysisStatus,
-      fileCount: data.fileCount ?? 0,
-      lineCount: data.lineCount ?? 0,
-      userId: data.userId,
-      error: data.error,
-    },
-  })
-  return toRecord(p)
+  const now = new Date().toISOString()
+  const project: ProjectRecord = {
+    id: data.id ?? randomUUID(),
+    name: data.name,
+    repoUrl: data.repoUrl,
+    visibility: data.visibility ?? "PRIVATE",
+    status: data.status ?? "PENDING",
+    fileCount: data.fileCount ?? 0,
+    lineCount: data.lineCount ?? 0,
+    userId: data.userId,
+    error: data.error ?? null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  projects.set(project.id, project)
+  return project
 }
 
 export async function updateProject(
   id: string,
   data: Partial<{
     name: string
-    visibility: "PUBLIC" | "PRIVATE"
-    status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+    visibility: Visibility
+    status: AnalysisStatus
     fileCount: number
     lineCount: number
     error: string | null
   }>
 ): Promise<ProjectRecord> {
-  const updateData: Record<string, unknown> = {}
-  if (data.name !== undefined) updateData.name = data.name
-  if (data.visibility !== undefined) updateData.visibility = data.visibility as Visibility
-  if (data.status !== undefined) updateData.status = data.status as AnalysisStatus
-  if (data.fileCount !== undefined) updateData.fileCount = data.fileCount
-  if (data.lineCount !== undefined) updateData.lineCount = data.lineCount
-  if (data.error !== undefined) updateData.error = data.error
+  const existing = projects.get(id)
+  if (!existing) {
+    throw new Error(`Project ${id} not found`)
+  }
 
-  const p = await prisma.project.update({ where: { id }, data: updateData })
-  return toRecord(p)
+  const updated: ProjectRecord = {
+    ...existing,
+    ...data,
+    updatedAt: new Date().toISOString(),
+  }
+  projects.set(id, updated)
+  return updated
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  await prisma.project.delete({ where: { id } })
+  projects.delete(id)
+  // Also delete associated snapshots
+  for (const [key, snap] of snapshots) {
+    if (snap.projectId === id) {
+      snapshots.delete(key)
+    }
+  }
 }
 
 export async function getProjectsByUser(userId: string): Promise<ProjectRecord[]> {
-  const projects = await prisma.project.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-  })
-  return projects.map(toRecord)
+  return Array.from(projects.values())
+    .filter((p) => p.userId === userId)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 }
 
 export async function getAllPublicProjects(): Promise<ProjectRecord[]> {
-  const projects = await prisma.project.findMany({
-    where: { visibility: "PUBLIC", status: "COMPLETED" },
-    orderBy: { updatedAt: "desc" },
-    take: 50,
-  })
-  return projects.map(toRecord)
+  return Array.from(projects.values())
+    .filter((p) => p.visibility === "PUBLIC" && p.status === "COMPLETED")
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 50)
 }
 
 // ── Snapshot helpers ──
 
-export async function saveSnapshot(projectId: string, data: unknown, name?: string) {
-  return prisma.snapshot.create({
-    data: {
-      projectId,
-      data: data as any,
-      name: name ?? "default",
-    },
-  })
+export async function saveSnapshot(
+  projectId: string,
+  data: unknown,
+  name?: string
+): Promise<SnapshotRecord> {
+  const snapshot: SnapshotRecord = {
+    id: randomUUID(),
+    projectId,
+    name: name ?? "default",
+    data,
+    createdAt: new Date().toISOString(),
+  }
+  snapshots.set(snapshot.id, snapshot)
+  return snapshot
 }
 
-export async function getSnapshot(projectId: string) {
-  return prisma.snapshot.findFirst({
-    where: { projectId },
-    orderBy: { createdAt: "desc" },
-  })
+export async function getSnapshot(
+  projectId: string
+): Promise<SnapshotRecord | null> {
+  // Find the latest snapshot for this project
+  let latest: SnapshotRecord | null = null
+  for (const snap of snapshots.values()) {
+    if (snap.projectId === projectId) {
+      if (!latest || snap.createdAt > latest.createdAt) {
+        latest = snap
+      }
+    }
+  }
+  return latest
 }
