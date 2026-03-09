@@ -30,7 +30,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
   }
 
   const items = [
-    { label: "Files", value: stats.totalFiles, color: "text-cyan-400" },
+    { label: "Files", value: stats.totalFiles, color: "text-primary" },
     { label: "Fn", value: stats.totalFunctions, color: "text-emerald-400" },
     { label: "Imp", value: stats.totalImports, color: "text-blue-400" },
     { label: "Unused", value: stats.unusedExports, color: stats.unusedExports > 0 ? "text-red-400" : "text-white/40" },

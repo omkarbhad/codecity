@@ -280,7 +280,7 @@ function Flag({ color, label }: { color: string; label: string }) {
     blue: "bg-blue-500/8 text-blue-400/80 border-blue-500/10",
     red: "bg-red-500/8 text-red-400/80 border-red-500/10",
     purple: "bg-purple-500/8 text-purple-400/80 border-purple-500/10",
-    cyan: "bg-cyan-500/8 text-cyan-400/80 border-cyan-500/10",
+    cyan: "bg-primary/8 text-primary/80 border-primary/10",
     green: "bg-emerald-500/8 text-emerald-400/80 border-emerald-500/10",
     yellow: "bg-amber-500/8 text-amber-400/80 border-amber-500/10",
   }
