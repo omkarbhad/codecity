@@ -33,13 +33,13 @@ export function HowItWorks() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* Section header */}
         <div className="text-center mb-16">
-          <p className="text-primary font-mono text-sm uppercase tracking-[0.2em] mb-4">
+          <p className="text-primary font-mono text-xs uppercase tracking-widest mb-4">
             How It Works
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Three Steps to Your Code City
           </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
+          <p className="text-base text-zinc-400 max-w-xl mx-auto">
             From repository to visualization in under a minute.
           </p>
         </div>

@@ -8,7 +8,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo & copyright */}
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-mono text-[10px] font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-mono text-xs font-bold text-white">
               CC
             </div>
             <div>
