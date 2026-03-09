@@ -1,20 +1,29 @@
-// Re-export from the generated client inside apps/web
-// This ensures the engine binary is co-located with the Next.js app
-import { PrismaClient } from "../../../apps/web/src/generated/prisma"
+import { PrismaClient } from "@prisma/client"
+import { PrismaNeon } from "@prisma/adapter-neon"
+
+function createPrismaClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set")
+  }
+
+  const adapter = new PrismaNeon({ connectionString })
+
+  return new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  })
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  })
+export const prisma = globalForPrisma.prisma ?? createPrismaClient()
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma
 }
 
-export * from "../../../apps/web/src/generated/prisma"
-export type { PrismaClient } from "../../../apps/web/src/generated/prisma"
+export * from "@prisma/client"
+export type { PrismaClient } from "@prisma/client"
