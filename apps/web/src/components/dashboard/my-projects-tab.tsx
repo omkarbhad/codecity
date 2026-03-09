@@ -15,6 +15,7 @@ import {
   GitFork,
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { getProjectList, deleteCachedProject } from "@/lib/client-cache"
 import { Card, CardContent } from "@codecity/ui/components/card"
 import { Button } from "@codecity/ui/components/button"
 import { Badge } from "@codecity/ui/components/badge"
@@ -27,26 +28,20 @@ interface Project {
   status: string
   fileCount?: number
   lineCount?: number
-  updatedAt: string
-}
-
-async function fetchProjects(): Promise<Project[]> {
-  const res = await fetch("/api/projects")
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
+  createdAt: string
 }
 
 function getStatusBadge(status: string) {
-  // Uses design system district palette: green=#00e676, red=#ff3d3d, yellow=#ffea00, cyan=#00e5ff
+  const base = "font-mono text-[10px] px-2 py-0.5 border"
   switch (status) {
     case "COMPLETED":
-      return <Badge className="font-mono text-[10px] px-2 py-0.5" style={{ backgroundColor: "rgba(0,230,118,0.12)", color: "#00e676", borderColor: "rgba(0,230,118,0.2)" }}>Completed</Badge>
+      return <Badge className={`${base} bg-emerald-500/10 text-emerald-400 border-emerald-500/20`}>Completed</Badge>
     case "FAILED":
-      return <Badge className="font-mono text-[10px] px-2 py-0.5" style={{ backgroundColor: "rgba(255,61,61,0.12)", color: "#ff3d3d", borderColor: "rgba(255,61,61,0.2)" }}>Failed</Badge>
+      return <Badge className={`${base} bg-primary/10 text-primary border-primary/20`}>Failed</Badge>
     case "PROCESSING":
-      return <Badge className="font-mono text-[10px] px-2 py-0.5 animate-pulse" style={{ backgroundColor: "rgba(255,234,0,0.1)", color: "#ffea00", borderColor: "rgba(255,234,0,0.2)" }}>Processing</Badge>
+      return <Badge className={`${base} bg-yellow-500/10 text-yellow-400 border-yellow-500/20 animate-pulse`}>Processing</Badge>
     default:
-      return <Badge className="font-mono text-[10px] px-2 py-0.5" style={{ backgroundColor: "rgba(0,229,255,0.1)", color: "#00e5ff", borderColor: "rgba(0,229,255,0.2)" }}>Pending</Badge>
+      return <Badge className={`${base} bg-blue-500/10 text-blue-400 border-blue-500/20`}>Pending</Badge>
   }
 }
 
@@ -76,31 +71,30 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: fetchProjects,
+    queryFn: () => getProjectList(),
   })
 
   async function handleDelete(e: React.MouseEvent, id: string) {
     e.preventDefault()
     e.stopPropagation()
 
-    // Confirm before deleting
     if (deletingId === id) {
-      // Second click - actually delete
+      // Second click — confirm delete
       try {
-        const res = await fetch(`/api/projects/${id}`, { method: "DELETE" })
-        if (!res.ok) return
+        // Delete from server
+        await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
+        // Delete from local cache
+        deleteCachedProject(id)
+        // Update query cache
         queryClient.setQueryData<Project[]>(["projects"], (old) =>
           old ? old.filter((p) => p.id !== id) : []
         )
-      } catch (err) {
-        console.error("Network error deleting project:", err)
       } finally {
         setDeletingId(null)
       }
     } else {
-      // First click - mark for confirmation
+      // First click — mark for confirmation
       setDeletingId(id)
-      // Auto-cancel after 3 seconds
       setTimeout(() => setDeletingId((prev) => (prev === id ? null : prev)), 3000)
     }
   }
@@ -131,20 +125,20 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   if (isLoading) {
     return (
       <div className="space-y-5">
-        <div className="panel-surface p-4">
-          <div className="h-3 w-20 rounded bg-muted/50 animate-pulse mb-2" />
-          <div className="h-4 w-36 rounded bg-muted/30 animate-pulse" />
+        <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-4">
+          <div className="h-3 w-20 rounded-lg bg-zinc-800/50 animate-pulse mb-2" />
+          <div className="h-4 w-36 rounded-lg bg-zinc-800/30 animate-pulse" />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border/35 bg-card/45 overflow-hidden">
-              <div className="h-16 bg-muted/10 animate-pulse border-b border-border/30" />
+            <div key={i} className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 overflow-hidden">
+              <div className="h-16 bg-zinc-800/20 animate-pulse border-b border-zinc-800/30" />
               <div className="p-3 space-y-2">
-                <div className="h-4 w-3/4 rounded bg-muted/30 animate-pulse" />
-                <div className="h-3 w-full rounded bg-muted/20 animate-pulse" />
+                <div className="h-4 w-3/4 rounded-lg bg-zinc-800/30 animate-pulse" />
+                <div className="h-3 w-full rounded-lg bg-zinc-800/20 animate-pulse" />
                 <div className="flex gap-3 mt-2">
-                  <div className="h-3 w-16 rounded bg-muted/20 animate-pulse" />
-                  <div className="h-3 w-20 rounded bg-muted/20 animate-pulse" />
+                  <div className="h-3 w-16 rounded-lg bg-zinc-800/20 animate-pulse" />
+                  <div className="h-3 w-20 rounded-lg bg-zinc-800/20 animate-pulse" />
                 </div>
               </div>
             </div>
@@ -157,7 +151,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   return (
     <div className="space-y-5">
       {/* Header row */}
-      <div className="panel-surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
             My Cities
@@ -177,9 +171,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       </div>
 
       {projects.length === 0 ? (
-        <Card className="border-border/40 bg-card/55 backdrop-blur-sm h-full min-h-[400px] flex items-center justify-center">
+        <Card className="rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm h-full min-h-[400px] flex items-center justify-center">
           <CardContent className="flex flex-col items-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card border border-border">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800">
               <Building2 className="h-7 w-7 text-muted-foreground" />
             </div>
             <p className="mt-4 text-base font-semibold text-foreground">No cities built yet</p>
@@ -191,7 +185,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
               className="mt-6 gap-1.5 bg-primary text-white hover:bg-primary/90 font-mono text-xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              Build New City
+              Create Your First City
             </Button>
           </CardContent>
         </Card>
@@ -206,9 +200,10 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                   : `/project/${project.id}`
               }
             >
-              <Card className="group relative h-full overflow-hidden border-border/35 bg-card/45 transition-all duration-200 hover:border-primary/45 hover:shadow-[0_14px_30px_rgba(0,0,0,0.32)]">
+              <Card className="group relative h-full overflow-hidden rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:shadow-[0_14px_30px_rgba(0,0,0,0.32)]">
                 <CardContent className="p-0">
-                  <div className="relative border-b border-border/30 bg-gradient-to-b from-primary/[0.08] to-transparent">
+                  {/* Skyline preview */}
+                  <div className="relative border-b border-zinc-800/30 bg-gradient-to-b from-primary/[0.06] to-transparent">
                     <ProjectSkyline
                       seed={project.name
                         .split("")
@@ -220,7 +215,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                     </div>
                   </div>
 
-                  {/* Card header with status */}
+                  {/* Project name + visibility */}
                   <div className="flex items-center justify-between px-3 pb-2 pt-2.5">
                     <div className="flex items-center gap-2 min-w-0">
                       {project.visibility === "PUBLIC" ? (
@@ -232,7 +227,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                         {project.name}
                       </h3>
                     </div>
-                    <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/55">
+                    <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/50">
                       {project.visibility}
                     </span>
                   </div>
@@ -241,7 +236,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                     {project.repoUrl}
                   </p>
 
-                  {/* Stats bar */}
+                  {/* Stats */}
                   <div className="flex items-center gap-2.5 px-3 pb-3 pt-2">
                     <div className="flex items-center gap-1.5">
                       <FileCode className="h-3 w-3 text-muted-foreground" />
@@ -264,24 +259,24 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between border-t border-border/30 bg-background/35 px-3 py-1.5">
+                  <div className="flex items-center justify-between border-t border-zinc-800/30 bg-zinc-950/30 px-3 py-1.5">
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3 w-3 text-muted-foreground" />
                       <span className="font-mono text-[10px] text-muted-foreground">
-                        {new Date(project.updatedAt).toLocaleDateString()}
+                        {new Date(project.createdAt).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={(e) => handleToggleVisibility(e, project)}
-                        className="rounded p-1.5 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground opacity-50 sm:opacity-0 group-hover:opacity-100"
+                        className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-zinc-800 hover:text-foreground opacity-50 sm:opacity-0 group-hover:opacity-100"
                         title={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
                       >
                         {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
                       </button>
                       <button
                         onClick={(e) => handleDelete(e, project.id)}
-                        className={`rounded p-1.5 transition-all opacity-50 sm:opacity-0 group-hover:opacity-100 ${
+                        className={`rounded-lg p-1.5 transition-all opacity-50 sm:opacity-0 group-hover:opacity-100 ${
                           deletingId === project.id
                             ? "bg-primary/20 text-primary"
                             : "text-muted-foreground hover:bg-primary/10 hover:text-primary"

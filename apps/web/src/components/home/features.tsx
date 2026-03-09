@@ -1,37 +1,55 @@
-import { Building2, Zap, Eye, GitBranch, Layers, BarChart3 } from "lucide-react"
-import { Card, CardHeader, CardTitle, CardDescription } from "@codecity/ui/components/card"
+import {
+  Building2,
+  Zap,
+  Search,
+  GitBranch,
+  MousePointerClick,
+  Map,
+} from "lucide-react"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@codecity/ui/components/card"
 
 const features = [
   {
     icon: Building2,
     title: "3D City Visualization",
-    description: "Each file becomes a building, directories become districts. Navigate your codebase like exploring a real city."
+    description:
+      "Files become buildings, directories become districts. Navigate your codebase like exploring a real city.",
   },
   {
     icon: Zap,
     title: "Instant Analysis",
-    description: "Paste any GitHub URL and get a complete visualization in seconds. No setup, no configuration needed."
+    description:
+      "Paste a GitHub URL, get a full visualization in seconds. No setup, no configuration required.",
   },
   {
-    icon: Eye,
+    icon: Search,
     title: "Code Insights",
-    description: "Spot patterns, identify complexity hotspots, and understand architecture at a glance."
+    description:
+      "Spot complexity hotspots, identify patterns, and understand architecture at a glance.",
   },
   {
     icon: GitBranch,
-    title: "Git Integration",
-    description: "Connect with GitHub to analyze any public or private repository with full branch support."
+    title: "GitHub Integration",
+    description:
+      "Works with any public or private repository via the GitHub API. Full branch and org support.",
   },
   {
-    icon: Layers,
-    title: "Layered Views",
-    description: "Toggle between different perspectives: file types, complexity, change frequency, and more."
+    icon: MousePointerClick,
+    title: "Interactive Explorer",
+    description:
+      "Click buildings to view source code, hover for file metrics. Explore your codebase interactively.",
   },
   {
-    icon: BarChart3,
-    title: "Metrics Dashboard",
-    description: "Track code health with built-in metrics: LOC, complexity scores, and dependency graphs."
-  }
+    icon: Map,
+    title: "District Map",
+    description:
+      "Color-coded districts by file type with minimap navigation. See the big picture instantly.",
+  },
 ]
 
 export function Features() {
@@ -40,14 +58,15 @@ export function Features() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Section header */}
         <div className="text-center mb-16">
-          <p className="text-primary font-mono text-xs uppercase tracking-widest mb-4">
+          <p className="text-xs font-mono uppercase tracking-widest text-primary mb-4">
             Features
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
             Everything You Need to Understand Code
           </h2>
-          <p className="text-base text-zinc-400 max-w-2xl mx-auto">
-            Powerful tools to visualize, analyze, and navigate complex codebases with ease.
+          <p className="text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+            Powerful tools to visualize, analyze, and navigate complex codebases
+            with ease.
           </p>
         </div>
 
@@ -56,16 +75,16 @@ export function Features() {
           {features.map((feature) => (
             <Card
               key={feature.title}
-              className="group min-h-[180px] border-zinc-800 bg-zinc-900/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-zinc-900/80"
+              className="group min-h-[200px] rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm p-6 transition-all duration-300 hover:border-primary/30 hover:bg-zinc-900/80"
             >
-              <CardHeader>
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-800 text-primary mb-4 transition-all duration-300 group-hover:bg-primary/10 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
+              <CardHeader className="p-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800 text-primary mb-4 transition-all duration-300 group-hover:bg-primary/10 group-hover:shadow-lg group-hover:shadow-primary/10">
                   <feature.icon className="h-6 w-6" />
                 </div>
-                <CardTitle className="text-lg text-white">
+                <CardTitle className="text-lg font-bold text-white tracking-tight">
                   {feature.title}
                 </CardTitle>
-                <CardDescription className="text-zinc-300 text-sm leading-relaxed">
+                <CardDescription className="text-base text-zinc-400 leading-relaxed mt-2">
                   {feature.description}
                 </CardDescription>
               </CardHeader>
