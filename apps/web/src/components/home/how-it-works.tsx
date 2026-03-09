@@ -1,3 +1,6 @@
+"use client"
+
+import { motion } from "framer-motion"
 import { Link2, Cpu, Building } from "lucide-react"
 
 const steps = [
@@ -24,89 +27,105 @@ const steps = [
   },
 ]
 
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+}
+
 export function HowItWorks() {
   return (
-    <section className="relative py-24 sm:py-32 bg-zinc-950">
-      {/* Subtle top border */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent" />
+    <section className="relative py-24 sm:py-32">
+      <div className="absolute top-0 left-0 right-0 h-px bg-white/[0.06]" />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10">
         {/* Section header */}
-        <div className="text-center mb-16">
-          <p className="text-xs font-mono uppercase tracking-widest text-primary mb-4">
-            How It Works
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
+        <motion.div
+          {...fadeUp}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#fafafa] tracking-tight mb-3">
             Three Steps to Your Code City
           </h2>
-          <p className="text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
+          <div className="mx-auto w-12 h-[3px] bg-indigo-500 rounded-full mb-4" />
+          <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
             From repository to visualization in under a minute.
           </p>
-        </div>
+        </motion.div>
 
         {/* Horizontal stepper — desktop */}
         <div className="hidden md:block">
-          <div className="grid grid-cols-3 gap-8 relative">
+          <div className="grid grid-cols-3 gap-6 relative">
             {/* Connecting line */}
-            <div className="absolute top-8 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-zinc-800" />
+            <div className="absolute top-5 left-[calc(16.67%+20px)] right-[calc(16.67%+20px)] h-px bg-white/[0.06]" />
 
-            {steps.map((item) => (
-              <div key={item.step} className="relative text-center">
+            {steps.map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 + i * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="relative text-center"
+              >
                 {/* Number badge */}
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm mb-6 relative z-10">
-                  <span className="text-xl font-bold text-primary">
-                    {item.step}
-                  </span>
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-white mb-6 relative z-10">
+                  <span className="text-sm font-bold">{item.step}</span>
                 </div>
 
-                {/* Icon */}
-                <div className="flex justify-center mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800 text-primary">
-                    <item.icon className="h-6 w-6" />
+                {/* Card */}
+                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-[#6366f140] transition-all duration-300">
+                  <div className="flex justify-center mb-4">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-indigo-400">
+                      <item.icon className="h-5 w-5" />
+                    </div>
                   </div>
+                  <h3 className="text-lg font-semibold text-zinc-50 tracking-tight mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-zinc-400 leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
-
-                {/* Text */}
-                <h3 className="text-xl font-bold text-white tracking-tight mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-base text-zinc-400 leading-relaxed max-w-xs mx-auto">
-                  {item.description}
-                </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
 
         {/* Vertical stepper — mobile */}
-        <div className="md:hidden space-y-8">
+        <div className="md:hidden space-y-6">
           {steps.map((item, index) => (
-            <div key={item.step} className="relative flex gap-6">
+            <motion.div
+              key={item.step}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 + index * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="relative flex gap-4"
+            >
               {/* Vertical line + badge */}
               <div className="flex flex-col items-center">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm">
-                  <span className="text-lg font-bold text-primary">
-                    {item.step}
-                  </span>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
+                  <span className="text-sm font-bold">{item.step}</span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="w-px flex-1 bg-zinc-800 mt-2" />
+                  <div className="w-px flex-1 bg-white/[0.06] mt-2" />
                 )}
               </div>
 
               {/* Content */}
-              <div className="pb-8">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-primary mb-3">
-                  <item.icon className="h-5 w-5" />
+              <div className="pb-6 flex-1">
+                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-[#6366f140] transition-all duration-300">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-indigo-400 mb-3">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-50 tracking-tight mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-zinc-400 leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
-                <h3 className="text-lg font-bold text-white tracking-tight mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-base text-zinc-400 leading-relaxed">
-                  {item.description}
-                </p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

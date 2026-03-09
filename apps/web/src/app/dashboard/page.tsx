@@ -14,7 +14,7 @@ import { NumberTicker } from "@/components/ui/animated-text"
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-background">
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>
@@ -25,23 +25,23 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
   return (
     <div className="pb-8 sm:pb-10">
-      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-4">
+      <div className="border-b border-white/[0.06]">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-5 sm:py-6 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-zinc-800 animate-pulse" />
+              <div className="h-10 w-10 rounded-lg bg-white/[0.02] animate-pulse" />
               <div className="space-y-2">
-                <div className="h-5 w-28 rounded-lg bg-zinc-800 animate-pulse" />
-                <div className="h-3 w-36 rounded-lg bg-zinc-800/50 animate-pulse" />
+                <div className="h-5 w-28 rounded-lg bg-white/[0.04] animate-pulse" />
+                <div className="h-3 w-36 rounded-lg bg-white/[0.02] animate-pulse" />
               </div>
             </div>
-            <div className="h-9 w-28 rounded-lg bg-zinc-800 animate-pulse" />
+            <div className="h-9 w-28 rounded-lg bg-white/[0.04] animate-pulse" />
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-4">
-                <div className="h-3 w-20 rounded-lg bg-zinc-800/50 animate-pulse mb-3" />
-                <div className="h-6 w-14 rounded-lg bg-zinc-800 animate-pulse" />
+              <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
+                <div className="h-3 w-20 rounded-lg bg-white/[0.04] animate-pulse mb-3" />
+                <div className="h-6 w-14 rounded-lg bg-white/[0.04] animate-pulse" />
               </div>
             ))}
           </div>
@@ -92,22 +92,22 @@ function DashboardContent() {
   return (
     <div className="pb-8 sm:pb-10">
       {/* Page header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-4">
+      <div className="border-b border-white/[0.06]">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-5 sm:py-6 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_0_20px_rgba(255,61,61,0.25)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground font-[family-name:var(--font-sora)]">Dashboard</h1>
-                <p className="text-xs text-muted-foreground font-mono tracking-wide uppercase">Command Center</p>
+                <h1 className="text-lg font-bold text-[#fafafa]">Dashboard</h1>
+                <p className="text-xs text-[#71717a]">Command Center</p>
               </div>
             </div>
             <Button
               onClick={openNewCityDialog}
               size="sm"
-              className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-mono text-xs"
+              className="gap-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
             >
               <Plus className="h-3.5 w-3.5" />
               New City
@@ -119,16 +119,16 @@ function DashboardContent() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm p-4 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900/80 group"
+                className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 hover:border-[#6366f140] transition-all duration-300"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <stat.icon className="h-3.5 w-3.5 text-primary transition-transform group-hover:scale-110" />
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</span>
+                  <stat.icon className="h-3.5 w-3.5 text-[#71717a]" />
+                  <span className="text-[10px] uppercase tracking-wider text-[#71717a] font-medium">{stat.label}</span>
                 </div>
-                <p className="text-2xl font-bold text-foreground tabular-nums">
+                <p className="text-2xl font-bold text-[#fafafa] tabular-nums">
                   <NumberTicker value={stat.value} />
                 </p>
-                <p className="font-mono text-[10px] text-muted-foreground/60 mt-1 truncate">{stat.desc}</p>
+                <p className="text-[10px] text-[#52525b] mt-1 truncate">{stat.desc}</p>
               </div>
             ))}
           </div>
@@ -136,33 +136,31 @@ function DashboardContent() {
       </div>
 
       {/* Main content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm p-3 sm:p-4">
-            <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-zinc-800 bg-zinc-900 p-1 sm:w-fit">
-              <TabsTrigger
-                value="projects"
-                className="gap-2 font-mono text-xs tracking-wide uppercase px-4 rounded-lg text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none"
-              >
-                <FolderGit2 className="h-3.5 w-3.5" />
-                My Projects
-              </TabsTrigger>
-              <TabsTrigger
-                value="explore"
-                className="gap-2 font-mono text-xs tracking-wide uppercase px-4 rounded-lg text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none"
-              >
-                <Compass className="h-3.5 w-3.5" />
-                Explore
-              </TabsTrigger>
-            </TabsList>
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-white/[0.02] border border-white/[0.06] p-1 sm:w-fit">
+            <TabsTrigger
+              value="projects"
+              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
+            >
+              <FolderGit2 className="h-3.5 w-3.5" />
+              My Projects
+            </TabsTrigger>
+            <TabsTrigger
+              value="explore"
+              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
+            >
+              <Compass className="h-3.5 w-3.5" />
+              Explore
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="projects" className="mt-5">
-              <MyProjectsTab onCreateCity={openNewCityDialog} />
-            </TabsContent>
-            <TabsContent value="explore" className="mt-5">
-              <ExploreTab />
-            </TabsContent>
-          </div>
+          <TabsContent value="projects" className="mt-5">
+            <MyProjectsTab onCreateCity={openNewCityDialog} />
+          </TabsContent>
+          <TabsContent value="explore" className="mt-5">
+            <ExploreTab />
+          </TabsContent>
         </Tabs>
       </div>
 

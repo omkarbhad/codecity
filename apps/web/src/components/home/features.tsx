@@ -1,3 +1,6 @@
+"use client"
+
+import { motion } from "framer-motion"
 import {
   Building2,
   Zap,
@@ -6,12 +9,6 @@ import {
   MousePointerClick,
   Map,
 } from "lucide-react"
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@codecity/ui/components/card"
 
 const features = [
   {
@@ -52,45 +49,65 @@ const features = [
   },
 ]
 
+const container = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+}
+
+const item = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const } },
+}
+
 export function Features() {
   return (
-    <section className="relative py-24 sm:py-32 bg-zinc-950">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <section className="relative py-24 sm:py-32">
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10">
         {/* Section header */}
-        <div className="text-center mb-16">
-          <p className="text-xs font-mono uppercase tracking-widest text-primary mb-4">
-            Features
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#fafafa] tracking-tight mb-3">
             Everything You Need to Understand Code
           </h2>
-          <p className="text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          <div className="mx-auto w-12 h-[3px] bg-indigo-500 rounded-full mb-4" />
+          <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
             Powerful tools to visualize, analyze, and navigate complex codebases
             with ease.
           </p>
-        </div>
+        </motion.div>
 
         {/* Feature grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {features.map((feature) => (
-            <Card
+            <motion.div
               key={feature.title}
-              className="group min-h-[200px] rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm p-6 transition-all duration-300 hover:border-primary/30 hover:bg-zinc-900/80"
+              variants={item}
+              className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-[#6366f140] transition-all duration-300"
             >
-              <CardHeader className="p-0">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800 text-primary mb-4 transition-all duration-300 group-hover:bg-primary/10 group-hover:shadow-lg group-hover:shadow-primary/10">
-                  <feature.icon className="h-6 w-6" />
-                </div>
-                <CardTitle className="text-lg font-bold text-white tracking-tight">
-                  {feature.title}
-                </CardTitle>
-                <CardDescription className="text-base text-zinc-400 leading-relaxed mt-2">
-                  {feature.description}
-                </CardDescription>
-              </CardHeader>
-            </Card>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-indigo-400 mb-4">
+                <feature.icon className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-zinc-50 tracking-tight">
+                {feature.title}
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed mt-2">
+                {feature.description}
+              </p>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   )

@@ -16,9 +16,7 @@ import {
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getProjectList, deleteCachedProject } from "@/lib/client-cache"
-import { Card, CardContent } from "@codecity/ui/components/card"
 import { Button } from "@codecity/ui/components/button"
-import { Badge } from "@codecity/ui/components/badge"
 
 interface Project {
   id: string
@@ -31,38 +29,34 @@ interface Project {
   createdAt: string
 }
 
-function getStatusBadge(status: string) {
-  const base = "font-mono text-[10px] px-2 py-0.5 border"
+function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case "COMPLETED":
-      return <Badge className={`${base} bg-emerald-500/10 text-emerald-400 border-emerald-500/20`}>Completed</Badge>
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          Completed
+        </span>
+      )
     case "FAILED":
-      return <Badge className={`${base} bg-primary/10 text-primary border-primary/20`}>Failed</Badge>
+      return (
+        <span className="text-[10px] px-2 py-0.5 font-medium rounded bg-red-500/10 text-red-400 border border-red-500/30">
+          Failed
+        </span>
+      )
     case "PROCESSING":
-      return <Badge className={`${base} bg-yellow-500/10 text-yellow-400 border-yellow-500/20 animate-pulse`}>Processing</Badge>
+      return (
+        <span className="text-[10px] px-2 py-0.5 font-medium rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+          Processing
+        </span>
+      )
     default:
-      return <Badge className={`${base} bg-blue-500/10 text-blue-400 border-blue-500/20`}>Pending</Badge>
+      return (
+        <span className="text-[10px] px-2 py-0.5 font-medium rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+          Pending
+        </span>
+      )
   }
-}
-
-function ProjectSkyline({ seed }: { seed: number }) {
-  return (
-    <div className="absolute inset-x-0 bottom-0 flex h-14 items-end justify-center gap-[3px] overflow-hidden bg-gradient-to-t from-background/90 to-transparent px-3 pb-2">
-      {Array.from({ length: 16 }, (_, i) => {
-        const height = 10 + ((seed * (i + 3) + i * 11) % 52)
-        return (
-          <div
-            key={i}
-            className="w-[4px] rounded-t-sm bg-primary/70"
-            style={{
-              height,
-              opacity: 0.28 + ((i % 5) * 0.12),
-            }}
-          />
-        )
-      })}
-    </div>
-  )
 }
 
 export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
@@ -79,13 +73,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     e.stopPropagation()
 
     if (deletingId === id) {
-      // Second click — confirm delete
       try {
-        // Delete from server
         await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
-        // Delete from local cache
         deleteCachedProject(id)
-        // Update query cache
         queryClient.setQueryData<Project[]>(["projects"], (old) =>
           old ? old.filter((p) => p.id !== id) : []
         )
@@ -93,7 +83,6 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         setDeletingId(null)
       }
     } else {
-      // First click — mark for confirmation
       setDeletingId(id)
       setTimeout(() => setDeletingId((prev) => (prev === id ? null : prev)), 3000)
     }
@@ -125,21 +114,18 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   if (isLoading) {
     return (
       <div className="space-y-5">
-        <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-4">
-          <div className="h-3 w-20 rounded-lg bg-zinc-800/50 animate-pulse mb-2" />
-          <div className="h-4 w-36 rounded-lg bg-zinc-800/30 animate-pulse" />
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
+          <div className="h-3 w-20 rounded-lg bg-white/[0.04] animate-pulse mb-2" />
+          <div className="h-4 w-36 rounded-lg bg-white/[0.04] animate-pulse" />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 overflow-hidden">
-              <div className="h-16 bg-zinc-800/20 animate-pulse border-b border-zinc-800/30" />
-              <div className="p-3 space-y-2">
-                <div className="h-4 w-3/4 rounded-lg bg-zinc-800/30 animate-pulse" />
-                <div className="h-3 w-full rounded-lg bg-zinc-800/20 animate-pulse" />
-                <div className="flex gap-3 mt-2">
-                  <div className="h-3 w-16 rounded-lg bg-zinc-800/20 animate-pulse" />
-                  <div className="h-3 w-20 rounded-lg bg-zinc-800/20 animate-pulse" />
-                </div>
+            <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
+              <div className="h-4 w-3/4 rounded-lg bg-white/[0.04] animate-pulse mb-3" />
+              <div className="h-3 w-full rounded-lg bg-white/[0.04] animate-pulse mb-2" />
+              <div className="flex gap-3 mt-2">
+                <div className="h-3 w-16 rounded-lg bg-white/[0.04] animate-pulse" />
+                <div className="h-3 w-20 rounded-lg bg-white/[0.04] animate-pulse" />
               </div>
             </div>
           ))}
@@ -151,19 +137,19 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   return (
     <div className="space-y-5">
       {/* Header row */}
-      <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#71717a] font-medium">
             My Cities
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#a1a1aa]">
             {projects.length} project{projects.length !== 1 ? "s" : ""} analyzed
           </p>
         </div>
         <Button
           onClick={() => onCreateCity?.()}
           size="sm"
-          className="gap-1.5 bg-primary text-white hover:bg-primary/90 font-mono text-xs"
+          className="gap-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
         >
           <Plus className="h-3.5 w-3.5" />
           New City
@@ -171,24 +157,24 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       </div>
 
       {projects.length === 0 ? (
-        <Card className="rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm h-full min-h-[400px] flex items-center justify-center">
-          <CardContent className="flex flex-col items-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800">
-              <Building2 className="h-7 w-7 text-muted-foreground" />
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] min-h-[400px] flex items-center justify-center">
+          <div className="flex flex-col items-center py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-500/10">
+              <Building2 className="h-7 w-7 text-indigo-400" />
             </div>
-            <p className="mt-4 text-base font-semibold text-foreground">No cities built yet</p>
-            <p className="mt-1.5 text-sm text-muted-foreground max-w-sm text-center leading-relaxed">
+            <p className="mt-4 text-base font-semibold text-[#fafafa]">No cities built yet</p>
+            <p className="mt-1.5 text-sm text-[#a1a1aa] max-w-sm text-center leading-relaxed">
               Analyze a GitHub repository to transform its codebase into an interactive 3D city visualization.
             </p>
             <Button
               onClick={() => onCreateCity?.()}
-              className="mt-6 gap-1.5 bg-primary text-white hover:bg-primary/90 font-mono text-xs"
+              className="mt-6 gap-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
             >
               <Plus className="h-3.5 w-3.5" />
               Create Your First City
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <div className="mx-auto grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {projects.map((project) => (
@@ -200,95 +186,81 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                   : `/project/${project.id}`
               }
             >
-              <Card className="group relative h-full overflow-hidden rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:shadow-[0_14px_30px_rgba(0,0,0,0.32)]">
-                <CardContent className="p-0">
-                  {/* Skyline preview */}
-                  <div className="relative border-b border-zinc-800/30 bg-gradient-to-b from-primary/[0.06] to-transparent">
-                    <ProjectSkyline
-                      seed={project.name
-                        .split("")
-                        .reduce((acc, char) => acc + char.charCodeAt(0), 0)}
-                    />
-                    <div className="flex items-center justify-between px-3 pb-12 pt-2.5">
-                      {getStatusBadge(project.status)}
-                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
-                    </div>
-                  </div>
+              <div className="group relative h-full rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-[#6366f140] hover:translate-y-[-2px] transition-all duration-300">
+                {/* Header: status + arrow */}
+                <div className="flex items-center justify-between mb-3">
+                  <StatusBadge status={project.status} />
+                  <ArrowUpRight className="h-3.5 w-3.5 text-[#52525b] transition-colors group-hover:text-indigo-400" />
+                </div>
 
-                  {/* Project name + visibility */}
-                  <div className="flex items-center justify-between px-3 pb-2 pt-2.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {project.visibility === "PUBLIC" ? (
-                        <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      ) : (
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      )}
-                      <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                        {project.name}
-                      </h3>
-                    </div>
-                    <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/50">
-                      {project.visibility}
+                {/* Project name + visibility */}
+                <div className="flex items-center gap-2 mb-1">
+                  {project.visibility === "PUBLIC" ? (
+                    <Globe className="h-3.5 w-3.5 text-[#52525b] shrink-0" />
+                  ) : (
+                    <Lock className="h-3.5 w-3.5 text-[#52525b] shrink-0" />
+                  )}
+                  <h3 className="text-sm font-semibold text-[#fafafa] truncate">
+                    {project.name}
+                  </h3>
+                </div>
+
+                <p className="text-[11px] text-[#52525b] truncate mb-3">
+                  {project.repoUrl}
+                </p>
+
+                {/* Stats */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <FileCode className="h-3 w-3 text-[#52525b]" />
+                    <span className="text-[11px] text-[#a1a1aa]">
+                      {project.fileCount ?? 0} files
                     </span>
                   </div>
-
-                  <p className="px-3 font-mono text-[11px] text-muted-foreground/60 truncate">
-                    {project.repoUrl}
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-2.5 px-3 pb-3 pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <FileCode className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {project.fileCount ?? 0} files
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Code2 className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {(project.lineCount ?? 0).toLocaleString()} lines
-                      </span>
-                    </div>
-                    <div className="hidden items-center gap-1.5 md:flex">
-                      <GitFork className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {project.visibility === "PUBLIC" ? "Shared" : "Private"}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1.5">
+                    <Code2 className="h-3 w-3 text-[#52525b]" />
+                    <span className="text-[11px] text-[#a1a1aa]">
+                      {(project.lineCount ?? 0).toLocaleString()} lines
+                    </span>
                   </div>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between border-t border-zinc-800/30 bg-zinc-950/30 px-3 py-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {new Date(project.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        onClick={(e) => handleToggleVisibility(e, project)}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-zinc-800 hover:text-foreground opacity-50 sm:opacity-0 group-hover:opacity-100"
-                        title={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
-                      >
-                        {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(e, project.id)}
-                        className={`rounded-lg p-1.5 transition-all opacity-50 sm:opacity-0 group-hover:opacity-100 ${
-                          deletingId === project.id
-                            ? "bg-primary/20 text-primary"
-                            : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                        }`}
-                        title={deletingId === project.id ? "Click again to confirm delete" : "Delete project"}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
+                  <div className="hidden items-center gap-1.5 md:flex">
+                    <GitFork className="h-3 w-3 text-[#52525b]" />
+                    <span className="text-[11px] text-[#a1a1aa]">
+                      {project.visibility === "PUBLIC" ? "Shared" : "Private"}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3 w-3 text-[#52525b]" />
+                    <span className="text-[10px] text-[#52525b]">
+                      {new Date(project.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      onClick={(e) => handleToggleVisibility(e, project)}
+                      className="rounded-lg p-1.5 text-[#52525b] transition-all duration-200 hover:bg-white/[0.04] hover:text-[#fafafa] opacity-50 sm:opacity-0 group-hover:opacity-100"
+                      title={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
+                    >
+                      {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(e, project.id)}
+                      className={`rounded-lg p-1.5 transition-all duration-200 opacity-50 sm:opacity-0 group-hover:opacity-100 ${
+                        deletingId === project.id
+                          ? "bg-red-500/10 text-red-400"
+                          : "text-[#52525b] hover:bg-white/[0.04] hover:text-red-400"
+                      }`}
+                      title={deletingId === project.id ? "Click again to confirm delete" : "Delete project"}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </Link>
           ))}
         </div>

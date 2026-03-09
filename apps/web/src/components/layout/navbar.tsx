@@ -7,29 +7,29 @@ export async function Navbar() {
   const user = await getSessionUser()
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex h-14 items-center justify-between gap-4">
+    <nav className="sticky top-0 z-50 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/[0.06]">
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 flex h-[52px] items-center justify-between gap-4">
         {/* Left: Logo + Brand */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-white transition-shadow group-hover:shadow-primary/10">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500 text-[10px] font-bold text-white">
             CC
           </div>
-          <span className="text-sm font-semibold tracking-widest uppercase text-zinc-300">
+          <span className="text-sm font-semibold text-zinc-50 tracking-wide">
             CodeCity
           </span>
         </Link>
 
         {/* Center: Nav pill */}
-        <div className="hidden items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/50 p-1 md:flex">
+        <div className="hidden items-center gap-1 rounded-xl bg-[#09090b]/50 border border-white/[0.04] p-1 md:flex">
           <Link
             href="/explore"
-            className="rounded-full px-3 py-1.5 font-mono text-xs font-medium tracking-wide text-zinc-400 transition-colors hover:bg-primary/10 hover:text-white"
+            className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-zinc-500 hover:text-white transition-colors duration-200"
           >
             Explore
           </Link>
           <Link
             href="/dashboard"
-            className="rounded-full px-3 py-1.5 font-mono text-xs font-medium tracking-wide text-zinc-400 transition-colors hover:bg-primary/10 hover:text-white"
+            className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-zinc-500 hover:text-white transition-colors duration-200"
           >
             Dashboard
           </Link>
@@ -38,7 +38,7 @@ export async function Navbar() {
         {/* Right: Auth + Mobile */}
         <div className="flex items-center gap-2">
           {user ? (
-            <p className="hidden font-mono text-xs uppercase tracking-wide text-zinc-500 sm:block">
+            <p className="hidden text-[13px] font-medium text-zinc-500 sm:block">
               {user.name ?? "User"}
             </p>
           ) : (
@@ -46,13 +46,12 @@ export async function Navbar() {
               asChild
               variant="outline"
               size="sm"
-              className="hidden md:inline-flex border-zinc-800 text-zinc-300 hover:bg-primary/10 hover:text-white hover:border-primary/30 font-medium"
+              className="hidden md:inline-flex rounded-lg text-[13px] font-medium text-zinc-300 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.12] hover:bg-white/[0.06] transition-all duration-200"
             >
               <Link href="/login">Sign In</Link>
             </Button>
           )}
 
-          {/* Mobile hamburger */}
           <MobileNav isLoggedIn={!!user} userName={user?.name ?? null} />
         </div>
       </div>

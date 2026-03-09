@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { Search, FileCode, ArrowUpRight, Users, Code2, ArrowDownAZ, Clock, TrendingUp } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
-import { Card, CardContent } from "@codecity/ui/components/card"
 import { Input } from "@codecity/ui/components/input"
 
 interface PublicProject {
@@ -24,27 +23,6 @@ async function fetchExploreProjects(): Promise<PublicProject[]> {
   const res = await fetch("/api/projects?tab=explore")
   const data = await res.json()
   return Array.isArray(data) ? data : []
-}
-
-/** Procedural mini cityscape for card previews */
-function CityPreview({ name }: { name: string }) {
-  const seed = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-  return (
-    <div className="absolute inset-0 flex items-end justify-center pb-3 overflow-hidden">
-      <div className="flex items-end gap-[3px] opacity-25">
-        {Array.from({ length: 14 }, (_, i) => (
-          <div
-            key={i}
-            className="rounded-t-sm bg-primary"
-            style={{
-              width: `${3 + ((seed + i) % 3)}px`,
-              height: `${14 + ((seed * (i + 1) * 7 + 13) % 44)}px`,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  )
 }
 
 function sortProjects(projects: PublicProject[], mode: SortMode): PublicProject[] {
@@ -82,18 +60,15 @@ export function ExploreTab() {
   if (isLoading) {
     return (
       <div className="space-y-5">
-        <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-4">
-          <div className="h-4 w-32 rounded-lg bg-zinc-800/50 animate-pulse mb-2" />
-          <div className="h-3 w-48 rounded-lg bg-zinc-800/30 animate-pulse" />
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
+          <div className="h-4 w-32 rounded-lg bg-white/[0.04] animate-pulse mb-2" />
+          <div className="h-3 w-48 rounded-lg bg-white/[0.04] animate-pulse" />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 overflow-hidden">
-              <div className="aspect-[16/9] bg-zinc-800/20 animate-pulse" />
-              <div className="p-3 space-y-2">
-                <div className="h-4 w-3/4 rounded-lg bg-zinc-800/30 animate-pulse" />
-                <div className="h-3 w-1/2 rounded-lg bg-zinc-800/20 animate-pulse" />
-              </div>
+            <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
+              <div className="h-4 w-3/4 rounded-lg bg-white/[0.04] animate-pulse mb-3" />
+              <div className="h-3 w-1/2 rounded-lg bg-white/[0.04] animate-pulse" />
             </div>
           ))}
         </div>
@@ -104,26 +79,26 @@ export function ExploreTab() {
   return (
     <div className="space-y-5">
       {/* Search + sort header */}
-      <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#71717a] font-medium">
             Explore Cities
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#a1a1aa]">
             {filtered.length} shared visualization{filtered.length !== 1 ? "s" : ""} from the community
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Sort buttons */}
-          <div className="flex items-center rounded-xl border border-zinc-800/50 bg-zinc-900 p-0.5">
+          <div className="flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02] p-0.5">
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setSort(opt.value)}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide transition-all ${
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] uppercase tracking-wide font-medium transition-all duration-200 ${
                   sort === opt.value
-                    ? "bg-primary text-white"
-                    : "text-muted-foreground/60 hover:text-foreground"
+                    ? "text-white bg-white/[0.06]"
+                    : "text-[#71717a] hover:text-white"
                 }`}
               >
                 <opt.icon className="h-3 w-3" />
@@ -132,94 +107,86 @@ export function ExploreTab() {
             ))}
           </div>
           <div className="relative flex-1 sm:w-56 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52525b]" />
             <Input
               type="text"
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 rounded-xl border-zinc-800/50 bg-zinc-950/60 pl-10 font-mono text-xs placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/30"
+              className="h-9 rounded-lg bg-white/[0.03] border-white/[0.08] pl-10 text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-indigo-500/45 focus-visible:ring-0 transition-colors duration-200"
             />
           </div>
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <Card className="rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm">
-          <CardContent className="flex flex-col items-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800">
-              <Users className="h-7 w-7 text-muted-foreground/50" />
-            </div>
-            <p className="mt-4 text-base font-semibold text-foreground">
-              {search ? "No matching cities" : "No public cities yet"}
-            </p>
-            <p className="mt-1.5 text-sm text-muted-foreground max-w-sm text-center">
-              {search
-                ? `No cities match "${search}". Try a different search term.`
-                : "Be the first to share a city visualization with the community."}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center py-16">
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-500/10">
+            <Users className="h-7 w-7 text-indigo-400" />
+          </div>
+          <p className="mt-4 text-base font-semibold text-[#fafafa]">
+            {search ? "No matching cities" : "No public cities yet"}
+          </p>
+          <p className="mt-1.5 text-sm text-[#a1a1aa] max-w-sm text-center">
+            {search
+              ? `No cities match "${search}". Try a different search term.`
+              : "Be the first to share a city visualization with the community."}
+          </p>
+        </div>
       ) : (
         <div className="mx-auto grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project) => (
             <Link key={project.id} href={`/project/${project.id}`}>
-              <Card className="group overflow-hidden rounded-2xl border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:shadow-[0_14px_30px_rgba(0,0,0,0.32)]">
-                {/* Preview */}
-                <div className="relative aspect-[16/9] border-b border-zinc-800/30 bg-gradient-to-b from-primary/[0.06] to-transparent">
-                  <CityPreview name={project.name} />
-                  <div className="absolute right-2.5 top-2.5">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="group rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-[#6366f140] hover:translate-y-[-2px] transition-all duration-300">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-[#fafafa] truncate">
+                    {project.name}
+                  </h3>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-[#52525b] transition-colors group-hover:text-indigo-400 shrink-0 ml-2" />
+                </div>
+
+                <p className="truncate text-[11px] text-[#52525b] mb-3">
+                  {project.repoUrl}
+                </p>
+
+                {/* File + line stats */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <FileCode className="h-3 w-3 text-[#52525b]" />
+                    <span className="text-[11px] text-[#a1a1aa]">
+                      {project.fileCount ?? 0} files
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Code2 className="h-3 w-3 text-[#52525b]" />
+                    <span className="text-[11px] text-[#a1a1aa]">
+                      {(project.lineCount ?? 0).toLocaleString()} lines
+                    </span>
                   </div>
                 </div>
 
-                <CardContent className="p-3">
-                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                    {project.name}
-                  </h3>
-
-                  <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground/60">
-                    {project.repoUrl}
-                  </p>
-
-                  {/* File + line stats */}
-                  <div className="mt-2.5 flex items-center gap-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <FileCode className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {project.fileCount ?? 0} files
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Code2 className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {(project.lineCount ?? 0).toLocaleString()} lines
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Author + date */}
-                  <div className="mt-2.5 flex items-center justify-between border-t border-zinc-800/30 pt-2.5">
-                    <div className="flex items-center gap-2">
-                      {project.user.image ? (
-                        <img src={project.user.image} alt="" className="h-5 w-5 rounded-full ring-1 ring-zinc-800" />
-                      ) : (
-                        <div className="h-5 w-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                          <span className="font-mono text-[7px] font-bold text-primary">
-                            {(project.user.name ?? "A").charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {project.user.name ?? "Anonymous"}
-                      </span>
-                    </div>
-                    <span className="font-mono text-[10px] text-muted-foreground/50">
-                      {new Date(project.createdAt).toLocaleDateString()}
+                {/* Author + date */}
+                <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+                  <div className="flex items-center gap-2">
+                    {project.user.image ? (
+                      <img src={project.user.image} alt="" className="h-5 w-5 rounded-full ring-1 ring-white/[0.08]" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                        <span className="text-[7px] font-bold text-[#a1a1aa]">
+                          {(project.user.name ?? "A").charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-[11px] text-[#a1a1aa]">
+                      {project.user.name ?? "Anonymous"}
                     </span>
                   </div>
-                </CardContent>
-              </Card>
+                  <span className="text-[10px] text-[#52525b]">
+                    {new Date(project.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
             </Link>
           ))}
         </div>

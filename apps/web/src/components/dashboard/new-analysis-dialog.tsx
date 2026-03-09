@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Globe, Lock, Sparkles } from "lucide-react"
+import { Loader2, Globe, Lock } from "lucide-react"
 import { cacheProject } from "@/lib/client-cache"
 import {
   Dialog,
@@ -102,23 +102,19 @@ export function NewAnalysisDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-lg rounded-2xl border-zinc-800/50 bg-zinc-900/95 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-lg rounded-xl border-white/[0.08] bg-[#0a0a0c]">
         <DialogHeader>
-          <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary/60">
-            <Sparkles className="h-3 w-3" />
-            New City
-          </div>
-          <DialogTitle className="text-xl font-semibold text-foreground font-[family-name:var(--font-sora)]">
+          <DialogTitle className="text-xl font-semibold text-[#fafafa]">
             Create a new analysis
           </DialogTitle>
-          <DialogDescription className="font-mono text-xs text-muted-foreground">
+          <DialogDescription className="text-xs text-[#71717a]">
             Paste a GitHub repository URL and we&apos;ll generate a 3D city layout.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="mt-2 space-y-5">
           <div>
-            <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground block mb-1.5">
+            <label className="text-[11px] uppercase tracking-wider text-[#71717a] font-medium block mb-1.5">
               Repository URL
             </label>
             <Input
@@ -127,7 +123,7 @@ export function NewAnalysisDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={submitting}
-              className="h-11 rounded-xl border-zinc-800/50 bg-zinc-950/60 font-mono text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/40 focus-visible:ring-primary/30"
+              className="h-11 rounded-lg bg-white/[0.03] border-white/[0.08] text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-indigo-500/45 focus-visible:ring-0 transition-colors duration-200"
               required
             />
             {!submitting && (
@@ -137,7 +133,7 @@ export function NewAnalysisDialog({
                     key={repo}
                     type="button"
                     onClick={() => setUrl(repo)}
-                    className="rounded-full border border-zinc-800/50 px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                    className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 text-[10px] text-[#a1a1aa] font-medium transition-all duration-200 hover:border-white/[0.12] hover:text-white"
                   >
                     {repo.replace("https://github.com/", "")}
                   </button>
@@ -148,17 +144,17 @@ export function NewAnalysisDialog({
 
           {!submitting && (
             <div>
-              <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground block mb-1.5">
+              <label className="text-[11px] uppercase tracking-wider text-[#71717a] font-medium block mb-1.5">
                 Visibility
               </label>
               <div className="flex gap-2">
                 {(["PRIVATE", "PUBLIC"] as const).map((v) => (
                   <label
                     key={v}
-                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-mono text-xs uppercase tracking-wide transition-all ${
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs uppercase tracking-wide font-medium transition-all duration-200 ${
                       visibility === v
-                        ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-zinc-800/50 bg-zinc-950/50 text-muted-foreground hover:border-zinc-700"
+                        ? "border-indigo-500/40 bg-indigo-500/10 text-white"
+                        : "border-white/[0.06] bg-white/[0.02] text-[#52525b] hover:border-white/[0.12] hover:text-[#a1a1aa]"
                     }`}
                   >
                     <input
@@ -178,28 +174,13 @@ export function NewAnalysisDialog({
           )}
 
           {submitting && (
-            <div className="space-y-3">
-              {/* City building animation */}
-              <div className="flex items-end justify-center gap-[3px] h-16">
-                {Array.from({ length: 24 }, (_, i) => {
-                  const baseHeight = 12 + ((i * 7 + 3) % 48)
-                  return (
-                    <div
-                      key={i}
-                      className="w-1 rounded-t-[2px] bg-primary/60 animate-pulse"
-                      style={{
-                        height: `${baseHeight}px`,
-                        animationDelay: `${i * 80}ms`,
-                      }}
-                    />
-                  )
-                })}
-              </div>
+            <div className="flex flex-col items-center gap-3 py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
               <div className="text-center">
-                <p className="font-mono text-xs text-muted-foreground animate-pulse">
+                <p className="text-xs text-[#a1a1aa]">
                   {stage}
                 </p>
-                <p className="font-mono text-[10px] text-muted-foreground/40 mt-1">
+                <p className="text-[10px] text-[#52525b] mt-1">
                   This may take 10–30 seconds depending on repo size
                 </p>
               </div>
@@ -207,7 +188,7 @@ export function NewAnalysisDialog({
           )}
 
           {error && (
-            <p className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 font-mono text-xs text-primary">
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
               {error}
             </p>
           )}
@@ -218,7 +199,7 @@ export function NewAnalysisDialog({
                 type="button"
                 onClick={() => onOpenChange(false)}
                 variant="outline"
-                className="rounded-xl border-zinc-800/50 bg-zinc-950/40 hover:bg-zinc-800/50"
+                className="rounded-lg border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-200"
               >
                 Cancel
               </Button>
@@ -226,7 +207,7 @@ export function NewAnalysisDialog({
             <Button
               type="submit"
               disabled={submitting}
-              className="min-w-40 rounded-xl bg-primary text-white hover:bg-primary/90 font-mono text-sm"
+              className="min-w-40 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
             >
               {submitting ? (
                 <>
