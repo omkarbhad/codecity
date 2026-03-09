@@ -18,7 +18,7 @@ export function CTA() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 60% 40% at 50% -5%, rgba(99,102,241,0.05), transparent 60%)",
+            "radial-gradient(ellipse 60% 40% at 50% -5%, rgba(255,61,61,0.05), transparent 60%)",
         }}
       />
 
@@ -36,7 +36,7 @@ export function CTA() {
         <motion.div
           {...fadeUp}
           transition={{ duration: 0.5, delay: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="mx-auto w-12 h-[3px] bg-indigo-500 rounded-full mb-4"
+          className="mx-auto w-12 h-[3px] bg-primary rounded-full mb-4"
         />
 
         <motion.p
@@ -52,7 +52,7 @@ export function CTA() {
           {...fadeUp}
           transition={{ duration: 0.5, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <Button asChild className="rounded-lg px-5 py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200">
+          <Button asChild className="rounded-lg px-5 py-2.5 text-sm font-medium bg-primary hover:bg-primary/90 text-white transition-colors duration-200">
             <Link href="/dashboard" className="flex items-center gap-2">
               Start Building Your City
               <ArrowRight className="h-4 w-4" />

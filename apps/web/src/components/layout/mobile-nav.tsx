@@ -64,7 +64,7 @@ export function MobileNav({
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-indigo-400 transition-colors duration-200 hover:bg-white/[0.04]"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-primary transition-colors duration-200 hover:bg-white/[0.04]"
                 >
                   <LogIn className="h-4 w-4" />
                   Sign In

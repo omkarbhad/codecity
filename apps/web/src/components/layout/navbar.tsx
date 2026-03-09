@@ -11,7 +11,7 @@ export async function Navbar() {
       <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 flex h-[52px] items-center justify-between gap-4">
         {/* Left: Logo + Brand */}
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500 text-[10px] font-bold text-white">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-white">
             CC
           </div>
           <span className="text-sm font-semibold text-zinc-50 tracking-wide">

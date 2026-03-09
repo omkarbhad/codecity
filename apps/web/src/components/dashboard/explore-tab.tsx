@@ -113,7 +113,7 @@ export function ExploreTab() {
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 rounded-lg bg-white/[0.03] border-white/[0.08] pl-10 text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-indigo-500/45 focus-visible:ring-0 transition-colors duration-200"
+              className="h-9 rounded-lg bg-white/[0.03] border-white/[0.08] pl-10 text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-primary/45 focus-visible:ring-0 transition-colors duration-200"
             />
           </div>
         </div>
@@ -121,8 +121,8 @@ export function ExploreTab() {
 
       {filtered.length === 0 ? (
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center py-16">
-          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-500/10">
-            <Users className="h-7 w-7 text-indigo-400" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10">
+            <Users className="h-7 w-7 text-primary" />
           </div>
           <p className="mt-4 text-base font-semibold text-[#fafafa]">
             {search ? "No matching cities" : "No public cities yet"}
@@ -137,13 +137,13 @@ export function ExploreTab() {
         <div className="mx-auto grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project) => (
             <Link key={project.id} href={`/project/${project.id}`}>
-              <div className="group rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-[#6366f140] hover:translate-y-[-2px] transition-all duration-300">
+              <div className="group rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-primary/25 hover:translate-y-[-2px] transition-all duration-300">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-[#fafafa] truncate">
                     {project.name}
                   </h3>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-[#52525b] transition-colors group-hover:text-indigo-400 shrink-0 ml-2" />
+                  <ArrowUpRight className="h-3.5 w-3.5 text-[#52525b] transition-colors group-hover:text-primary shrink-0 ml-2" />
                 </div>
 
                 <p className="truncate text-[11px] text-[#52525b] mb-3">

@@ -13,12 +13,12 @@ const fadeUp = {
 export function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Subtle indigo radial glow */}
+      {/* Subtle radial glow */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 60% 40% at 50% -5%, rgba(99,102,241,0.05), transparent 60%)",
+            "radial-gradient(ellipse 60% 40% at 50% -5%, rgba(255,61,61,0.05), transparent 60%)",
         }}
       />
 
@@ -30,7 +30,7 @@ export function HeroSection() {
         >
           Visualize Your Code
           <br />
-          <span className="text-indigo-400">As a Living City</span>
+          <span className="text-primary">As a Living City</span>
         </motion.h1>
 
         <motion.p
@@ -49,7 +49,7 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10"
         >
-          <Button asChild className="rounded-lg px-5 py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200">
+          <Button asChild className="rounded-lg px-5 py-2.5 text-sm font-medium bg-primary hover:bg-primary/90 text-white transition-colors duration-200">
             <Link href="/dashboard" className="flex items-center gap-2">
               Get Started
               <ArrowRight className="h-4 w-4" />
@@ -89,7 +89,7 @@ export function HeroSection() {
           {/* Terminal body */}
           <div className="px-4 py-3 font-mono text-[11px] leading-[1.9] text-left space-y-1">
             <p>
-              <span className="text-indigo-400">$</span>{" "}
+              <span className="text-primary">$</span>{" "}
               <span className="text-zinc-400">codecity analyze vercel/next.js</span>
             </p>
             <p className="text-zinc-500">Analyzing vercel/next.js...</p>
@@ -100,11 +100,11 @@ export function HeroSection() {
               ✓ Visualization ready — 14 districts, 2,847 buildings
             </p>
             <p className="inline-flex items-center">
-              <span className="text-indigo-400">$</span>
+              <span className="text-primary">$</span>
               <motion.span
                 animate={{ opacity: [1, 0, 1] }}
                 transition={{ duration: 1, repeat: Infinity }}
-                className="ml-1 inline-block w-1.5 h-3.5 bg-indigo-400"
+                className="ml-1 inline-block w-1.5 h-3.5 bg-primary"
               />
             </p>
           </div>

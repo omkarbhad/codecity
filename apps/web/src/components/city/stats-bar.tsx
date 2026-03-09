@@ -18,13 +18,13 @@ function StatItem({
   return (
     <div
       className={`flex flex-col items-center px-4 py-2 ${
-        !isLast ? "border-r border-border/30" : ""
+        !isLast ? "border-r border-white/[0.06]" : ""
       }`}
     >
-      <span className="font-mono text-sm font-bold text-foreground">
+      <span className="font-mono text-sm font-bold text-[#fafafa]">
         {value.toLocaleString()}
       </span>
-      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
         {label}
       </span>
     </div>
@@ -33,7 +33,7 @@ function StatItem({
 
 export function StatsBar({ stats }: StatsBarProps) {
   return (
-    <div className="bg-card/60 backdrop-blur-xl border-t border-border/30 flex items-center justify-center">
+    <div className="bg-[#09090b]/92 backdrop-blur-xl border-t border-white/[0.06] flex items-center justify-center">
       <div className="flex items-center">
         <StatItem value={stats.totalFiles} label="Files" />
         <StatItem value={stats.totalFunctions} label="Functions" />

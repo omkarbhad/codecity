@@ -123,7 +123,7 @@ export function NewAnalysisDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={submitting}
-              className="h-11 rounded-lg bg-white/[0.03] border-white/[0.08] text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-indigo-500/45 focus-visible:ring-0 transition-colors duration-200"
+              className="h-11 rounded-lg bg-white/[0.03] border-white/[0.08] text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-primary/45 focus-visible:ring-0 transition-colors duration-200"
               required
             />
             {!submitting && (
@@ -153,7 +153,7 @@ export function NewAnalysisDialog({
                     key={v}
                     className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs uppercase tracking-wide font-medium transition-all duration-200 ${
                       visibility === v
-                        ? "border-indigo-500/40 bg-indigo-500/10 text-white"
+                        ? "border-primary/40 bg-primary/10 text-white"
                         : "border-white/[0.06] bg-white/[0.02] text-[#52525b] hover:border-white/[0.12] hover:text-[#a1a1aa]"
                     }`}
                   >
@@ -175,7 +175,7 @@ export function NewAnalysisDialog({
 
           {submitting && (
             <div className="flex flex-col items-center gap-3 py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <div className="text-center">
                 <p className="text-xs text-[#a1a1aa]">
                   {stage}
@@ -207,7 +207,7 @@ export function NewAnalysisDialog({
             <Button
               type="submit"
               disabled={submitting}
-              className="min-w-40 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
+              className="min-w-40 rounded-lg text-sm font-medium bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
             >
               {submitting ? (
                 <>

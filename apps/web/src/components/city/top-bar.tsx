@@ -86,7 +86,7 @@ export function TopBar({ projectName }: TopBarProps) {
   }, [legendOpen])
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 top-bar-gradient">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-[#09090b]/92 backdrop-blur-xl border-b border-white/[0.06]">
       <div className="flex items-center justify-between px-4 py-2 gap-3">
         {/* Left: Back + Logo + Repo */}
         <div className="flex items-center gap-2 shrink-0">
@@ -144,7 +144,7 @@ export function TopBar({ projectName }: TopBarProps) {
                 onClick={() => setMode(m.key)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-all duration-200 ${
                   visualizationMode === m.key
-                    ? "mode-btn-active shadow-sm"
+                    ? "bg-primary/15 text-primary border border-primary/20 shadow-sm shadow-primary/10"
                     : "text-white/50 hover:text-white/75 hover:bg-white/[0.06]"
                 }`}
                 title={`${m.label} (${m.shortcut})`}
@@ -203,7 +203,7 @@ export function TopBar({ projectName }: TopBarProps) {
               </button>
 
               {legendOpen && (
-                <div className="absolute top-full right-0 mt-2 w-64 backdrop-blur-xl bg-card/90 border border-border/50 rounded-lg p-3 shadow-2xl z-50">
+                <div className="absolute top-full right-0 mt-2 w-64 backdrop-blur-xl bg-[#09090b]/92 border border-white/[0.08] rounded-lg p-3 shadow-2xl z-50">
                   <p className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-2">
                     Visual Guide
                   </p>

@@ -41,14 +41,14 @@ function StatCell({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-md p-2 ${bgClass ?? "bg-white/5"}`}
+      className={`flex flex-col items-center justify-center rounded-md p-2 ${bgClass ?? "bg-white/[0.04]"}`}
     >
       <span
-        className={`font-mono text-sm font-bold ${colorClass ?? "text-white"}`}
+        className={`font-mono text-sm font-bold ${colorClass ?? "text-[#fafafa]"}`}
       >
         {value}
       </span>
-      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
         {label}
       </span>
     </div>
@@ -70,7 +70,7 @@ function ExpandableSection({
   if (count === 0) return null
 
   return (
-    <div className="border-t border-border/20">
+    <div className="border-t border-white/[0.06]">
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 w-full text-left py-2 px-3
@@ -102,12 +102,12 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
   if (!file) return null
 
   return (
-    <div className="bg-card/40 backdrop-blur-xl border-l border-border/30 w-80 overflow-y-auto max-h-full">
+    <div className="bg-[#09090b]/92 backdrop-blur-xl border-l border-white/[0.06] w-80 overflow-y-auto max-h-full">
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 p-3 border-b border-border/30">
+      <div className="flex items-start justify-between gap-2 p-3 border-b border-white/[0.06]">
         <div className="flex items-start gap-2 min-w-0">
           <FileCode className="w-4 h-4 shrink-0 text-white/50 mt-0.5" />
-          <span className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
+          <span className="font-mono text-xs text-zinc-400 break-all leading-relaxed">
             {file.path}
           </span>
         </div>

@@ -96,7 +96,7 @@ function DashboardContent() {
         <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-5 sm:py-6 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
@@ -107,7 +107,7 @@ function DashboardContent() {
             <Button
               onClick={openNewCityDialog}
               size="sm"
-              className="gap-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
+              className="gap-1.5 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
             >
               <Plus className="h-3.5 w-3.5" />
               New City
@@ -119,7 +119,7 @@ function DashboardContent() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 hover:border-[#6366f140] transition-all duration-300"
+                className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 hover:border-primary/25 transition-all duration-300"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <stat.icon className="h-3.5 w-3.5 text-[#71717a]" />
@@ -141,14 +141,14 @@ function DashboardContent() {
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-white/[0.02] border border-white/[0.06] p-1 sm:w-fit">
             <TabsTrigger
               value="projects"
-              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
+              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
             >
               <FolderGit2 className="h-3.5 w-3.5" />
               My Projects
             </TabsTrigger>
             <TabsTrigger
               value="explore"
-              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
+              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
             >
               <Compass className="h-3.5 w-3.5" />
               Explore

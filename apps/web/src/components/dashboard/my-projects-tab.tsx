@@ -149,7 +149,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         <Button
           onClick={() => onCreateCity?.()}
           size="sm"
-          className="gap-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
+          className="gap-1.5 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
         >
           <Plus className="h-3.5 w-3.5" />
           New City
@@ -159,8 +159,8 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       {projects.length === 0 ? (
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] min-h-[400px] flex items-center justify-center">
           <div className="flex flex-col items-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-500/10">
-              <Building2 className="h-7 w-7 text-indigo-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10">
+              <Building2 className="h-7 w-7 text-primary" />
             </div>
             <p className="mt-4 text-base font-semibold text-[#fafafa]">No cities built yet</p>
             <p className="mt-1.5 text-sm text-[#a1a1aa] max-w-sm text-center leading-relaxed">
@@ -168,7 +168,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
             </p>
             <Button
               onClick={() => onCreateCity?.()}
-              className="mt-6 gap-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200"
+              className="mt-6 gap-1.5 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
             >
               <Plus className="h-3.5 w-3.5" />
               Create Your First City
@@ -186,11 +186,11 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                   : `/project/${project.id}`
               }
             >
-              <div className="group relative h-full rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-[#6366f140] hover:translate-y-[-2px] transition-all duration-300">
+              <div className="group relative h-full rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-primary/25 hover:translate-y-[-2px] transition-all duration-300">
                 {/* Header: status + arrow */}
                 <div className="flex items-center justify-between mb-3">
                   <StatusBadge status={project.status} />
-                  <ArrowUpRight className="h-3.5 w-3.5 text-[#52525b] transition-colors group-hover:text-indigo-400" />
+                  <ArrowUpRight className="h-3.5 w-3.5 text-[#52525b] transition-colors group-hover:text-primary" />
                 </div>
 
                 {/* Project name + visibility */}

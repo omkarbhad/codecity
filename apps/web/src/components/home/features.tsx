@@ -76,7 +76,7 @@ export function Features() {
           <h2 className="text-2xl sm:text-3xl font-bold text-[#fafafa] tracking-tight mb-3">
             Everything You Need to Understand Code
           </h2>
-          <div className="mx-auto w-12 h-[3px] bg-indigo-500 rounded-full mb-4" />
+          <div className="mx-auto w-12 h-[3px] bg-primary rounded-full mb-4" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
             Powerful tools to visualize, analyze, and navigate complex codebases
             with ease.
@@ -94,9 +94,9 @@ export function Features() {
             <motion.div
               key={feature.title}
               variants={item}
-              className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-[#6366f140] transition-all duration-300"
+              className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-primary/25 transition-all duration-300"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-indigo-400 mb-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-primary mb-4">
                 <feature.icon className="h-5 w-5" />
               </div>
               <h3 className="text-lg font-semibold text-zinc-50 tracking-tight">

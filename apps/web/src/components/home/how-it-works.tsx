@@ -47,7 +47,7 @@ export function HowItWorks() {
           <h2 className="text-2xl sm:text-3xl font-bold text-[#fafafa] tracking-tight mb-3">
             Three Steps to Your Code City
           </h2>
-          <div className="mx-auto w-12 h-[3px] bg-indigo-500 rounded-full mb-4" />
+          <div className="mx-auto w-12 h-[3px] bg-primary rounded-full mb-4" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
             From repository to visualization in under a minute.
           </p>
@@ -68,14 +68,14 @@ export function HowItWorks() {
                 className="relative text-center"
               >
                 {/* Number badge */}
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-white mb-6 relative z-10">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white mb-6 relative z-10">
                   <span className="text-sm font-bold">{item.step}</span>
                 </div>
 
                 {/* Card */}
-                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-[#6366f140] transition-all duration-300">
+                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-primary/25 transition-all duration-300">
                   <div className="flex justify-center mb-4">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-indigo-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-primary">
                       <item.icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -103,7 +103,7 @@ export function HowItWorks() {
             >
               {/* Vertical line + badge */}
               <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white">
                   <span className="text-sm font-bold">{item.step}</span>
                 </div>
                 {index < steps.length - 1 && (
@@ -113,8 +113,8 @@ export function HowItWorks() {
 
               {/* Content */}
               <div className="pb-6 flex-1">
-                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-[#6366f140] transition-all duration-300">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-indigo-400 mb-3">
+                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-primary/25 transition-all duration-300">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-primary mb-3">
                     <item.icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-lg font-semibold text-zinc-50 tracking-tight mb-2">

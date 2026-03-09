@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
           {/* Brand + copyright */}
           <div className="flex items-center gap-3 justify-center md:justify-start">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500 text-[10px] font-bold text-white">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-white">
               CC
             </div>
             <div>
