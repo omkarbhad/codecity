@@ -59,24 +59,29 @@ const container = {
 
 const item = {
   hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 320, damping: 30 } as const,
+  },
 }
 
 export function Features() {
   return (
     <section className="relative py-24 sm:py-32">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.06]" />
       <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          transition={{ type: "spring", stiffness: 340, damping: 30 }}
           className="text-center mb-16"
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#fafafa] tracking-tight mb-3">
+          <h2 className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
             Everything You Need to Understand Code
           </h2>
-          <div className="mx-auto w-12 h-[3px] bg-primary rounded-full mb-4" />
+          <div className="mx-auto mb-4 h-[3px] w-12 rounded-full bg-primary" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
             Powerful tools to visualize, analyze, and navigate complex codebases
             with ease.
@@ -94,9 +99,9 @@ export function Features() {
             <motion.div
               key={feature.title}
               variants={item}
-              className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-primary/25 transition-all duration-300"
+              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_32px_rgba(255,61,61,0.12)]"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-primary mb-4">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/25 bg-red-500/12 text-red-300">
                 <feature.icon className="h-5 w-5" />
               </div>
               <h3 className="text-lg font-semibold text-zinc-50 tracking-tight">

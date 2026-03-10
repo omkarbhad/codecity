@@ -3,7 +3,7 @@ import { Github, Twitter } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/[0.06]">
+    <footer className="border-t border-white/[0.06] bg-[#09090b]/95">
       <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
           {/* Brand + copyright */}
@@ -31,7 +31,7 @@ export function Footer() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm text-zinc-400 hover:text-white transition-colors duration-200"
+                className="text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200"
               >
                 {link.label}
               </Link>
@@ -42,14 +42,14 @@ export function Footer() {
           <div className="flex items-center justify-center md:justify-end gap-2">
             <Link
               href="https://github.com/omkarbhad/codecity"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-200 hover:bg-white/[0.04] hover:text-zinc-200"
               aria-label="GitHub"
             >
               <Github className="h-4 w-4" />
             </Link>
             <Link
               href="https://x.com/omaborkar"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-200 hover:bg-white/[0.04] hover:text-zinc-200"
               aria-label="Twitter"
             >
               <Twitter className="h-4 w-4" />

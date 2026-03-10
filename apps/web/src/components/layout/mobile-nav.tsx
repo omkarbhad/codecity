@@ -27,12 +27,12 @@ export function MobileNav({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 top-[52px] z-40 bg-[#09090b]/80 backdrop-blur-sm"
+            className="fixed inset-0 top-[56px] z-40 bg-[#09090b]/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
 
           {/* Menu panel */}
-          <div className="fixed left-0 right-0 top-[52px] z-50 border-b border-white/[0.06] bg-[#09090b]">
+          <div className="fixed left-0 right-0 top-[56px] z-50 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-xl">
             <div className="max-w-5xl mx-auto px-5 py-4 space-y-1">
               {isLoggedIn && userName && (
                 <div className="px-3 py-2 mb-2 border-b border-white/[0.06] pb-4">
@@ -62,10 +62,10 @@ export function MobileNav({
 
               {!isLoggedIn && (
                 <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-primary transition-colors duration-200 hover:bg-white/[0.04]"
-                >
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-red-400 transition-colors duration-200 hover:bg-white/[0.04]"
+              >
                   <LogIn className="h-4 w-4" />
                   Sign In
                 </Link>

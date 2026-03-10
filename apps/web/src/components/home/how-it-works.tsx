@@ -41,13 +41,13 @@ export function HowItWorks() {
         {/* Section header */}
         <motion.div
           {...fadeUp}
-          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          transition={{ type: "spring", stiffness: 340, damping: 30 }}
           className="text-center mb-16"
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#fafafa] tracking-tight mb-3">
+          <h2 className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
             Three Steps to Your Code City
           </h2>
-          <div className="mx-auto w-12 h-[3px] bg-primary rounded-full mb-4" />
+          <div className="mx-auto mb-4 h-[3px] w-12 rounded-full bg-primary" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
             From repository to visualization in under a minute.
           </p>
@@ -64,18 +64,18 @@ export function HowItWorks() {
                 key={item.step}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 + i * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+                transition={{ type: "spring", stiffness: 320, damping: 30, delay: 0.08 + i * 0.07 }}
                 className="relative text-center"
               >
                 {/* Number badge */}
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white mb-6 relative z-10">
+                <div className="relative z-10 mb-6 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_24px_rgba(255,61,61,0.38)]">
                   <span className="text-sm font-bold">{item.step}</span>
                 </div>
 
                 {/* Card */}
-                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-primary/25 transition-all duration-300">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_28px_rgba(255,61,61,0.12)]">
                   <div className="flex justify-center mb-4">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-primary">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/25 bg-red-500/12 text-red-300">
                       <item.icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -98,12 +98,12 @@ export function HowItWorks() {
               key={item.step}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 + index * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+              transition={{ type: "spring", stiffness: 320, damping: 30, delay: 0.08 + index * 0.07 }}
               className="relative flex gap-4"
             >
               {/* Vertical line + badge */}
               <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_24px_rgba(255,61,61,0.38)]">
                   <span className="text-sm font-bold">{item.step}</span>
                 </div>
                 {index < steps.length - 1 && (
@@ -113,8 +113,8 @@ export function HowItWorks() {
 
               {/* Content */}
               <div className="pb-6 flex-1">
-                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 hover:border-primary/25 transition-all duration-300">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-primary mb-3">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_28px_rgba(255,61,61,0.12)]">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/25 bg-red-500/12 text-red-300">
                     <item.icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-lg font-semibold text-zinc-50 tracking-tight mb-2">
