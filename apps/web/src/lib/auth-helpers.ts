@@ -5,6 +5,7 @@ const MOCK_USER = {
   name: "Dev User",
   email: "dev@codecity.local",
   role: "ADMIN" as const,
+  githubToken: null as string | null,
 }
 
 const AUTH_COOKIE = "magnova_session"
@@ -18,6 +19,8 @@ type RemoteSessionUser = {
   email?: string
   role?: string
   isAdmin?: boolean
+  github_token?: string
+  github_username?: string
 }
 
 type RemoteSessionPayload = {
@@ -79,5 +82,6 @@ export async function getSessionUser() {
     name: displayName,
     email: remoteUser.email ?? "",
     role: resolveRole(remoteUser) as "USER" | "ADMIN",
+    githubToken: remoteUser.github_token ?? null,
   }
 }

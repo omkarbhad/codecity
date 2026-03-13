@@ -68,14 +68,14 @@ export function HowItWorks() {
                 className="relative text-center"
               >
                 {/* Number badge */}
-                <div className="relative z-10 mb-6 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_24px_rgba(255,61,61,0.38)]">
+                <div className="relative z-10 mb-6 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_24px_rgba(99,102,241,0.38)]">
                   <span className="text-sm font-bold">{item.step}</span>
                 </div>
 
                 {/* Card */}
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_28px_rgba(255,61,61,0.12)]">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-indigo-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_28px_rgba(99,102,241,0.12)]">
                   <div className="flex justify-center mb-4">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/25 bg-red-500/12 text-red-300">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-400/25 bg-indigo-500/12 text-indigo-300">
                       <item.icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -103,7 +103,7 @@ export function HowItWorks() {
             >
               {/* Vertical line + badge */}
               <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_24px_rgba(255,61,61,0.38)]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_24px_rgba(99,102,241,0.38)]">
                   <span className="text-sm font-bold">{item.step}</span>
                 </div>
                 {index < steps.length - 1 && (
@@ -113,8 +113,8 @@ export function HowItWorks() {
 
               {/* Content */}
               <div className="pb-6 flex-1">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_28px_rgba(255,61,61,0.12)]">
-                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/25 bg-red-500/12 text-red-300">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-indigo-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_28px_rgba(99,102,241,0.12)]">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-400/25 bg-indigo-500/12 text-indigo-300">
                     <item.icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-lg font-semibold text-zinc-50 tracking-tight mb-2">
