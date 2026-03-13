@@ -7,7 +7,6 @@ import { MyProjectsTab } from "@/components/dashboard/my-projects-tab"
 import { NewAnalysisDialog } from "@/components/dashboard/new-analysis-dialog"
 import { Building2, Compass, FolderGit2, Activity, Zap, BarChart3, Plus } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
-import { getProjectList } from "@/lib/client-cache"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@codecity/ui/components/tabs"
 import { Button } from "@codecity/ui/components/button"
 import { NumberTicker } from "@/components/ui/animated-text"
@@ -70,7 +69,11 @@ function DashboardContent() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => getProjectList(),
+    queryFn: async () => {
+      const res = await fetch("/api/projects")
+      if (!res.ok) return []
+      return res.json()
+    },
   })
 
   const completedCount = projects.filter((p: { status: string }) => p.status === "COMPLETED").length

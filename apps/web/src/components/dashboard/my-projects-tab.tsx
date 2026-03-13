@@ -15,7 +15,6 @@ import {
   GitFork,
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { getProjectList, deleteCachedProject } from "@/lib/client-cache"
 import { Button } from "@codecity/ui/components/button"
 
 interface Project {
@@ -65,7 +64,11 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: () => getProjectList(),
+    queryFn: async () => {
+      const res = await fetch("/api/projects")
+      if (!res.ok) return []
+      return res.json()
+    },
   })
 
   async function handleDelete(e: React.MouseEvent, id: string) {
@@ -75,7 +78,6 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     if (deletingId === id) {
       try {
         await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
-        deleteCachedProject(id)
         queryClient.setQueryData<Project[]>(["projects"], (old) =>
           old ? old.filter((p) => p.id !== id) : []
         )

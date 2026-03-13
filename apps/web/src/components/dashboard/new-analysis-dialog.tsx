@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Globe, Lock } from "lucide-react"
-import { cacheProject } from "@/lib/client-cache"
 import {
   Dialog,
   DialogContent,
@@ -63,19 +62,14 @@ export function NewAnalysisDialog({
       }
 
       if (data.projectId) {
-        cacheProject({
-          id: data.projectId,
-          name: url.replace("https://github.com/", ""),
-          repoUrl: url,
-          visibility,
-          status: "COMPLETED",
-          fileCount: data.snapshot?.stats?.totalFiles ?? 0,
-          lineCount: data.snapshot?.stats?.totalLines ?? 0,
-          createdAt: new Date().toISOString(),
-          snapshot: data.snapshot,
-        })
         onOpenChange(false)
-        router.push(`/project/${data.projectId}`)
+        // If snapshot returned immediately (cache hit), go to project page
+        // Otherwise go to analyze page to watch progress
+        if (data.snapshot) {
+          router.push(`/project/${data.projectId}`)
+        } else {
+          router.push(`/analyze/${data.projectId}`)
+        }
       }
     } catch {
       setError("Network error. Please try again.")

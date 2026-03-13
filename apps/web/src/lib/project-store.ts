@@ -1,8 +1,4 @@
-// In-memory project store — no database needed
-// Projects live in memory for the session. For a portfolio project, this is fine.
-// Add Neon/Turso later if persistence is needed.
-
-import { randomUUID } from "crypto"
+import { sql } from "./db"
 
 export type Visibility = "PUBLIC" | "PRIVATE"
 export type AnalysisStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
@@ -29,12 +25,38 @@ interface SnapshotRecord {
   createdAt: string
 }
 
-// In-memory stores
-const projects = new Map<string, ProjectRecord>()
-const snapshots = new Map<string, SnapshotRecord>()
+/** Map a DB row (snake_case) to ProjectRecord (camelCase) */
+function toProject(row: Record<string, unknown>): ProjectRecord {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    repoUrl: row.repo_url as string,
+    visibility: row.visibility as Visibility,
+    status: row.status as AnalysisStatus,
+    fileCount: (row.file_count as number) ?? 0,
+    lineCount: (row.line_count as number) ?? 0,
+    userId: row.user_id as string,
+    error: (row.error as string) ?? null,
+    createdAt: (row.created_at as Date)?.toISOString?.() ?? (row.created_at as string),
+    updatedAt: (row.updated_at as Date)?.toISOString?.() ?? (row.updated_at as string),
+  }
+}
+
+function toSnapshot(row: Record<string, unknown>): SnapshotRecord {
+  return {
+    id: row.id as string,
+    projectId: row.project_id as string,
+    name: row.name as string,
+    data: row.data,
+    createdAt: (row.created_at as Date)?.toISOString?.() ?? (row.created_at as string),
+  }
+}
+
+// ── Project CRUD ──
 
 export async function getProject(id: string): Promise<ProjectRecord | null> {
-  return projects.get(id) ?? null
+  const rows = await sql`SELECT * FROM projects WHERE id = ${id}`
+  return rows.length > 0 ? toProject(rows[0]) : null
 }
 
 export async function createProject(data: {
@@ -48,22 +70,23 @@ export async function createProject(data: {
   userId: string
   error?: string
 }): Promise<ProjectRecord> {
-  const now = new Date().toISOString()
-  const project: ProjectRecord = {
-    id: data.id ?? randomUUID(),
-    name: data.name,
-    repoUrl: data.repoUrl,
-    visibility: data.visibility ?? "PRIVATE",
-    status: data.status ?? "PENDING",
-    fileCount: data.fileCount ?? 0,
-    lineCount: data.lineCount ?? 0,
-    userId: data.userId,
-    error: data.error ?? null,
-    createdAt: now,
-    updatedAt: now,
-  }
-  projects.set(project.id, project)
-  return project
+  const id = data.id ?? crypto.randomUUID()
+  const rows = await sql`
+    INSERT INTO projects (id, name, repo_url, visibility, status, file_count, line_count, user_id, error)
+    VALUES (
+      ${id},
+      ${data.name},
+      ${data.repoUrl},
+      ${data.visibility ?? "PRIVATE"},
+      ${data.status ?? "PENDING"},
+      ${data.fileCount ?? 0},
+      ${data.lineCount ?? 0},
+      ${data.userId},
+      ${data.error ?? null}
+    )
+    RETURNING *
+  `
+  return toProject(rows[0])
 }
 
 export async function updateProject(
@@ -77,41 +100,64 @@ export async function updateProject(
     error: string | null
   }>
 ): Promise<ProjectRecord> {
-  const existing = projects.get(id)
-  if (!existing) {
+  // Build SET clause dynamically
+  const sets: string[] = []
+  const values: unknown[] = []
+  let idx = 2 // $1 is the id
+
+  if (data.name !== undefined) { sets.push(`name = $${idx}`); values.push(data.name); idx++ }
+  if (data.visibility !== undefined) { sets.push(`visibility = $${idx}`); values.push(data.visibility); idx++ }
+  if (data.status !== undefined) { sets.push(`status = $${idx}`); values.push(data.status); idx++ }
+  if (data.fileCount !== undefined) { sets.push(`file_count = $${idx}`); values.push(data.fileCount); idx++ }
+  if (data.lineCount !== undefined) { sets.push(`line_count = $${idx}`); values.push(data.lineCount); idx++ }
+  if (data.error !== undefined) { sets.push(`error = $${idx}`); values.push(data.error); idx++ }
+
+  if (sets.length === 0) {
+    const existing = await getProject(id)
+    if (!existing) throw new Error(`Project ${id} not found`)
+    return existing
+  }
+
+  sets.push("updated_at = now()")
+
+  // neon() tagged template doesn't support dynamic column sets,
+  // so we use the raw query approach via the pool
+  const { getPool } = await import("./db")
+  const pool = getPool()
+  const result = await pool.query(
+    `UPDATE projects SET ${sets.join(", ")} WHERE id = $1 RETURNING *`,
+    [id, ...values]
+  )
+
+  if (result.rows.length === 0) {
     throw new Error(`Project ${id} not found`)
   }
 
-  const updated: ProjectRecord = {
-    ...existing,
-    ...data,
-    updatedAt: new Date().toISOString(),
-  }
-  projects.set(id, updated)
-  return updated
+  return toProject(result.rows[0])
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  projects.delete(id)
-  // Also delete associated snapshots
-  for (const [key, snap] of snapshots) {
-    if (snap.projectId === id) {
-      snapshots.delete(key)
-    }
-  }
+  // Cascade deletes snapshots due to FK constraint
+  await sql`DELETE FROM projects WHERE id = ${id}`
 }
 
 export async function getProjectsByUser(userId: string): Promise<ProjectRecord[]> {
-  return Array.from(projects.values())
-    .filter((p) => p.userId === userId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const rows = await sql`
+    SELECT * FROM projects
+    WHERE user_id = ${userId}
+    ORDER BY updated_at DESC
+  `
+  return rows.map(toProject)
 }
 
 export async function getAllPublicProjects(): Promise<ProjectRecord[]> {
-  return Array.from(projects.values())
-    .filter((p) => p.visibility === "PUBLIC" && p.status === "COMPLETED")
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 50)
+  const rows = await sql`
+    SELECT * FROM projects
+    WHERE visibility = 'PUBLIC' AND status = 'COMPLETED'
+    ORDER BY updated_at DESC
+    LIMIT 50
+  `
+  return rows.map(toProject)
 }
 
 // ── Snapshot helpers ──
@@ -121,28 +167,25 @@ export async function saveSnapshot(
   data: unknown,
   name?: string
 ): Promise<SnapshotRecord> {
-  const snapshot: SnapshotRecord = {
-    id: randomUUID(),
-    projectId,
-    name: name ?? "default",
-    data,
-    createdAt: new Date().toISOString(),
-  }
-  snapshots.set(snapshot.id, snapshot)
-  return snapshot
+  // Delete old snapshots for this project first (keep only latest)
+  await sql`DELETE FROM snapshots WHERE project_id = ${projectId}`
+
+  const rows = await sql`
+    INSERT INTO snapshots (project_id, name, data)
+    VALUES (${projectId}, ${name ?? "default"}, ${JSON.stringify(data)})
+    RETURNING *
+  `
+  return toSnapshot(rows[0])
 }
 
 export async function getSnapshot(
   projectId: string
 ): Promise<SnapshotRecord | null> {
-  // Find the latest snapshot for this project
-  let latest: SnapshotRecord | null = null
-  for (const snap of snapshots.values()) {
-    if (snap.projectId === projectId) {
-      if (!latest || snap.createdAt > latest.createdAt) {
-        latest = snap
-      }
-    }
-  }
-  return latest
+  const rows = await sql`
+    SELECT * FROM snapshots
+    WHERE project_id = ${projectId}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+  return rows.length > 0 ? toSnapshot(rows[0]) : null
 }
