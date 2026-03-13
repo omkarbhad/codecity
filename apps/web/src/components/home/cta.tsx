@@ -17,14 +17,14 @@ export function CTA() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 55% 45% at 50% -10%, rgba(255,61,61,0.24), transparent 60%)",
+            "radial-gradient(ellipse 55% 45% at 50% -10%, rgba(99,102,241,0.24), transparent 60%)",
         }}
       />
 
       <div className="absolute top-0 left-0 right-0 h-px bg-white/[0.06]" />
 
       <div className="relative z-10 mx-auto max-w-5xl px-5 text-center sm:px-8 md:px-10">
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-6 py-12 shadow-[0_0_0_1px_rgba(255,61,61,0.08),0_0_56px_rgba(79,70,229,0.16)] backdrop-blur-xl sm:px-8">
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-6 py-12 shadow-[0_0_0_1px_rgba(99,102,241,0.08),0_0_56px_rgba(79,70,229,0.16)] backdrop-blur-xl sm:px-8">
         <motion.h2
           {...fadeUp}
           transition={{ type: "spring", stiffness: 340, damping: 30 }}
@@ -52,7 +52,7 @@ export function CTA() {
           {...fadeUp}
           transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.12 }}
         >
-          <Button asChild className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-[0_0_38px_rgba(255,61,61,0.35)] transition-colors duration-200 hover:bg-primary">
+          <Button asChild className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-[0_0_38px_rgba(99,102,241,0.35)] transition-colors duration-200 hover:bg-indigo-500">
             <Link href="/dashboard" className="flex items-center gap-2">
               Start Building Your City
               <ArrowRight className="h-4 w-4" />

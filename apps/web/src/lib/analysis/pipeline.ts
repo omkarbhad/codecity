@@ -22,14 +22,15 @@ export type ProgressCallback = (
  */
 export async function analyzeRepository(
   repoUrl: string,
-  onProgress: ProgressCallback = () => {}
+  onProgress: ProgressCallback = () => {},
+  userToken?: string
 ): Promise<CitySnapshot> {
   // 1. Parse URL
   const { owner, repo } = parseGitHubUrl(repoUrl)
   onProgress("fetching-tree", 0, "Fetching repository tree...")
 
-  // 2. Fetch tree
-  const tree = await fetchRepoTree(owner, repo)
+  // 2. Fetch tree (uses user's GitHub token if available)
+  const tree = await fetchRepoTree(owner, repo, userToken)
   onProgress(
     "downloading-files",
     0.1,
@@ -53,7 +54,8 @@ export async function analyzeRepository(
         "downloading-files",
         0.1 + p * 0.4,
         `Downloading files... ${Math.round(p * 100)}%`
-      )
+      ),
+    userToken
   )
   onProgress("parsing", 0.5, "Parsing source files...")
 

@@ -65,8 +65,11 @@ function isSupportedFile(path: string): boolean {
   return SUPPORTED_EXTENSIONS.has(ext)
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const token = process.env.GITHUB_TOKEN
+/**
+ * Get auth headers — prefers user's GitHub token, falls back to server GITHUB_TOKEN.
+ */
+function getAuthHeaders(userToken?: string): Record<string, string> {
+  const token = userToken ?? process.env.GITHUB_TOKEN
   if (token) {
     return { Authorization: `Bearer ${token}` }
   }
@@ -75,14 +78,15 @@ function getAuthHeaders(): Record<string, string> {
 
 export async function fetchRepoTree(
   owner: string,
-  repo: string
+  repo: string,
+  userToken?: string
 ): Promise<GitHubTreeItem[]> {
   const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`
 
   const response = await fetch(url, {
     headers: {
       Accept: "application/vnd.github.v3+json",
-      ...getAuthHeaders(),
+      ...getAuthHeaders(userToken),
     },
   })
 
@@ -96,7 +100,7 @@ export async function fetchRepoTree(
       : "unknown"
     throw new Error(
       `GitHub API rate limit exceeded. Resets at ${resetTime}. ` +
-        `Set GITHUB_TOKEN environment variable for higher rate limits.`
+        `Sign in with GitHub for higher rate limits.`
     )
   }
   if (!response.ok) {
@@ -127,12 +131,13 @@ export async function fetchRepoTree(
 export async function fetchFileContent(
   owner: string,
   repo: string,
-  path: string
+  path: string,
+  userToken?: string
 ): Promise<string> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${path}`
 
   const response = await fetch(url, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(userToken),
   })
 
   if (!response.ok) {
@@ -175,7 +180,8 @@ export async function fetchFileBatch(
   owner: string,
   repo: string,
   paths: string[],
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  userToken?: string
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>()
   const semaphore = createSemaphore(10)
@@ -184,7 +190,7 @@ export async function fetchFileBatch(
   const tasks = paths.map(async (path) => {
     await semaphore.acquire()
     try {
-      const content = await fetchFileContent(owner, repo, path)
+      const content = await fetchFileContent(owner, repo, path, userToken)
       results.set(path, content)
     } catch (error) {
       console.warn(

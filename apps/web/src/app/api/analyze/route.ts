@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth-helpers"
 import { parseGitHubUrl } from "@/lib/analysis/github"
-import { analyzeRepository } from "@/lib/analysis/pipeline"
+import { inngest } from "@/lib/inngest"
+import { getAnalysisSnapshot } from "@/lib/redis"
+import { createProject, saveSnapshot } from "@/lib/project-store"
 import { analysisCache, CACHE_TTL } from "@/lib/cache"
-import { createProject, updateProject, saveSnapshot } from "@/lib/project-store"
-
-export const maxDuration = 60 // Allow up to 60s on Vercel Pro (10s on Hobby)
 
 export async function POST(request: Request) {
   const user = await getSessionUser()
@@ -36,9 +35,9 @@ export async function POST(request: Request) {
   }
 
   const name = `${owner}/${repo}`
-  const cacheKey = `repo:${owner}/${repo}`
 
-  // Check cache first
+  // Check in-memory cache first
+  const cacheKey = `repo:${owner}/${repo}`
   const cached = analysisCache.get(cacheKey) as Record<string, unknown> | null
   if (cached) {
     const project = await createProject({
@@ -55,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ projectId: project.id, snapshot: cached }, { status: 200 })
   }
 
-  // Create project
+  // Create project in PROCESSING state
   const project = await createProject({
     name,
     repoUrl,
@@ -64,24 +63,16 @@ export async function POST(request: Request) {
     userId: user.id,
   })
 
-  try {
-    // Run analysis synchronously
-    const snapshot = await analyzeRepository(repoUrl)
+  // Dispatch to Inngest — returns immediately, no timeout!
+  await inngest.send({
+    name: "codecity/analyze.requested",
+    data: {
+      repoUrl,
+      projectId: project.id,
+      githubToken: user.githubToken,
+    },
+  })
 
-    // Cache and persist
-    analysisCache.set(cacheKey, snapshot, CACHE_TTL.analysis)
-    analysisCache.set(`project:${project.id}`, snapshot, CACHE_TTL.analysis)
-    await updateProject(project.id, {
-      status: "COMPLETED",
-      fileCount: snapshot.stats.totalFiles,
-      lineCount: snapshot.stats.totalLines,
-    })
-    await saveSnapshot(project.id, snapshot).catch(() => {})
-
-    return NextResponse.json({ projectId: project.id, snapshot }, { status: 201 })
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : "Analysis failed"
-    await updateProject(project.id, { status: "FAILED", error: errorMsg })
-    return NextResponse.json({ error: errorMsg }, { status: 500 })
-  }
+  // Return project ID immediately — client polls /progress for updates
+  return NextResponse.json({ projectId: project.id }, { status: 202 })
 }

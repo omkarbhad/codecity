@@ -99,9 +99,9 @@ export function Features() {
             <motion.div
               key={feature.title}
               variants={item}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_32px_rgba(255,61,61,0.12)]"
+              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-indigo-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_32px_rgba(99,102,241,0.12)]"
             >
-              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/25 bg-red-500/12 text-red-300">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-400/25 bg-indigo-500/12 text-indigo-300">
                 <feature.icon className="h-5 w-5" />
               </div>
               <h3 className="text-lg font-semibold text-zinc-50 tracking-tight">
