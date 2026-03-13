@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/layout/navbar"
 import { HeroSection } from "@/components/home/hero-section"
 import { Features } from "@/components/home/features"
+import { WhyCodeCity } from "@/components/home/why-codecity"
 import { HowItWorks } from "@/components/home/how-it-works"
 import { CTA } from "@/components/home/cta"
 import { Footer } from "@/components/home/footer"
@@ -12,6 +13,7 @@ export default function HomePage() {
       <main>
         <HeroSection />
         <Features />
+        <WhyCodeCity />
         <HowItWorks />
         <CTA />
       </main>

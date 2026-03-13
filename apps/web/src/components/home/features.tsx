@@ -8,6 +8,8 @@ import {
   GitBranch,
   MousePointerClick,
   Map,
+  Layers,
+  Shield,
 } from "lucide-react"
 
 const features = [
@@ -15,37 +17,49 @@ const features = [
     icon: Building2,
     title: "3D City Visualization",
     description:
-      "Files become buildings, directories become districts. Navigate your codebase like exploring a real city.",
+      "Files become buildings scaled by line count, directories become districts. Navigate your codebase like exploring a real city skyline.",
   },
   {
     icon: Zap,
     title: "Instant Analysis",
     description:
-      "Paste a GitHub URL, get a full visualization in seconds. No setup, no configuration required.",
+      "Paste a GitHub URL and get a full visualization in seconds. Background processing handles repos of any size — no setup needed.",
   },
   {
     icon: Search,
     title: "Code Insights",
     description:
-      "Spot complexity hotspots, identify patterns, and understand architecture at a glance.",
+      "Spot complexity hotspots, identify patterns, and understand architecture at a glance. Building height reveals file size, color shows language.",
   },
   {
     icon: GitBranch,
     title: "GitHub Integration",
     description:
-      "Works with any public or private repository via the GitHub API. Full branch and org support.",
+      "Works with any public or private repository. Sign in with GitHub to analyze your private repos with full OAuth token support.",
   },
   {
     icon: MousePointerClick,
     title: "Interactive Explorer",
     description:
-      "Click buildings to view source code, hover for file metrics. Explore your codebase interactively.",
+      "Click any building to view source details — file path, language, line count. Hover for quick metrics. Pan, zoom, and orbit the 3D scene.",
   },
   {
     icon: Map,
     title: "District Map",
     description:
-      "Color-coded districts by file type with minimap navigation. See the big picture instantly.",
+      "Color-coded districts by file type with minimap navigation. TypeScript, Python, CSS — each gets its own neighborhood in the city.",
+  },
+  {
+    icon: Layers,
+    title: "Persistent Projects",
+    description:
+      "Your analyzed cities are saved to the cloud. Come back anytime to explore, or hit re-analyze to refresh with the latest changes.",
+  },
+  {
+    icon: Shield,
+    title: "Privacy First",
+    description:
+      "Code is analyzed on-the-fly and never stored. Only the visualization metadata is persisted — your source code stays on GitHub.",
   },
 ]
 
@@ -53,7 +67,7 @@ const container = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08 },
+    transition: { staggerChildren: 0.06 },
   },
 }
 
@@ -68,7 +82,7 @@ const item = {
 
 export function Features() {
   return (
-    <section className="relative py-24 sm:py-32">
+    <section id="features" className="relative py-24 sm:py-32">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.06]" />
       <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10">
         {/* Section header */}
@@ -93,18 +107,18 @@ export function Features() {
           variants={container}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {features.map((feature) => (
             <motion.div
               key={feature.title}
               variants={item}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-indigo-500/35 hover:bg-white/[0.03] hover:shadow-[0_0_32px_rgba(99,102,241,0.12)]"
+              className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-300 hover:border-red-500/25 hover:bg-white/[0.03] hover:shadow-[0_0_32px_rgba(255,61,61,0.08)] cursor-default"
             >
-              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-400/25 bg-indigo-500/12 text-indigo-300">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-red-400/20 bg-red-500/10 text-red-400 transition-colors duration-300 group-hover:border-red-400/35 group-hover:text-red-300">
                 <feature.icon className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold text-zinc-50 tracking-tight">
+              <h3 className="text-[15px] font-semibold text-zinc-50 tracking-tight">
                 {feature.title}
               </h3>
               <p className="text-sm text-zinc-400 leading-relaxed mt-2">

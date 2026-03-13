@@ -29,7 +29,7 @@ export function NavLinks() {
               <motion.span
                 layoutId="nav-active-bg"
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                className="absolute inset-0 -z-10 rounded-lg border border-indigo-400/30 bg-indigo-500/18"
+                className="absolute inset-0 -z-10 rounded-lg border border-red-400/30 bg-red-500/18"
               />
             ) : null}
             {link.label}

@@ -12,7 +12,7 @@ export async function Navbar() {
       <div className="mx-auto flex h-11 w-full max-w-5xl items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-[#09090b]/82 px-4 backdrop-blur-2xl shadow-[0_14px_40px_rgba(9,9,11,0.6)]">
         {/* Left: Logo + Brand */}
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-500 text-[10px] font-bold text-white">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-white">
             CC
           </div>
           <span className="text-sm font-semibold text-zinc-50 tracking-wide">
