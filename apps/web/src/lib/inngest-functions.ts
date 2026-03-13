@@ -7,8 +7,10 @@ import { updateProject, saveSnapshot } from "./project-store"
 
 /**
  * Inngest function: analyze a GitHub repository in the background.
- * Each step.run() gets its own serverless invocation timeout,
- * so large repos won't hit Vercel's function timeout.
+ *
+ * Runs as a single step to avoid Inngest's ~4MB inter-step serialization
+ * limit (file contents + snapshot data easily exceed this for real repos).
+ * Progress is tracked via Redis SSE so the client still sees live updates.
  */
 export const analyzeRepo = inngest.createFunction(
   { id: "analyze-repo", retries: 1 },
@@ -20,9 +22,9 @@ export const analyzeRepo = inngest.createFunction(
       githubToken: string | null
     }
 
-    try {
-      // Step 1: Parse URL and fetch tree
-      const tree = await step.run("fetch-tree", async () => {
+    await step.run("analyze", async () => {
+      try {
+        // 1. Fetch tree
         await setAnalysisProgress(projectId, {
           stage: "fetching-tree",
           progress: 0,
@@ -35,7 +37,7 @@ export const analyzeRepo = inngest.createFunction(
 
         if (treeItems.length === 0) {
           throw new Error(
-            `No supported source files found. Supported: TypeScript, JavaScript, Python, CSS, HTML, JSON, Go, Rust, Java, and more.`
+            "No supported source files found. Supported: TypeScript, JavaScript, Python, CSS, HTML, JSON, Go, Rust, Java, and more."
           )
         }
 
@@ -46,12 +48,8 @@ export const analyzeRepo = inngest.createFunction(
           completed: false,
         })
 
-        return { owner, repo, paths: treeItems.map((f) => f.path) }
-      })
-
-      // Step 2: Download files
-      const filesEntries = await step.run("download-files", async () => {
-        const { owner, repo, paths } = tree
+        // 2. Download files
+        const paths = treeItems.map((f) => f.path)
 
         await setAnalysisProgress(projectId, {
           stage: "downloading-files",
@@ -69,14 +67,7 @@ export const analyzeRepo = inngest.createFunction(
           completed: false,
         })
 
-        // Convert Map to array for serialization (Inngest serializes step results)
-        return Array.from(files.entries())
-      })
-
-      // Step 3: Parse and compute layout
-      const snapshot = await step.run("parse-and-layout", async () => {
-        const files = new Map(filesEntries)
-
+        // 3. Parse and compute layout
         const { parsed, warnings } = parseAllFiles(files)
 
         await setAnalysisProgress(projectId, {
@@ -90,20 +81,16 @@ export const analyzeRepo = inngest.createFunction(
         const laidOut = layoutCity(parsed, districts)
         const stats = computeStats(laidOut)
 
-        return {
+        const snapshot = {
           files: laidOut,
           districts,
           stats,
           warnings: warnings.length > 0 ? warnings : undefined,
         }
-      })
 
-      // Step 4: Save results
-      await step.run("save-results", async () => {
-        // Store in Redis for retrieval
+        // 4. Save results
         await setAnalysisSnapshot(projectId, snapshot)
 
-        // Update project status
         await updateProject(projectId, {
           status: "COMPLETED",
           fileCount: snapshot.stats.totalFiles,
@@ -117,22 +104,22 @@ export const analyzeRepo = inngest.createFunction(
           message: "Analysis complete!",
           completed: true,
         })
-      })
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Analysis failed"
 
-      return { success: true, projectId }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Analysis failed"
+        await updateProject(projectId, { status: "FAILED", error: errorMsg }).catch(() => {})
+        await setAnalysisProgress(projectId, {
+          stage: "error",
+          progress: 0,
+          message: errorMsg,
+          error: errorMsg,
+          completed: false,
+        }).catch(() => {})
 
-      await updateProject(projectId, { status: "FAILED", error: errorMsg }).catch(() => {})
-      await setAnalysisProgress(projectId, {
-        stage: "error",
-        progress: 0,
-        message: errorMsg,
-        error: errorMsg,
-        completed: false,
-      }).catch(() => {})
+        throw err
+      }
+    })
 
-      throw err // Let Inngest handle retries
-    }
+    return { success: true, projectId }
   }
 )
