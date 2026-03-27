@@ -15,7 +15,7 @@ export default async function AdminLayout({
   return (
     <>
       <Navbar />
-      <div className="page-shell flex min-h-[calc(100vh-3.75rem)]">
+      <div className="page-shell flex min-h-[calc(100vh-3.5rem)]">
         <AdminSidebar />
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-6xl">{children}</div>

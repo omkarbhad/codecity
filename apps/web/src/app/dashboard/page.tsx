@@ -5,37 +5,44 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { ExploreTab } from "@/components/dashboard/explore-tab"
 import { MyProjectsTab } from "@/components/dashboard/my-projects-tab"
 import { NewAnalysisDialog } from "@/components/dashboard/new-analysis-dialog"
+import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { Building2, Compass, FolderGit2, Activity, Zap, BarChart3, Plus } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@codecity/ui/components/tabs"
-import { Button } from "@codecity/ui/components/button"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@codecity/ui/components/breadcrumb"
+import { Separator } from "@codecity/ui/components/separator"
+import {
+  SidebarInset,
+  SidebarTrigger,
+} from "@codecity/ui/components/sidebar"
 import { NumberTicker } from "@/components/ui/animated-text"
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   )
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="pb-8 sm:pb-10">
-      <div className="border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-5 sm:py-6 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-white/[0.02] animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-5 w-28 rounded-lg bg-white/[0.04] animate-pulse" />
-                <div className="h-3 w-36 rounded-lg bg-white/[0.02] animate-pulse" />
-              </div>
-            </div>
-            <div className="h-9 w-28 rounded-lg bg-white/[0.04] animate-pulse" />
-          </div>
+    <>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <div className="h-4 w-32 rounded bg-white/[0.04] animate-pulse" />
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-6">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
@@ -45,8 +52,8 @@ function DashboardSkeleton() {
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </SidebarInset>
+    </>
   )
 }
 
@@ -92,32 +99,30 @@ function DashboardContent() {
     { icon: Zap, label: "Total Lines", value: totalLines, desc: "lines of code" },
   ]
 
-  return (
-    <div className="pb-8 sm:pb-10">
-      {/* Page header */}
-      <div className="border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-5 sm:py-6 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-[#fafafa]">Dashboard</h1>
-                <p className="text-xs text-[#71717a]">Command Center</p>
-              </div>
-            </div>
-            <Button
-              onClick={openNewCityDialog}
-              size="sm"
-              className="gap-1.5 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New City
-            </Button>
-          </div>
+  const breadcrumbLabel = activeTab === "explore" ? "Explore" : "My Projects"
 
-          {/* Stat cards row */}
+  return (
+    <>
+      <AppSidebar onNewCity={openNewCityDialog} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{breadcrumbLabel}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
+          {/* Stat cards */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {stats.map((stat) => (
               <div
@@ -135,39 +140,37 @@ function DashboardContent() {
               </div>
             ))}
           </div>
+
+          {/* Tabs content */}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-white/[0.02] border border-white/[0.06] p-1 sm:w-fit">
+              <TabsTrigger
+                value="projects"
+                className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
+              >
+                <FolderGit2 className="h-3.5 w-3.5" />
+                My Projects
+              </TabsTrigger>
+              <TabsTrigger
+                value="explore"
+                className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
+              >
+                <Compass className="h-3.5 w-3.5" />
+                Explore
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="projects" className="mt-5">
+              <MyProjectsTab onCreateCity={openNewCityDialog} />
+            </TabsContent>
+            <TabsContent value="explore" className="mt-5">
+              <ExploreTab />
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
-
-      {/* Main content */}
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-6">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-white/[0.02] border border-white/[0.06] p-1 sm:w-fit">
-            <TabsTrigger
-              value="projects"
-              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
-            >
-              <FolderGit2 className="h-3.5 w-3.5" />
-              My Projects
-            </TabsTrigger>
-            <TabsTrigger
-              value="explore"
-              className="gap-2 text-xs font-medium tracking-wide px-4 rounded-lg text-[#71717a] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none transition-colors duration-200"
-            >
-              <Compass className="h-3.5 w-3.5" />
-              Explore
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="projects" className="mt-5">
-            <MyProjectsTab onCreateCity={openNewCityDialog} />
-          </TabsContent>
-          <TabsContent value="explore" className="mt-5">
-            <ExploreTab />
-          </TabsContent>
-        </Tabs>
-      </div>
+      </SidebarInset>
 
       <NewAnalysisDialog open={showNewDialog} onOpenChange={setShowNewDialog} />
-    </div>
+    </>
   )
 }

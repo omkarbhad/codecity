@@ -1,6 +1,9 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "mira",
+  "registries": {
+    "@efferd": "https://efferd.com/r/{style}/{name}.json"
+  },
   "rsc": true,
   "tsx": true,
   "tailwind": {
