@@ -149,7 +149,7 @@ export function CitySceneCanvas({ snapshot }: CitySceneProps) {
         toneMappingExposure: 1.4,
         powerPreference: "high-performance",
       }}
-      shadows
+      shadows={{ type: THREE.PCFShadowMap }}
       camera={{ position: [40, 40, 40], fov: 50, near: 0.5, far: farPlane }}
       style={{ width: "100%", height: "100%" }}
       onCreated={({ gl }) => {
@@ -157,10 +157,9 @@ export function CitySceneCanvas({ snapshot }: CitySceneProps) {
         const canvas = gl.domElement
         canvas.addEventListener("webglcontextlost", (e) => {
           e.preventDefault()
-          console.warn("WebGL context lost — will restore automatically")
         })
         canvas.addEventListener("webglcontextrestored", () => {
-          console.warn("WebGL context restored")
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         })
       }}
     >

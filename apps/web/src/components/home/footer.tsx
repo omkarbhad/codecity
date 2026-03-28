@@ -1,15 +1,18 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Github, Twitter } from "lucide-react"
 
 const footerLinks = {
   product: [
     { href: "/#features", label: "Features" },
+    { href: "/#how-it-works", label: "How It Works" },
     { href: "/explore", label: "Explore" },
     { href: "/dashboard", label: "Dashboard" },
   ],
   resources: [
     { href: "https://github.com/omkarbhad/codecity", label: "GitHub", external: true },
     { href: "https://github.com/omkarbhad/codecity/issues", label: "Issues", external: true },
+    { href: "https://github.com/omkarbhad/codecity/discussions", label: "Discussions", external: true },
   ],
 }
 
@@ -21,7 +24,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2.5 mb-3">
-              <img src="/logo.png" alt="CodeCity" className="h-7 w-7 rounded-md" />
+              <Image src="/logo.png" alt="CodeCity" width={28} height={28} className="rounded-md" />
               <span className="text-sm font-semibold text-zinc-50">CodeCity</span>
             </Link>
             <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">

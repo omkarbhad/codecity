@@ -25,11 +25,11 @@ import {
   SidebarRail,
 } from "@codecity/ui/components/sidebar"
 
-type Project = {
+interface Project {
   id: string
   name: string
-  status: string
-  visibility: string
+  status: "COMPLETED" | "PROCESSING" | "FAILED"
+  visibility: "PUBLIC" | "PRIVATE"
 }
 
 export function AppSidebar({
@@ -59,42 +59,35 @@ export function AppSidebar({
   return (
     <Sidebar {...props}>
       {/* Header */}
-      <SidebarHeader className="border-b border-white/[0.05] pb-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="flex items-center justify-between px-1 pt-1">
-              <Link href="/" className="flex items-center gap-2.5 group">
-                <img
-                  src="/logo.png"
-                  alt="CodeCity"
-                  className="size-7 rounded-lg object-cover"
-                  onError={(e) => {
-                    const t = e.currentTarget
-                    t.style.display = "none"
-                    const fallback = t.nextElementSibling as HTMLElement | null
-                    if (fallback) fallback.style.display = "flex"
-                  }}
-                />
-                <div className="hidden items-center justify-center size-7 rounded-lg bg-primary/15 border border-primary/25">
-                  <Building2 className="size-3.5 text-primary" />
-                </div>
-                <div className="flex flex-col gap-0 leading-none">
-                  <span className="text-[13px] font-semibold text-zinc-100 tracking-tight">CodeCity</span>
-                  <span className="text-[10px] text-zinc-600">Visualize Code</span>
-                </div>
-              </Link>
-              {onNewCity && (
-                <button
-                  onClick={onNewCity}
-                  className="flex items-center justify-center size-6 rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-primary/40 hover:text-primary hover:bg-primary/10 transition-all duration-200"
-                  title="New City"
-                >
-                  <Plus className="size-3" />
-                </button>
-              )}
+      <SidebarHeader className="border-b border-white/[0.05]">
+        <div className="flex items-center justify-between px-2 py-2.5">
+          <Link href="/" className="flex items-center gap-2 min-w-0">
+            <img
+              src="/logo.png"
+              alt="CodeCity"
+              className="size-6 rounded-md object-cover shrink-0"
+              onError={(e) => {
+                const t = e.currentTarget
+                t.style.display = "none"
+                const fallback = t.nextElementSibling as HTMLElement | null
+                if (fallback) fallback.style.display = "flex"
+              }}
+            />
+            <div className="hidden items-center justify-center size-6 rounded-md bg-primary/15 border border-primary/25 shrink-0">
+              <Building2 className="size-3 text-primary" />
             </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
+            <span className="text-[13px] font-semibold text-zinc-100 tracking-tight truncate">CodeCity</span>
+          </Link>
+          {onNewCity && (
+            <button
+              onClick={onNewCity}
+              className="flex items-center justify-center size-6 rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-primary/40 hover:text-primary hover:bg-primary/10 transition-all duration-200 shrink-0"
+              title="New City"
+            >
+              <Plus className="size-3" />
+            </button>
+          )}
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="gap-0 pt-2">
@@ -181,7 +174,7 @@ export function AppSidebar({
       <SidebarFooter className="border-t border-white/[0.05] p-2">
         <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/[0.03] transition-colors cursor-default">
           {user?.image ? (
-            <img src={user.image} alt="" className="h-6 w-6 rounded-full ring-1 ring-white/[0.08]" />
+            <img src={user.image} alt={user.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08]" />
           ) : (
             <div className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
               <User className="h-3 w-3 text-zinc-600" />

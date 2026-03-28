@@ -77,7 +77,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   const cplxLabel = file.complexity <= 10 ? "Low" : file.complexity <= 25 ? "Med" : "High"
 
   return (
-    <div className="fixed right-0 top-10 bottom-8 w-[300px] z-40 m-1.5 bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 animate-slide-in-right flex flex-col">
+    <div className="fixed right-0 top-10 bottom-0 w-[300px] z-[50] m-1.5 mb-2 bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 animate-slide-in-right flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-3 py-2.5 border-b border-white/[0.04] shrink-0">
           <div className="flex items-start justify-between gap-2">
@@ -111,7 +111,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
               >
                 {sidePanelPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
               </button>
-              <button onClick={() => selectFile(null)} className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors">
+              <button onClick={() => selectFile(null, null)} className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -119,7 +119,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin py-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-1">
           <div className="px-3 py-2">
             <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
               <span className="px-2 py-0.5 rounded text-[10px] border border-white/[0.06] text-white/75 flex items-center gap-1.5 font-medium">
@@ -144,7 +144,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
 
           {file.functions.length > 0 && (
             <Section title="Functions" count={file.functions.length}>
-              <div className="space-y-px max-h-40 overflow-y-auto scroll-thin">
+              <div className="space-y-px">
                 {file.functions.map((fn) => (
                   <div key={fn.name} className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors">
                     <span className="text-[11px] text-white/85 truncate flex items-center gap-1.5">

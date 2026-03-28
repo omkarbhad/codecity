@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import {
   Building2,
@@ -100,71 +99,15 @@ const item = {
   },
 }
 
-function GoldenSpiral() {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!ref.current) return
-
-    const SIZE = 620
-    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
-    const N = 800
-    const DOT = 1.6
-    const CENTER = SIZE / 2
-    const PADDING = 4
-    const MAX_R = CENTER - PADDING - DOT
-
-    const svgNS = "http://www.w3.org/2000/svg"
-    const svg = document.createElementNS(svgNS, "svg")
-    svg.setAttribute("width", String(SIZE))
-    svg.setAttribute("height", String(SIZE))
-    svg.setAttribute("viewBox", `0 0 ${SIZE} ${SIZE}`)
-
-    for (let i = 0; i < N; i++) {
-      const idx = i + 0.5
-      const frac = idx / N
-      const r = Math.sqrt(frac) * MAX_R
-      const theta = idx * GOLDEN_ANGLE
-      const x = CENTER + r * Math.cos(theta)
-      const y = CENTER + r * Math.sin(theta)
-
-      const c = document.createElementNS(svgNS, "circle")
-      c.setAttribute("cx", x.toFixed(3))
-      c.setAttribute("cy", y.toFixed(3))
-      c.setAttribute("r", String(DOT))
-      c.setAttribute("fill", "#ffffff")
-      c.setAttribute("opacity", "0.6")
-
-      const animR = document.createElementNS(svgNS, "animate")
-      animR.setAttribute("attributeName", "r")
-      animR.setAttribute("values", `${DOT * 0.5};${DOT * 1.35};${DOT * 0.5}`)
-      animR.setAttribute("dur", "3s")
-      animR.setAttribute("begin", `${(frac * 3).toFixed(3)}s`)
-      animR.setAttribute("repeatCount", "indefinite")
-      c.appendChild(animR)
-
-      const animO = document.createElementNS(svgNS, "animate")
-      animO.setAttribute("attributeName", "opacity")
-      animO.setAttribute("values", "0.25;0.9;0.25")
-      animO.setAttribute("dur", "3s")
-      animO.setAttribute("begin", `${(frac * 3).toFixed(3)}s`)
-      animO.setAttribute("repeatCount", "indefinite")
-      c.appendChild(animO)
-
-      svg.appendChild(c)
-    }
-
-    ref.current.innerHTML = ""
-    ref.current.appendChild(svg)
-  }, [])
-
+function DotGrid() {
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-20 [mask-image:radial-gradient(circle_at_center,rgba(255,255,255,1),rgba(255,255,255,0.1)_60%,transparent_75%)]"
-      style={{ mixBlendMode: "screen" }}
-    >
-      <div ref={ref} />
-    </div>
+      className="pointer-events-none absolute inset-0 opacity-[0.025] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_40%,black,transparent)]"
+      style={{
+        backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)",
+        backgroundSize: "28px 28px",
+      }}
+    />
   )
 }
 
@@ -212,8 +155,8 @@ export function Features() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.06]" />
 
       <div className="relative max-w-5xl mx-auto px-5 sm:px-8 md:px-10">
-        {/* Golden spiral background */}
-        <GoldenSpiral />
+        {/* Dot grid background */}
+        <DotGrid />
 
         {/* Section header */}
         <header className="relative mb-10 flex items-end justify-between border-b border-white/[0.10] pb-6">

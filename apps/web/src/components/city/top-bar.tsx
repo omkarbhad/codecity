@@ -53,7 +53,7 @@ export function TopBar({ projectName }: TopBarProps) {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/[0.07] shadow-2xl shadow-black/50"
+      className="fixed top-0 left-0 right-0 z-[60] bg-black/40 backdrop-blur-2xl border-b border-white/[0.07] shadow-2xl shadow-black/50"
     >
       <div className="flex items-center justify-between h-10 px-3 gap-2">
         {/* Left */}
