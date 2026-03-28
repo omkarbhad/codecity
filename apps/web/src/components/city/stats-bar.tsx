@@ -21,7 +21,7 @@ function StatItem({
         !isLast ? "border-r border-white/[0.06]" : ""
       }`}
     >
-      <span className="font-mono text-sm font-bold text-[#fafafa]">
+      <span className="font-sans text-sm font-bold text-[#fafafa]">
         {value.toLocaleString()}
       </span>
       <span className="text-[10px] text-zinc-500 uppercase tracking-wider">

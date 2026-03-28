@@ -40,7 +40,7 @@ export function SearchBar() {
         value={searchQuery}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search files... ( / )"
-        className="w-full bg-transparent pl-9 pr-3 py-2 font-mono text-xs text-zinc-200
+        className="w-full bg-transparent pl-9 pr-3 py-2 font-sans text-xs text-zinc-200
           placeholder:text-zinc-600 outline-none"
       />
     </div>

@@ -44,7 +44,7 @@ function StatCell({
       className={`flex flex-col items-center justify-center rounded-md p-2 ${bgClass ?? "bg-white/[0.04]"}`}
     >
       <span
-        className={`font-mono text-sm font-bold ${colorClass ?? "text-[#fafafa]"}`}
+        className={`font-sans text-sm font-bold ${colorClass ?? "text-[#fafafa]"}`}
       >
         {value}
       </span>
@@ -74,7 +74,7 @@ function ExpandableSection({
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 w-full text-left py-2 px-3
-          font-mono text-xs text-white/70 hover:text-white/90
+          font-sans text-xs text-white/70 hover:text-white/90
           transition-colors duration-100 cursor-pointer"
       >
         {open ? (
@@ -107,7 +107,7 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
       <div className="flex items-start justify-between gap-2 p-3 border-b border-white/[0.06]">
         <div className="flex items-start gap-2 min-w-0">
           <FileCode className="w-4 h-4 shrink-0 text-white/50 mt-0.5" />
-          <span className="font-mono text-xs text-zinc-400 break-all leading-relaxed">
+          <span className="font-sans text-xs text-zinc-400 break-all leading-relaxed">
             {file.path}
           </span>
         </div>
@@ -138,17 +138,17 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
       {/* Flags */}
       <div className="flex flex-wrap gap-1.5 px-3 pb-3">
         {file.isReactComponent && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20">
             React Component
           </span>
         )}
         {file.hasUnusedExports && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-orange-500/15 text-orange-400 border border-orange-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-orange-500/15 text-orange-400 border border-orange-500/20">
             Unused Exports
           </span>
         )}
         {file.classes.length > 0 && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20">
             {file.classes.length} {file.classes.length === 1 ? "Class" : "Classes"}
           </span>
         )}
@@ -164,7 +164,7 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
           {file.functions.map((fn) => (
             <div
               key={fn.name}
-              className="flex items-center gap-1.5 font-mono text-xs text-white/60"
+              className="flex items-center gap-1.5 font-sans text-xs text-white/60"
             >
               {fn.exported && (
                 <ArrowUpRight className="w-3 h-3 shrink-0 text-emerald-400" />
@@ -187,7 +187,7 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
           {file.types.map((t) => (
             <div
               key={t.name}
-              className="flex items-center gap-1.5 font-mono text-xs text-white/60"
+              className="flex items-center gap-1.5 font-sans text-xs text-white/60"
             >
               <span className="text-[10px] text-yellow-400/70 uppercase shrink-0 w-10">
                 {t.kind}
@@ -209,7 +209,7 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
                 onClick={() => isInternal && selectFile(imp)}
                 disabled={!isInternal}
                 className={`
-                  flex items-center gap-1.5 font-mono text-xs w-full text-left
+                  flex items-center gap-1.5 font-sans text-xs w-full text-left
                   ${
                     isInternal
                       ? "text-primary/70 hover:text-primary cursor-pointer"
@@ -232,7 +232,7 @@ export function FileDetails({ snapshot }: FileDetailsProps) {
             <button
               key={imp}
               onClick={() => selectFile(imp)}
-              className="flex items-center gap-1.5 font-mono text-xs text-primary/70
+              className="flex items-center gap-1.5 font-sans text-xs text-primary/70
                 hover:text-primary cursor-pointer w-full text-left"
             >
               <ArrowDownLeft className="w-3 h-3 shrink-0" />

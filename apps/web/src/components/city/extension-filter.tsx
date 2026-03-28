@@ -73,16 +73,16 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
   ).length
 
   return (
-    <div className="bg-white/[0.02] backdrop-blur-xl rounded-lg border border-white/[0.06] overflow-hidden">
+    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
       <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
-        <span className="font-mono text-[10px] text-white/40 uppercase tracking-wider">
+        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
           Extensions
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={showAllExtensions}
             disabled={noneHidden}
-            className="text-[9px] font-mono text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
+            className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
             title="Show All"
           >
             All
@@ -91,14 +91,14 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
           <button
             onClick={() => hideAllExtensions(allExts)}
             disabled={allHidden}
-            className="text-[9px] font-mono text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
+            className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
             title="Hide All"
           >
             None
           </button>
         </div>
       </div>
-      <div className="py-0.5 max-h-[200px] overflow-y-auto">
+      <div className="py-0.5 max-h-[200px] overflow-y-auto scroll-thin">
         {extensionData.map(({ ext, count }) => {
           const isHidden = hiddenExtensions.has(ext)
           const icon = EXT_ICONS[ext] ?? ext.replace(".", "").slice(0, 2).toUpperCase()
@@ -109,7 +109,7 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
               key={ext}
               onClick={() => toggleExtension(ext)}
               className={`flex items-center gap-2 w-full text-left px-3 py-1.5
-                font-mono text-[11px] transition-all duration-150 cursor-pointer
+                font-sans text-[11px] transition-all duration-150 cursor-pointer
                 ${isHidden
                   ? "text-white/20 hover:text-white/40 hover:bg-white/[0.02]"
                   : "text-white/60 hover:text-white/80 hover:bg-white/[0.04]"
@@ -140,7 +140,7 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
       </div>
       {hiddenExtensions.size > 0 && (
         <div className="px-3 py-1.5 border-t border-white/[0.06]">
-          <span className="font-mono text-[9px] text-white/30">
+          <span className="font-sans text-[9px] text-white/30">
             Showing {visibleCount}/{snapshot.files.length} files
           </span>
         </div>

@@ -39,9 +39,9 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
   }
 
   return (
-    <div className="bg-white/[0.02] backdrop-blur-xl rounded-lg border border-white/[0.06] overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-white/[0.06]">
-        <span className="font-mono text-[10px] text-white/40 uppercase tracking-wider">
+    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
+      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center">
+        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
           Districts
           <span className="ml-1.5 text-white/20">{snapshot.districts.length}</span>
         </span>
@@ -56,7 +56,7 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
               key={district.name}
               onClick={() => handleDistrictClick(district.name)}
               className={`flex items-center gap-2 w-full text-left px-3 py-1.5
-                font-mono text-[11px] transition-all duration-150 cursor-pointer
+                font-sans text-[11px] transition-all duration-150 cursor-pointer
                 ${isActive
                   ? "text-white/90 bg-white/[0.06]"
                   : "text-white/50 hover:text-white/80 hover:bg-white/[0.03]"

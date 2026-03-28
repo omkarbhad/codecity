@@ -225,9 +225,9 @@ export function Minimap({ snapshot }: MinimapProps) {
   }, [snapshot, selectedFile, hoveredFile, bounds, hiddenExtensions, hiddenPaths])
 
   return (
-    <div className="bg-white/[0.02] backdrop-blur-xl rounded-lg border border-white/[0.06] overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-white/[0.06]">
-        <span className="font-mono text-[10px] text-white/40 uppercase tracking-wider">Minimap</span>
+    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
+      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center">
+        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">Minimap</span>
       </div>
       <canvas
         ref={canvasRef}

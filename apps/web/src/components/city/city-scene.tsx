@@ -160,7 +160,7 @@ export function CitySceneCanvas({ snapshot }: CitySceneProps) {
           console.warn("WebGL context lost — will restore automatically")
         })
         canvas.addEventListener("webglcontextrestored", () => {
-          console.log("WebGL context restored")
+          console.warn("WebGL context restored")
         })
       }}
     >

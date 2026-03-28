@@ -36,21 +36,21 @@ export function CityTooltip({ snapshot }: Props) {
             className="inline-block w-2 h-2 rounded-full shrink-0"
             style={{ backgroundColor: district?.color ?? "#888" }}
           />
-          <span className="font-mono text-xs text-foreground truncate max-w-[200px]">
+          <span className="font-sans text-xs text-foreground truncate max-w-[200px]">
             {file.path.split("/").pop()}
           </span>
         </div>
         <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5">
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-sans text-[10px] text-muted-foreground">
             {file.lines} lines
           </span>
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-sans text-[10px] text-muted-foreground">
             {file.functions.length} funcs
           </span>
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-sans text-[10px] text-muted-foreground">
             C:{file.complexity}
           </span>
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-sans text-[10px] text-muted-foreground">
             {file.types.length} types
           </span>
         </div>

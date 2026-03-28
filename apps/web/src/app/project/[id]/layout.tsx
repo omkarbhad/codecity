@@ -1,5 +1,3 @@
-import { Navbar } from "@/components/layout/navbar"
-
 export default function ProjectLayout({
   children,
 }: {
@@ -7,7 +5,6 @@ export default function ProjectLayout({
 }) {
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      <Navbar compact />
       {children}
     </div>
   )

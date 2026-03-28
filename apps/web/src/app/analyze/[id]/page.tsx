@@ -88,7 +88,7 @@ export default function AnalyzePage({
   const isComplete = progress.stage === "complete"
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 font-mono bg-[#07070c]">
+    <div className="flex min-h-screen items-center justify-center px-4 font-sans bg-[#07070c]">
       <div className="pointer-events-none fixed inset-0 bg-grid opacity-30" />
       <div className="relative w-full max-w-lg">
         <div className="rounded-xl border border-white/[0.06] bg-[rgba(10,10,16,0.7)] p-8 backdrop-blur-xl">

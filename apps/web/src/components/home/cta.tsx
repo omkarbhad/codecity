@@ -30,7 +30,7 @@ export function CTA() {
             transition={{ type: "spring", stiffness: 340, damping: 30 }}
             className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl"
           >
-            Ready to Explore Your Code?
+            Your Next Architecture Review Starts Here
           </motion.h2>
 
           <motion.div
@@ -44,8 +44,8 @@ export function CTA() {
             transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.08 }}
             className="mx-auto mb-10 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base"
           >
-            Start visualizing your repositories today. Paste a URL and see your
-            codebase come alive as an interactive city.
+            Paste any GitHub URL. In under a minute, you&apos;ll be flying through
+            your codebase. Free, open source, no sign-up required for public repos.
           </motion.p>
 
           <motion.div
@@ -54,7 +54,7 @@ export function CTA() {
           >
             <Button asChild className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-[0_0_38px_rgba(255,61,61,0.3)] transition-all duration-200 hover:bg-red-500 hover:shadow-[0_0_48px_rgba(255,61,61,0.4)]">
               <Link href="/dashboard" className="flex items-center gap-2">
-                Start Building Your City
+                See Your Code as a City
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -66,7 +66,7 @@ export function CTA() {
             transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.16 }}
             className="mt-12 flex flex-wrap items-center justify-center gap-3"
           >
-            {["Free to Use", "Open Source", "No Sign-up Required"].map((label) => (
+            {["Free to use", "MIT Licensed", "No Account for Public Repos"].map((label) => (
               <span
                 key={label}
                 className="rounded-full border border-white/[0.06] bg-white/[0.04] px-3 py-1 text-xs font-medium text-zinc-400"

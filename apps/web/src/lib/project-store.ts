@@ -52,6 +52,19 @@ function toSnapshot(row: Record<string, unknown>): SnapshotRecord {
   }
 }
 
+/** Find a recent completed public project for this repo URL (any user). */
+export async function findCompletedPublicProject(repoUrl: string): Promise<ProjectRecord | null> {
+  const rows = await sql`
+    SELECT * FROM projects
+    WHERE repo_url = ${repoUrl}
+      AND visibility = 'PUBLIC'
+      AND status = 'COMPLETED'
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `
+  return rows.length > 0 ? toProject(rows[0]) : null
+}
+
 // ── Project CRUD ──
 
 export async function getProject(id: string): Promise<ProjectRecord | null> {

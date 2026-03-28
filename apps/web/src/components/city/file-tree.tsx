@@ -122,7 +122,7 @@ function TreeNodeItem({
       <div
         className={`
           flex items-center gap-1 group py-0.5 px-1.5 rounded-md
-          font-mono text-[11px] transition-colors duration-100
+          font-sans text-[11px] transition-colors duration-100
           ${isSelected
             ? "bg-white/10 text-white"
             : isHidden
@@ -170,7 +170,7 @@ function TreeNodeItem({
     <div>
       <div
         className={`flex items-center gap-0.5 group py-0.5 px-1.5 rounded-md
-          font-mono text-[11px] hover:bg-white/[0.04]
+          font-sans text-[11px] hover:bg-white/[0.04]
           transition-colors duration-100
           ${isHidden
             ? "text-white/25"
@@ -285,9 +285,9 @@ export function FileTree({ snapshot }: FileTreeProps) {
   }, [])
 
   return (
-    <div className="bg-white/[0.02] backdrop-blur-xl rounded-lg border border-white/[0.06] overflow-hidden">
+    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
       <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
-        <span className="font-mono text-[10px] text-white/40 uppercase tracking-wider">
+        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
           Files
           <span className="ml-1.5 text-white/20">{snapshot.files.length}</span>
         </span>
@@ -295,7 +295,7 @@ export function FileTree({ snapshot }: FileTreeProps) {
           {hiddenPaths.size > 0 && (
             <button
               onClick={showAllPaths}
-              className="text-[9px] font-mono text-amber-400/50 hover:text-amber-400 transition-colors px-1"
+              className="text-[9px] font-sans text-amber-400/50 hover:text-amber-400 transition-colors px-1"
               title="Show All Hidden"
             >
               Show all
@@ -317,7 +317,7 @@ export function FileTree({ snapshot }: FileTreeProps) {
           </button>
         </div>
       </div>
-      <div className="overflow-y-auto max-h-[50vh] py-0.5">
+      <div className="overflow-y-auto scroll-thin max-h-[50vh] py-0.5">
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}
@@ -331,7 +331,7 @@ export function FileTree({ snapshot }: FileTreeProps) {
       </div>
       {hiddenPaths.size > 0 && (
         <div className="px-3 py-1 border-t border-white/[0.06]">
-          <span className="font-mono text-[9px] text-amber-400/40">
+          <span className="font-sans text-[9px] text-amber-400/40">
             {hiddenPaths.size} hidden
           </span>
         </div>

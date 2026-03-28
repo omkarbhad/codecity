@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth-helpers"
-import { getProjectsByUser, getAllPublicProjects, createProject } from "@/lib/project-store"
+import { getProjectsByUser, getAllPublicProjects, createProject, findCompletedPublicProject, getSnapshot, saveSnapshot } from "@/lib/project-store"
 import { parseGitHubUrl } from "@/lib/analysis/github"
 
 export async function GET(request: Request) {
@@ -10,7 +10,9 @@ export async function GET(request: Request) {
 
     if (tab === "explore") {
       const projects = await getAllPublicProjects()
-      return NextResponse.json(projects)
+      return NextResponse.json(projects, {
+        headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
+      })
     }
 
     const user = await getSessionUser()
@@ -19,7 +21,9 @@ export async function GET(request: Request) {
     }
 
     const projects = await getProjectsByUser(user.id)
-    return NextResponse.json(projects)
+    return NextResponse.json(projects, {
+      headers: { "Cache-Control": "private, s-maxage=10, stale-while-revalidate=30" },
+    })
   } catch (error) {
     console.error("[API /projects GET]", error)
     return NextResponse.json(
@@ -45,6 +49,29 @@ export async function POST(request: Request) {
       name = `${owner}/${repo}`
     } catch {
       name = repoUrl
+    }
+
+    // For public repos, check if we already have a completed analysis
+    const isPublic = (visibility ?? "PRIVATE") === "PUBLIC"
+    if (isPublic) {
+      const existing = await findCompletedPublicProject(repoUrl)
+      if (existing) {
+        // Clone the existing analysis for this user instead of re-analyzing
+        const existingSnapshot = await getSnapshot(existing.id)
+        const project = await createProject({
+          name,
+          repoUrl,
+          visibility: "PUBLIC",
+          status: "COMPLETED",
+          fileCount: existing.fileCount,
+          lineCount: existing.lineCount,
+          userId: user.id,
+        })
+        if (existingSnapshot) {
+          await saveSnapshot(project.id, existingSnapshot.data)
+        }
+        return NextResponse.json(project, { status: 201 })
+      }
     }
 
     const project = await createProject({

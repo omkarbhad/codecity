@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ProjectVisualization } from "@/components/city/project-visualization"
-import { Building2, RotateCcw, ArrowLeft, RefreshCw } from "lucide-react"
+import { RotateCcw, ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react"
+import { PageLoader } from "@/components/ui/loader"
 import type { CitySnapshot } from "@/lib/types/city"
 
 export default function ProjectPage() {
@@ -74,70 +75,74 @@ export default function ProjectPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-          <p className="font-mono text-xs text-muted-foreground">Loading city...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader text="Loading city..." />
   }
 
   if (error) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
-        <div className="max-w-md space-y-4 text-center">
-          <Building2 className="mx-auto h-12 w-12 text-muted-foreground/30" />
-          <h2 className="text-lg font-semibold text-foreground">{error}</h2>
-          <div className="flex justify-center gap-3">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </button>
-            {repoUrl && (
-              <button
-                onClick={handleReanalyze}
-                disabled={reanalyzing}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
-                {reanalyzing ? "Starting..." : "Re-analyze"}
-              </button>
-            )}
-            <button
-              onClick={() => window.location.reload()}
-              className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Retry
-            </button>
+        <div className="max-w-sm w-full">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+            </div>
+            <h2 className="text-base font-semibold text-zinc-50 mb-2">Something went wrong</h2>
+            <p className="text-sm text-zinc-500 mb-6 leading-relaxed">{error}</p>
+            <div className="flex flex-col gap-2">
+              {repoUrl && (
+                <button
+                  onClick={handleReanalyze}
+                  disabled={reanalyzing}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-50 w-full"
+                >
+                  <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
+                  {reanalyzing ? "Starting..." : "Re-analyze"}
+                </button>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => router.back()}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 hover:border-white/[0.12] transition-all"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 hover:border-white/[0.12] transition-all"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     )
   }
 
-  if (!snapshot) return null
+  if (!snapshot) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-sm text-zinc-500 mb-3">No visualization data available.</p>
+          <button
+            onClick={handleReanalyze}
+            disabled={reanalyzing}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-50 mx-auto"
+          >
+            <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
+            {reanalyzing ? "Starting..." : "Re-analyze"}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative">
-      {/* Re-analyze button overlay */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={handleReanalyze}
-          disabled={reanalyzing}
-          className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-black/60 backdrop-blur-xl px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-white/[0.15] hover:text-white transition-all disabled:opacity-50"
-          title="Re-analyze this repository"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${reanalyzing ? "animate-spin" : ""}`} />
-          {reanalyzing ? "Starting..." : "Re-analyze"}
-        </button>
-      </div>
-      <ProjectVisualization snapshot={snapshot} projectName={projectName} />
+      <ProjectVisualization snapshot={snapshot} projectName={projectName} repoUrl={repoUrl} />
     </div>
   )
 }

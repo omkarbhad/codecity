@@ -88,15 +88,18 @@ export const analyzeRepo = inngest.createFunction(
           warnings: warnings.length > 0 ? warnings : undefined,
         }
 
-        // 4. Save results
-        await setAnalysisSnapshot(projectId, snapshot)
-
+        // 4. Save results — Postgres first (no size limit), Redis as optional cache
         await updateProject(projectId, {
           status: "COMPLETED",
           fileCount: snapshot.stats.totalFiles,
           lineCount: snapshot.stats.totalLines,
         })
-        await saveSnapshot(projectId, snapshot).catch(() => {})
+        await saveSnapshot(projectId, snapshot)
+
+        // Redis cache is optional — may fail for large repos (10MB limit)
+        await setAnalysisSnapshot(projectId, snapshot).catch((err) => {
+          console.warn(`Redis snapshot cache skipped for ${projectId}: ${err instanceof Error ? err.message : err}`)
+        })
 
         await setAnalysisProgress(projectId, {
           stage: "complete",

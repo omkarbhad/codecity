@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/layout/navbar"
+import { SidebarProvider } from "@codecity/ui/components/sidebar"
 
 export default function ExploreLayout({
   children,
@@ -6,9 +6,8 @@ export default function ExploreLayout({
   children: React.ReactNode
 }) {
   return (
-    <>
-      <Navbar />
-      <div className="page-shell">{children}</div>
-    </>
+    <SidebarProvider className="min-h-svh">
+      {children}
+    </SidebarProvider>
   )
 }

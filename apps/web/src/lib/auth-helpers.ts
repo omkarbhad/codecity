@@ -4,7 +4,7 @@ const MOCK_USER = {
   id: "dev-user",
   name: "Dev User",
   email: "dev@codecity.local",
-  role: "ADMIN" as const,
+  role: "USER" as const,
   githubToken: null as string | null,
 }
 
@@ -43,7 +43,7 @@ function resolveRole(user: RemoteSessionUser): "USER" | "ADMIN" {
 }
 
 export async function getSessionUser() {
-  if (process.env.SKIP_AUTH === "true") {
+  if (process.env.SKIP_AUTH === "true" && process.env.NODE_ENV !== "production") {
     return MOCK_USER
   }
 
@@ -60,7 +60,7 @@ export async function getSessionUser() {
 
   const response = await fetch(MAGNOVA_SESSION_URL, {
     method: "GET",
-    cache: "no-store",
+    next: { revalidate: 60 },
     credentials: "include",
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   })

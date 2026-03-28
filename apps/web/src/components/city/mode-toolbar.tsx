@@ -31,7 +31,7 @@ export function ModeToolbar() {
             onClick={() => setMode(mode)}
             title={getModeDescription(mode)}
             className={`
-              flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-mono
+              flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-sans
               transition-colors duration-150 cursor-pointer
               ${
                 active

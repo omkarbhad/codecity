@@ -37,8 +37,16 @@ const techStack = [
   { label: "Go", color: "bg-cyan-400" },
   { label: "Rust", color: "bg-orange-400" },
   { label: "Java", color: "bg-red-400" },
-  { label: "CSS/HTML", color: "bg-purple-400" },
-  { label: "JSON/YAML", color: "bg-zinc-400" },
+  { label: "Kotlin", color: "bg-violet-400" },
+  { label: "Ruby", color: "bg-rose-400" },
+  { label: "PHP", color: "bg-indigo-400" },
+  { label: "Swift", color: "bg-orange-300" },
+  { label: "CSS", color: "bg-purple-400" },
+  { label: "SCSS", color: "bg-pink-400" },
+  { label: "HTML", color: "bg-amber-400" },
+  { label: "Markdown", color: "bg-slate-400" },
+  { label: "JSON", color: "bg-zinc-400" },
+  { label: "YAML", color: "bg-teal-400" },
 ]
 
 export function WhyCodeCity() {
@@ -54,11 +62,11 @@ export function WhyCodeCity() {
           className="text-center mb-16"
         >
           <h2 className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-            Why CodeCity?
+            Your Brain Already Knows How to Navigate a City
           </h2>
           <div className="mx-auto mb-4 h-[3px] w-12 rounded-full bg-primary" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-            Reading code is hard. Understanding how thousands of files fit together is harder.
+            Reading code is hard. Understanding how tens of thousands of files fit together is harder.
             CodeCity turns abstract file trees into something your brain already understands — a city.
           </p>
         </motion.div>
@@ -90,10 +98,11 @@ export function WhyCodeCity() {
           className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-8 text-center"
         >
           <h3 className="text-[15px] font-semibold text-zinc-50 mb-2">
-            Supports 10+ Languages
+            16 Languages. Real Parsing, Not Regex.
           </h3>
           <p className="text-sm text-zinc-400 mb-5">
-            Every language gets its own color in the city — instantly spot the tech stack.
+            CodeCity parses actual syntax trees — functions, classes, imports, and complexity metrics.
+            Every language gets its own district color in the city.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             {techStack.map((lang) => (

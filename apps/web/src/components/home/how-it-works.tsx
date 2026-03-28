@@ -9,21 +9,21 @@ const steps = [
     icon: Link2,
     title: "Paste URL",
     description:
-      "Drop any GitHub repository URL into CodeCity. Public or private repos both work seamlessly.",
+      "Grab any GitHub repo URL — public or private — and paste it into CodeCity. No cloning, no CLI.",
   },
   {
     step: 2,
     icon: Cpu,
     title: "Background Analysis",
     description:
-      "Our engine fetches the repo tree, parses every source file, and computes a city layout — all in seconds.",
+      "CodeCity fetches the file tree, parses every source file, and computes the 3D layout server-side. You watch real-time progress.",
   },
   {
     step: 3,
     icon: Building,
     title: "Explore Your City",
     description:
-      "Navigate the interactive 3D cityscape. Click buildings for details, zoom into districts, re-analyze anytime.",
+      "Your city is ready. Click any building to inspect a file, zoom into districts by language, and re-analyze whenever your codebase changes.",
   },
 ]
 
@@ -45,11 +45,11 @@ export function HowItWorks() {
           className="text-center mb-16"
         >
           <h2 className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-            Three Steps to Your Code City
+            Repo to City in 60 Seconds
           </h2>
           <div className="mx-auto mb-4 h-[3px] w-12 rounded-full bg-primary" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
-            From repository to visualization in under a minute.
+            Three steps. No install. No configuration.
           </p>
         </motion.div>
 

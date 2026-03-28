@@ -11,6 +11,14 @@ export async function GET(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 })
   }
+
+  if (project.visibility === "PRIVATE") {
+    const user = await getSessionUser()
+    if (!user || (user.id !== project.userId && user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 })
+    }
+  }
+
   return NextResponse.json(project)
 }
 

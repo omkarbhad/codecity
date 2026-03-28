@@ -1,60 +1,95 @@
 import Link from "next/link"
 import { Github, Twitter } from "lucide-react"
 
+const footerLinks = {
+  product: [
+    { href: "/#features", label: "Features" },
+    { href: "/explore", label: "Explore" },
+    { href: "/dashboard", label: "Dashboard" },
+  ],
+  resources: [
+    { href: "https://github.com/omkarbhad/codecity", label: "GitHub", external: true },
+    { href: "https://github.com/omkarbhad/codecity/issues", label: "Issues", external: true },
+  ],
+}
+
 export function Footer() {
   return (
-    <footer className="border-t border-white/[0.06] bg-[#09090b]/95">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-          {/* Brand + copyright */}
-          <div className="flex items-center gap-3 justify-center md:justify-start">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-white">
-              CC
-            </div>
-            <div>
-              <span className="text-sm font-semibold text-zinc-50 tracking-wide">
-                CodeCity
-              </span>
-              <p className="text-xs text-zinc-500">
-                Built by Omkar · © {new Date().getFullYear()}
-              </p>
-            </div>
-          </div>
-
-          {/* Navigation links */}
-          <nav className="flex items-center justify-center gap-6">
-            {[
-              { href: "/dashboard", label: "Dashboard" },
-              { href: "/explore", label: "Explore" },
-              { href: "https://github.com/omkarbhad/codecity", label: "GitHub" },
-            ].map((link) => (
+    <footer className="border-t border-white/[0.06]">
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10 py-10">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          {/* Brand */}
+          <div className="col-span-2 md:col-span-2">
+            <Link href="/" className="inline-flex items-center gap-2.5 mb-3">
+              <img src="/logo.png" alt="CodeCity" className="h-7 w-7 rounded-md" />
+              <span className="text-sm font-semibold text-zinc-50">CodeCity</span>
+            </Link>
+            <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
+              Visualize GitHub repositories as interactive 3D cities. Understand architecture at a glance.
+            </p>
+            <div className="flex items-center gap-1.5 mt-4">
               <Link
-                key={link.label}
-                href={link.href}
-                className="text-sm text-zinc-500 hover:text-zinc-200 transition-colors duration-200"
+                href="https://github.com/omkarbhad/codecity"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors duration-200 hover:bg-white/[0.04] hover:text-zinc-300"
+                aria-label="GitHub"
               >
-                {link.label}
+                <Github className="h-3.5 w-3.5" />
               </Link>
-            ))}
-          </nav>
-
-          {/* Social links */}
-          <div className="flex items-center justify-center md:justify-end gap-2">
-            <Link
-              href="https://github.com/omkarbhad/codecity"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-200 hover:bg-white/[0.04] hover:text-zinc-200"
-              aria-label="GitHub"
-            >
-              <Github className="h-4 w-4" />
-            </Link>
-            <Link
-              href="https://x.com/omaborkar"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-all duration-200 hover:bg-white/[0.04] hover:text-zinc-200"
-              aria-label="Twitter"
-            >
-              <Twitter className="h-4 w-4" />
-            </Link>
+              <Link
+                href="https://x.com/omaborkar"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors duration-200 hover:bg-white/[0.04] hover:text-zinc-300"
+                aria-label="Twitter"
+              >
+                <Twitter className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
+
+          {/* Product */}
+          <div>
+            <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Product</h4>
+            <ul className="space-y-2">
+              {footerLinks.product.map((link) => (
+                <li key={link.label}>
+                  <Link href={link.href} className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors duration-200">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Resources</h4>
+            <ul className="space-y-2">
+              {footerLinks.resources.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors duration-200"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-8 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-xs text-zinc-600">
+            © {new Date().getFullYear()} CodeCity · Built by Omkar
+          </p>
+          <p className="text-xs text-zinc-600">
+            MIT Licensed · Open Source
+          </p>
         </div>
       </div>
     </footer>

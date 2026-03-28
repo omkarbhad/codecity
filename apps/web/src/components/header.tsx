@@ -9,6 +9,7 @@ import { HeaderMobileNav } from "@/components/mobile-nav"
 import { motion } from "framer-motion"
 
 export const navLinks = [
+  { label: "Features", href: "/#features" },
   { label: "Explore", href: "/explore" },
   { label: "Dashboard", href: "/dashboard" },
 ]
@@ -26,9 +27,9 @@ export function Header({
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b border-transparent transition-colors duration-200",
+        "sticky top-0 z-50 w-full border-b border-transparent transition-all duration-200",
         scrolled &&
-          "border-border bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/50",
+          "bg-black/40 backdrop-blur-2xl border-white/[0.07]",
       )}
     >
       <nav className={cn(
@@ -40,12 +41,14 @@ export function Header({
           href="/"
           className="flex items-center gap-2 rounded-md p-1.5 hover:bg-muted dark:hover:bg-muted/50"
         >
-          <div className={cn(
-            "flex items-center justify-center rounded-md bg-primary font-bold text-white",
-            compact ? "h-5 w-5 text-[8px]" : "h-6 w-6 text-[10px]",
-          )}>
-            CC
-          </div>
+          <img
+            src="/logo.png"
+            alt="CodeCity"
+            className={cn(
+              "rounded-md",
+              compact ? "h-5 w-5" : "h-6 w-6",
+            )}
+          />
           <span className={cn(
             "font-semibold text-zinc-50 tracking-wide",
             compact ? "text-xs" : "text-sm",
@@ -79,11 +82,11 @@ export function Header({
             </span>
           ) : (
             <>
-              <Button asChild size="sm" variant="outline" className="ml-2">
+              <Button asChild size="sm" variant="ghost" className="ml-2">
                 <Link href="/login">Sign In</Link>
               </Button>
               <Button asChild size="sm">
-                <Link href="/login">Get Started</Link>
+                <Link href="/dashboard">Try It Free</Link>
               </Button>
             </>
           )}

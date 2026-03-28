@@ -25,6 +25,10 @@ interface CityState {
   leftPanelCollapsed: boolean
   showShortcutsOverlay: boolean
   showBuildingLabels: boolean
+  highlightedFiles: Set<string>
+  repoUrl: string
+  setHighlightedFiles: (files: string[]) => void
+  setRepoUrl: (url: string) => void
   selectFile: (path: string | null, index?: number | null) => void
   hoverFile: (path: string | null, index?: number | null) => void
   setMode: (mode: VisualizationMode) => void
@@ -57,6 +61,10 @@ export const useCityStore = create<CityState>((set) => ({
   leftPanelCollapsed: false,
   showShortcutsOverlay: false,
   showBuildingLabels: true,
+  highlightedFiles: new Set<string>(),
+  repoUrl: "",
+  setHighlightedFiles: (files) => set({ highlightedFiles: new Set(files) }),
+  setRepoUrl: (url) => set({ repoUrl: url }),
   selectFile: (path, index = null) =>
     set({ selectedFile: path, selectedIndex: index ?? null }),
   hoverFile: (path, index = null) =>

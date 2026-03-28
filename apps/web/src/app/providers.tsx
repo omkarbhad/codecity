@@ -6,16 +6,18 @@ import { useState } from "react"
 
 export function Providers({
   children,
-  skipAuth,
 }: {
   children: React.ReactNode
-  skipAuth?: boolean
 }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 5 * 60 * 1000 },
+          queries: {
+            staleTime: 5 * 60 * 1000,
+            gcTime: 10 * 60 * 1000,
+            refetchOnWindowFocus: false,
+          },
         },
       })
   )

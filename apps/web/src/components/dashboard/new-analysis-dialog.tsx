@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Globe, Lock } from "lucide-react"
+import { Globe, Lock } from "lucide-react"
+import { Loader } from "@/components/ui/loader"
 import {
   Dialog,
   DialogContent,
@@ -98,17 +99,17 @@ export function NewAnalysisDialog({
     >
       <DialogContent className="sm:max-w-lg rounded-xl border-white/[0.08] bg-[#0a0a0c]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-[#fafafa]">
+          <DialogTitle className="text-xl font-semibold text-zinc-50">
             Create a new analysis
           </DialogTitle>
-          <DialogDescription className="text-xs text-[#71717a]">
+          <DialogDescription className="text-xs text-zinc-500">
             Paste a GitHub repository URL and we&apos;ll generate a 3D city layout.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="mt-2 space-y-5">
           <div>
-            <label className="text-[11px] uppercase tracking-wider text-[#71717a] font-medium block mb-1.5">
+            <label className="text-[11px] uppercase tracking-wider text-zinc-500 font-medium block mb-1.5">
               Repository URL
             </label>
             <Input
@@ -117,7 +118,7 @@ export function NewAnalysisDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={submitting}
-              className="h-11 rounded-lg bg-white/[0.03] border-white/[0.08] text-sm text-zinc-200 placeholder:text-[#52525b] focus-visible:border-primary/45 focus-visible:ring-0 transition-colors duration-200"
+              className="h-11 rounded-lg bg-white/[0.03] border-white/[0.08] text-sm text-zinc-200 placeholder:text-zinc-500 focus-visible:border-primary/45 focus-visible:ring-0 transition-colors duration-200"
               required
             />
             {!submitting && (
@@ -127,7 +128,7 @@ export function NewAnalysisDialog({
                     key={repo}
                     type="button"
                     onClick={() => setUrl(repo)}
-                    className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 text-[10px] text-[#a1a1aa] font-medium transition-all duration-200 hover:border-white/[0.12] hover:text-white"
+                    className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 text-[10px] text-zinc-400 font-medium transition-all duration-200 hover:border-white/[0.12] hover:text-white"
                   >
                     {repo.replace("https://github.com/", "")}
                   </button>
@@ -138,7 +139,7 @@ export function NewAnalysisDialog({
 
           {!submitting && (
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-[#71717a] font-medium block mb-1.5">
+              <label className="text-[11px] uppercase tracking-wider text-zinc-500 font-medium block mb-1.5">
                 Visibility
               </label>
               <div className="flex gap-2">
@@ -148,7 +149,7 @@ export function NewAnalysisDialog({
                     className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs uppercase tracking-wide font-medium transition-all duration-200 ${
                       visibility === v
                         ? "border-primary/40 bg-primary/10 text-white"
-                        : "border-white/[0.06] bg-white/[0.02] text-[#52525b] hover:border-white/[0.12] hover:text-[#a1a1aa]"
+                        : "border-white/[0.06] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-400"
                     }`}
                   >
                     <input
@@ -169,15 +170,10 @@ export function NewAnalysisDialog({
 
           {submitting && (
             <div className="flex flex-col items-center gap-3 py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <div className="text-center">
-                <p className="text-xs text-[#a1a1aa]">
-                  {stage}
-                </p>
-                <p className="text-[10px] text-[#52525b] mt-1">
-                  This may take 10–30 seconds depending on repo size
-                </p>
-              </div>
+              <Loader size="sm" text={stage} />
+              <p className="text-[10px] text-zinc-500">
+                This may take 10–30 seconds depending on repo size
+              </p>
             </div>
           )}
 
@@ -205,7 +201,7 @@ export function NewAnalysisDialog({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="mr-2 h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin inline-block" />
                   Building City...
                 </>
               ) : (

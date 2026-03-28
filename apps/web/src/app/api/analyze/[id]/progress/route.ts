@@ -1,12 +1,31 @@
 import { getAnalysisProgress } from "@/lib/redis"
+import { getProject } from "@/lib/project-store"
+import { getSessionUser } from "@/lib/auth-helpers"
 
 export const dynamic = "force-dynamic"
+
+const POLL_INTERVAL_MS = 1000
+const STUCK_TIMEOUT_MS = 30_000
+const PROGRESS_STUCK_TIMEOUT_MS = 60_000
+const ANALYSIS_TIMEOUT_MS = 5 * 60 * 1000
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  const project = await getProject(id)
+  if (!project) {
+    return new Response("Not found", { status: 404 })
+  }
+
+  if (project.visibility === "PRIVATE") {
+    const user = await getSessionUser()
+    if (!user || (user.id !== project.userId && user.role !== "ADMIN")) {
+      return new Response("Not found", { status: 404 })
+    }
+  }
 
   const stream = new ReadableStream({
     start(controller) {
@@ -28,7 +47,7 @@ export async function GET(
           const progress = await getAnalysisProgress(id)
 
           if (!progress) {
-            if (Date.now() - lastUpdateTime > 30000) {
+            if (Date.now() - lastUpdateTime > STUCK_TIMEOUT_MS) {
               send({ stage: "error", progress: 0, message: "Analysis appears to be stuck. Please retry." })
               clearInterval(interval)
               try { controller.close() } catch { /* already closed */ }
@@ -41,7 +60,7 @@ export async function GET(
           if (progress.progress !== lastProgressValue) {
             lastUpdateTime = Date.now()
             lastProgressValue = progress.progress
-          } else if (Date.now() - lastUpdateTime > 60000) {
+          } else if (Date.now() - lastUpdateTime > PROGRESS_STUCK_TIMEOUT_MS) {
             send({ stage: "error", progress: 0, message: "Analysis appears to be stuck. Please retry." })
             clearInterval(interval)
             try { controller.close() } catch { /* already closed */ }
@@ -68,14 +87,14 @@ export async function GET(
         } catch {
           // Redis error — keep polling
         }
-      }, 1000) // Poll Redis every 1s (was 500ms for in-memory)
+      }, POLL_INTERVAL_MS)
 
       // Timeout after 5 minutes
       setTimeout(() => {
         clearInterval(interval)
         send({ stage: "error", progress: 0, message: "Analysis timed out" })
         try { controller.close() } catch { /* already closed */ }
-      }, 5 * 60 * 1000)
+      }, ANALYSIS_TIMEOUT_MS)
     },
   })
 

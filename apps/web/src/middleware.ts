@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_COOKIE = 'magnova_session';
 const LOGIN_URL = 'https://auth.magnova.ai/codecity';
-const PROTECTED = ['/dashboard', '/project', '/settings', '/profile'];
+const PROTECTED = ['/dashboard', '/project', '/settings', '/profile', '/analyze'];
 
 export async function middleware(req: NextRequest) {
   // Skip auth entirely if SKIP_AUTH is enabled
@@ -23,5 +23,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/project/:path*', '/settings/:path*', '/profile/:path*'],
+  matcher: ['/dashboard/:path*', '/project/:path*', '/settings/:path*', '/profile/:path*', '/analyze/:path*'],
 };

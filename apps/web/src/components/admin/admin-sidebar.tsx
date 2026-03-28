@@ -17,10 +17,10 @@ export function AdminSidebar() {
   return (
     <aside className="sticky top-[3.75rem] hidden h-[calc(100vh-3.75rem)] w-56 shrink-0 border-r border-border/30 bg-card/25 lg:block">
       <div className="border-b border-border/25 px-4 py-5">
-        <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-primary/40">
+        <p className="font-sans text-[10px] tracking-[0.3em] uppercase text-primary/40">
           Admin Console
         </p>
-        <p className="mt-1 font-mono text-[10px] tracking-wide text-muted-foreground/45">
+        <p className="mt-1 font-sans text-[10px] tracking-wide text-muted-foreground/45">
           System controls
         </p>
       </div>
@@ -43,7 +43,7 @@ export function AdminSidebar() {
             >
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="flex-1 text-xs">{item.label}</span>
-              <span className={`font-mono text-[9px] tracking-wider ${isActive ? "text-primary/50" : "text-muted-foreground/30"}`}>
+              <span className={`font-sans text-[9px] tracking-wider ${isActive ? "text-primary/50" : "text-muted-foreground/30"}`}>
                 {item.tag}
               </span>
             </Link>
