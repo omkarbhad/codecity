@@ -102,6 +102,7 @@ interface SessionUser {
   name: string | null
   email: string
   role: "USER" | "ADMIN"
+  githubUsername: string | null
 }
 
 interface Project {
@@ -142,8 +143,9 @@ function DashboardContent() {
   const totalFiles = projects.reduce((sum, p) => sum + (p.fileCount ?? 0), 0)
   const totalLines = projects.reduce((sum, p) => sum + (p.lineCount ?? 0), 0)
 
-  // Prefer real session name, fall back to URL param only if no session yet
+  // Prefer: full name → github username → URL param (last resort)
   const resolvedName = me?.name
+    ?? me?.githubUsername
     ?? username.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
   const firstName = resolvedName.split(" ")[0]
 
@@ -164,7 +166,7 @@ function DashboardContent() {
     <>
       <AppSidebar
         onNewCity={() => setShowNewDialog(true)}
-        user={me ? { name: me.name, image: null, email: me.email } : null}
+        user={me ? { name: me.name ?? me.githubUsername, image: null, email: me.email } : null}
       />
       <SidebarInset>
         {/* Topbar */}
@@ -175,7 +177,7 @@ function DashboardContent() {
             <nav className="flex items-center gap-1 text-[11px] font-mono">
               <span className="text-zinc-700">dashboard</span>
               <span className="text-zinc-800">/</span>
-              <span className="text-zinc-500">{username}</span>
+              <span className="text-zinc-500">{me?.githubUsername ?? username}</span>
             </nav>
           </div>
           <Button

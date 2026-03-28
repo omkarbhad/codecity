@@ -137,6 +137,16 @@
   }
 }
 
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 .animate-fade-up {
   animation: fade-up 0.7s ease-out both;
 }
