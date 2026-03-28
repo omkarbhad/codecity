@@ -38,7 +38,7 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   onNewCity?: () => void
-  user?: { name: string | null; image: string | null } | null
+  user?: { name: string | null; image: string | null; email?: string } | null
 }) {
   const pathname = usePathname()
   const isExplore = pathname.startsWith("/explore")
@@ -181,8 +181,12 @@ export function AppSidebar({
             </div>
           )}
           <div className="flex flex-col min-w-0 gap-0">
-            <span className="text-[11px] font-medium text-zinc-400 truncate">{user?.name ?? "dev user"}</span>
-            <span className="text-[9px] font-mono text-zinc-700 truncate">free plan</span>
+            <span className="text-[11px] font-medium text-zinc-400 truncate">
+              {user?.name ?? "—"}
+            </span>
+            <span className="text-[9px] font-mono text-zinc-700 truncate">
+              {user?.email ?? "free plan"}
+            </span>
           </div>
         </div>
       </SidebarFooter>
