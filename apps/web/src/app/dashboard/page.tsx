@@ -13,8 +13,10 @@ export default function DashboardRedirect() {
         const res = await fetch("/api/me")
         if (res.ok) {
           const data = await res.json()
-          const username = data.name?.toLowerCase().replace(/\s+/g, "-") ?? "user"
-          router.replace(`/dashboard/${username}`)
+          const slug = data.githubUsername
+            ?? data.name?.toLowerCase().replace(/\s+/g, "-")
+            ?? "user"
+          router.replace(`/dashboard/${slug}`)
         } else if (res.status === 401) {
           const redirect = encodeURIComponent(window.location.href)
           const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? "https://auth.magnova.ai/codecity"
