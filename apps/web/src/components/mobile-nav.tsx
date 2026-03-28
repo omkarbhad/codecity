@@ -6,7 +6,7 @@ import { cn } from "@codecity/ui/lib/utils"
 import { Portal, PortalBackdrop } from "@codecity/ui/components/portal"
 import { Button } from "@codecity/ui/components/button"
 import { navLinks } from "@/components/header"
-import { XIcon, MenuIcon, LogIn } from "lucide-react"
+import { XIcon, MenuIcon } from "lucide-react"
 
 export function HeaderMobileNav({
   user,
@@ -40,12 +40,14 @@ export function HeaderMobileNav({
           >
             {user && (
               <div className="px-3 py-2 mb-2 border-b border-border pb-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Signed in as
-                </p>
-                <p className="text-[13px] font-medium text-foreground mt-1">
-                  {user.name ?? "User"}
-                </p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Signed in</p>
+                <Link
+                  href="/dashboard"
+                  className="mt-2 flex items-center gap-2 text-[13px] font-medium text-foreground hover:text-zinc-100 transition-colors"
+                  onClick={() => setOpen(false)}
+                >
+                  Go to Dashboard →
+                </Link>
               </div>
             )}
             <div className="grid gap-y-2">
@@ -62,7 +64,7 @@ export function HeaderMobileNav({
               ))}
             </div>
             {!user && (
-              <div className="mt-12 flex flex-col gap-2">
+              <div className="mt-8 flex flex-col gap-2">
                 <Button asChild className="w-full" variant="outline" onClick={() => setOpen(false)}>
                   <Link href="/login">Sign In</Link>
                 </Button>
