@@ -34,7 +34,7 @@ function DashboardSkeleton() {
         <div className="flex flex-1 flex-col gap-6 p-5">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-[#09090e] border border-white/[0.05] p-4 h-24 animate-pulse" />
+              <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 h-24 animate-pulse" />
             ))}
           </div>
         </div>
@@ -75,24 +75,24 @@ function StatCard({ icon: Icon, label, value, accent, mono = false, trend }: Sta
   }[accent]
 
   return (
-    <div className="group relative rounded-2xl bg-[#09090e] border border-white/[0.06] p-4 hover:border-white/[0.10] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+    <div className="group relative rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 hover:border-white/[0.14] hover:bg-white/[0.045] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
       {/* Subtle top glow on hover */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-16 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
         style={{ background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${glowColor}, transparent 80%)` }}
       />
       <div className="flex items-start justify-between mb-3">
-        <div className={`flex items-center justify-center size-8 rounded-xl transition-all duration-200 bg-white/[0.03] group-hover:bg-white/[0.05] ${accentClass}`}>
+        <div className={`flex items-center justify-center size-8 rounded-xl transition-all duration-200 bg-white/[0.05] group-hover:bg-white/[0.08] ${accentClass}`}>
           <Icon className="h-3.5 w-3.5" />
         </div>
         {trend && (
-          <span className="text-[10px] font-mono text-zinc-700">{trend}</span>
+          <span className="text-[10px] font-mono text-zinc-600">{trend}</span>
         )}
       </div>
-      <p className={`text-[22px] font-bold text-zinc-50 tracking-tight leading-none mb-1 ${mono ? "font-mono" : ""}`}>
+      <p className={`text-[22px] font-bold text-zinc-100 tracking-tight leading-none mb-1 ${mono ? "font-mono" : ""}`}>
         {display}
       </p>
-      <span className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider">{label}</span>
+      <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">{label}</span>
     </div>
   )
 }
@@ -143,11 +143,12 @@ function DashboardContent() {
   const totalFiles = projects.reduce((sum, p) => sum + (p.fileCount ?? 0), 0)
   const totalLines = projects.reduce((sum, p) => sum + (p.lineCount ?? 0), 0)
 
-  // Prefer: full name → github username → URL param (last resort)
-  const resolvedName = me?.name
+  // Greeting uses display name → GitHub username → URL slug (last resort)
+  // Breadcrumb always shows githubUsername for URL record purposes
+  const greetingName = me?.name
     ?? me?.githubUsername
     ?? username.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  const firstName = resolvedName.split(" ")[0]
+  const firstName = greetingName.split(" ")[0]
 
   const greeting = useMemo(() => {
     const h = new Date().getHours()
