@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation"
 import { cn } from "@codecity/ui/lib/utils"
 import { useScroll } from "@/hooks/use-scroll"
 import { HeaderMobileNav } from "@/components/mobile-nav"
+import { LayoutDashboard } from "lucide-react"
 
 export const navLinks = [
   { label: "Features", href: "/#features" },
   { label: "Explore", href: "/explore" },
-  { label: "Dashboard", href: "/dashboard" },
 ]
 
 export function Header({
@@ -56,7 +56,7 @@ export function Header({
         {/* Desktop nav */}
         <div className="hidden items-center gap-0.5 md:flex">
           {navLinks.map((link) => {
-            const active = link.href === "/#features" ? false : pathname.startsWith(link.href)
+            const active = pathname === link.href
             return (
               <Link
                 key={link.label}
@@ -78,13 +78,13 @@ export function Header({
           {user ? (
             <Link
               href="/dashboard"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] transition-all duration-150"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] transition-all duration-150"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-              {user.name && user.name !== "User" && user.name !== "??" ? user.name : "Dashboard"}
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+              Dashboard
             </Link>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <Link
                 href="/login"
                 className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] transition-all duration-150"
@@ -92,10 +92,10 @@ export function Header({
                 Sign In
               </Link>
               <Link
-                href="/dashboard"
-                className="ml-1 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white transition-all duration-150 shadow-[0_0_16px_rgba(255,61,61,0.25)] hover:shadow-[0_0_20px_rgba(255,61,61,0.35)]"
+                href="/login"
+                className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white transition-all duration-150 shadow-[0_0_16px_rgba(255,61,61,0.25)] hover:shadow-[0_0_20px_rgba(255,61,61,0.35)]"
               >
-                Try It Free
+                Get Started
               </Link>
             </div>
           )}
