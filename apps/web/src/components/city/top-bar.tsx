@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, FolderTree, FileCode, Brain, X, Search, PanelLeft } from "lucide-react"
@@ -37,11 +37,18 @@ export function TopBar({ projectName }: TopBarProps) {
   const toggleLeftPanel = useCityStore((s) => s.toggleLeftPanel)
   const leftPanelCollapsed = useCityStore((s) => s.leftPanelCollapsed)
   const inputRef = useRef<HTMLInputElement>(null)
+  const mobileInputRef = useRef<HTMLInputElement>(null)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.target as HTMLElement).tagName === "INPUT") {
-        if (e.key === "Escape") { inputRef.current?.blur(); setSearch("") }
+        if (e.key === "Escape") {
+          inputRef.current?.blur()
+          mobileInputRef.current?.blur()
+          setSearch("")
+          setMobileSearchOpen(false)
+        }
         return
       }
       if (e.key === "/") { e.preventDefault(); inputRef.current?.focus() }
@@ -69,12 +76,12 @@ export function TopBar({ projectName }: TopBarProps) {
             <span className="text-[13px] font-semibold hidden sm:inline">CodeCity</span>
           </Link>
           <span className="text-white/65 hidden sm:inline">/</span>
-          <span className="font-sans text-[11px] text-white/65 truncate max-w-[160px]">{projectName}</span>
+          <span className="font-sans text-[11px] text-white/65 truncate max-w-[80px] sm:max-w-[160px]">{projectName}</span>
         </div>
 
-        {/* Center */}
-        <div className="flex items-center gap-1">
-          <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px">
+        {/* Center — hidden on xs, shown on sm+ */}
+        <div className="hidden sm:flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none">
+          <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px shrink-0">
             {LAYOUTS.map((l) => {
               const Icon = l.icon
               const active = layoutMode === l.key
@@ -93,9 +100,9 @@ export function TopBar({ projectName }: TopBarProps) {
             })}
           </div>
 
-          <div className="w-px h-4 bg-white/[0.06]" />
+          <div className="w-px h-4 bg-white/[0.06] shrink-0" />
 
-          <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px">
+          <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px shrink-0">
             {MODES.map((m) => (
               <button
                 key={m.key}
@@ -110,9 +117,32 @@ export function TopBar({ projectName }: TopBarProps) {
           </div>
         </div>
 
+        {/* Mobile center — active mode pill only, tap cycles through */}
+        <div className="flex sm:hidden items-center gap-1 shrink-0">
+          <button
+            onClick={() => {
+              const idx = LAYOUTS.findIndex((l) => l.key === layoutMode)
+              setLayoutMode(LAYOUTS[(idx + 1) % LAYOUTS.length].key)
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] text-[11px] font-medium text-primary"
+          >
+            {(() => { const l = LAYOUTS.find((l) => l.key === layoutMode)!; const Icon = l.icon; return <Icon className="w-3 h-3" /> })()}
+          </button>
+          <button
+            onClick={() => {
+              const idx = MODES.findIndex((m) => m.key === visualizationMode)
+              setMode(MODES[(idx + 1) % MODES.length].key)
+            }}
+            className="px-2 py-1 rounded-md bg-primary/15 border border-primary/20 text-[11px] font-medium text-primary"
+          >
+            {MODES.find((m) => m.key === visualizationMode)?.label}
+          </button>
+        </div>
+
         {/* Right */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="relative group">
+          {/* Search — hidden on mobile, shown sm+ */}
+          <div className="relative group hidden sm:block">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/45 pointer-events-none group-focus-within:text-white/65 transition-colors" />
             <input
               ref={inputRef}
@@ -130,6 +160,17 @@ export function TopBar({ projectName }: TopBarProps) {
             )}
           </div>
 
+          {/* Mobile search icon only */}
+          <button
+            onClick={() => { setMobileSearchOpen((v) => !v); setTimeout(() => mobileInputRef.current?.focus(), 50) }}
+            className={`flex sm:hidden items-center justify-center w-7 h-7 rounded-md border border-white/[0.05] transition-all ${
+              mobileSearchOpen || searchQuery ? "bg-primary/15 text-primary border-primary/20" : "bg-white/[0.03] text-white/55"
+            }`}
+            aria-label="Search"
+          >
+            <Search className="w-3.5 h-3.5" />
+          </button>
+
           <button
             onClick={toggleLeftPanel}
             className={`flex items-center justify-center w-7 h-7 rounded-md border border-white/[0.05] transition-all ${
@@ -140,6 +181,30 @@ export function TopBar({ projectName }: TopBarProps) {
           </button>
         </div>
       </div>
+
+      {/* Mobile search bar — only shown when toggled */}
+      {(mobileSearchOpen || searchQuery) && (
+        <div className="sm:hidden px-3 pb-2 -mt-0.5">
+          <div className="relative group">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/45 pointer-events-none group-focus-within:text-white/65 transition-colors" />
+            <input
+              ref={mobileInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearch(e.target.value)}
+              onBlur={() => { if (!searchQuery) setMobileSearchOpen(false) }}
+              placeholder="Search files..."
+              aria-label="Search files"
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-md pl-7 pr-7 py-1.5 text-[11px] text-white/80 placeholder:text-white/45 outline-none focus:border-white/15 focus:bg-white/[0.06] transition-all"
+            />
+            {searchQuery && (
+              <button onClick={() => { setSearch(""); setMobileSearchOpen(false) }} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/65 hover:text-white/75 transition-colors">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

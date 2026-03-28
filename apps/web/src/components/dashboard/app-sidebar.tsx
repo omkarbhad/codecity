@@ -11,6 +11,7 @@ import {
   Building2,
   Globe,
   Lock,
+  LogOut,
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -172,22 +173,29 @@ export function AppSidebar({
 
       {/* Footer */}
       <SidebarFooter className="border-t border-white/[0.05] p-2">
-        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/[0.03] transition-colors cursor-default">
+        <div className="flex items-center gap-2 px-2 py-1.5">
           {user?.image ? (
-            <img src={user.image} alt={user.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08]" />
+            <img src={user.image} alt={user.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08] shrink-0" />
           ) : (
             <div className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
               <User className="h-3 w-3 text-zinc-600" />
             </div>
           )}
-          <div className="flex flex-col min-w-0 gap-0">
+          <div className="flex flex-col min-w-0 flex-1 gap-0">
             <span className="text-[11px] font-medium text-zinc-400 truncate">
-              {user?.name ?? "—"}
+              {user?.name ?? (user?.email ? user.email.split("@")[0] : "—")}
             </span>
             <span className="text-[9px] font-mono text-zinc-700 truncate">
               {user?.email ?? "free plan"}
             </span>
           </div>
+          <a
+            href="/api/auth/logout"
+            title="Sign out"
+            className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.05] transition-all shrink-0"
+          >
+            <LogOut className="h-3 w-3" />
+          </a>
         </div>
       </SidebarFooter>
       <SidebarRail />

@@ -87,6 +87,8 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
     { label: "Types", value: stats.totalTypes, color: "text-purple-400" },
   ]
 
+  const mobileItems = items.filter((item) => ["Files", "LOC", "Unused"].includes(item.label))
+
   return (
     <div className="fixed bottom-3 left-1/2 z-[55]" style={{ transform: "translateX(-50%)" }}>
       <div
@@ -104,8 +106,19 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
           </span>
         </div>
 
+        {/* Mobile: show 3 key stats only */}
+        {mobileItems.map((item, i) => (
+          <div key={i} className="flex sm:hidden items-center gap-1 px-2">
+            <span className={`text-[11px] font-bold tabular-nums ${item.color}`}>
+              {item.value >= 1000 ? `${(item.value / 1000).toFixed(1)}k` : item.value}
+            </span>
+            <span className="text-[8px] text-white/65 font-medium">{item.label}</span>
+          </div>
+        ))}
+
+        {/* Desktop: show all stats */}
         {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-1 px-2">
+          <div key={i} className="hidden sm:flex items-center gap-1 px-2">
             <span className={`text-[11px] font-bold tabular-nums ${item.color}`}>
               {item.value >= 1000 ? `${(item.value / 1000).toFixed(1)}k` : item.value}
             </span>
@@ -147,8 +160,8 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
 
         {helpOpen && (
           <div
-            className="fixed w-[320px] bg-black/50 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/60 p-3 z-[70] overflow-y-auto max-h-[80vh]"
-            style={{ bottom: helpPos.bottom, right: helpPos.right }}
+            className="fixed w-[min(320px,calc(100vw-2rem))] bg-black/50 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/60 p-3 z-[70] overflow-y-auto max-h-[70vh]"
+            style={{ bottom: helpPos.bottom, right: Math.max(helpPos.right, 8) }}
           >
             {/* Legend */}
             <p className="text-[10px] text-white/75 uppercase tracking-widest font-medium mb-2">Visual Guide</p>

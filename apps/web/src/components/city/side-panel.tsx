@@ -77,7 +77,21 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   const cplxLabel = file.complexity <= 10 ? "Low" : file.complexity <= 25 ? "Med" : "High"
 
   return (
-    <div className="fixed right-0 top-10 bottom-0 w-[300px] z-[50] m-1.5 mb-2 bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 animate-slide-in-right flex flex-col overflow-hidden">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 z-[49] bg-black/50 sm:hidden"
+        onClick={() => selectFile(null, null)}
+        aria-hidden="true"
+      />
+
+      {/* Panel — bottom sheet on mobile, right sidebar on sm+ */}
+      <div className="fixed z-[50] bg-black/40 backdrop-blur-2xl border border-white/[0.07] shadow-2xl shadow-black/50 flex flex-col overflow-hidden left-0 right-0 bottom-0 w-full rounded-t-2xl max-h-[75vh] animate-slide-up sm:left-auto sm:top-10 sm:bottom-0 sm:right-0 sm:w-[300px] sm:m-1.5 sm:mb-2 sm:rounded-lg sm:max-h-none sm:animate-slide-in-right">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1 shrink-0">
+          <div className="w-8 h-1 rounded-full bg-white/20" />
+        </div>
+
         {/* Header */}
         <div className="px-3 py-2.5 border-b border-white/[0.04] shrink-0">
           <div className="flex items-start justify-between gap-2">
@@ -230,7 +244,8 @@ export function SidePanel({ snapshot }: SidePanelProps) {
             </Section>
           )}
         </div>
-    </div>
+      </div>
+    </>
   )
 }
 
