@@ -69,7 +69,7 @@ export function HeaderMobileNav({
                   <Link href="/login">Sign In</Link>
                 </Button>
                 <Button asChild className="w-full" onClick={() => setOpen(false)}>
-                  <Link href="/login">Get Started</Link>
+                  <Link href="/dashboard">Get Started</Link>
                 </Button>
               </div>
             )}

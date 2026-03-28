@@ -92,7 +92,7 @@ export function Header({
                 Sign In
               </Link>
               <Link
-                href="/login"
+                href="/dashboard"
                 className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white transition-all duration-150 shadow-[0_0_16px_rgba(255,61,61,0.25)] hover:shadow-[0_0_20px_rgba(255,61,61,0.35)]"
               >
                 Get Started
