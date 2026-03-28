@@ -48,7 +48,7 @@ export function HeroSection() {
         >
           <Sparkles className="h-3 w-3 text-primary" />
           <span className="text-[12px] font-medium text-zinc-400">Free &amp; Open Source Code Visualization</span>
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" aria-hidden="true" />
         </motion.div>
 
         {/* Headline */}

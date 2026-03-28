@@ -176,6 +176,7 @@ export function TopBar({ projectName }: TopBarProps) {
 
           <button
             onClick={toggleLeftPanel}
+            aria-label={leftPanelCollapsed ? "Show file tree" : "Hide file tree"}
             className={`flex items-center justify-center w-7 h-7 rounded-md border border-white/[0.05] transition-all ${
               leftPanelCollapsed ? "bg-white/[0.03] text-white/55 hover:text-white/75 hover:bg-white/[0.05]" : "bg-primary/15 text-primary border-primary/20"
             }`}

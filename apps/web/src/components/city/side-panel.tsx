@@ -102,7 +102,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
               </div>
               <div className="flex items-center gap-1 mt-1 ml-[18px]">
                 <p className="text-[10px] text-white/65 truncate">{file.path}</p>
-                <button onClick={handleCopyPath} className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors">
+                <button onClick={handleCopyPath} aria-label="Copy file path" className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors">
                   {copied ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                 </button>
                 {repoUrl && (
@@ -121,11 +121,12 @@ export function SidePanel({ snapshot }: SidePanelProps) {
             <div className="flex items-center gap-px shrink-0">
               <button
                 onClick={togglePinSidePanel}
+                aria-label={sidePanelPinned ? "Unpin panel" : "Pin panel"}
                 className={`p-1 rounded-md hover:bg-white/[0.06] transition-colors ${sidePanelPinned ? "text-primary" : "text-white/45 hover:text-white/65"}`}
               >
                 {sidePanelPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
               </button>
-              <button onClick={() => selectFile(null, null)} className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors">
+              <button onClick={() => selectFile(null, null)} aria-label="Close panel" className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -200,6 +201,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                           onClick={() => handleNavigate(imp)}
                           className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-red-500/[0.06] text-red-400/80 border-red-500/[0.08] hover:bg-red-500/[0.12] transition-all truncate max-w-[130px]"
                           title={imp}
+                          aria-label={`Navigate to ${imp}`}
                         >
                           {imp.split("/").pop()}
                         </button>
@@ -219,6 +221,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                           onClick={() => handleNavigate(dep)}
                           className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-blue-500/[0.06] text-blue-400/80 border-blue-500/[0.08] hover:bg-blue-500/[0.12] transition-all truncate max-w-[130px]"
                           title={dep}
+                          aria-label={`Navigate to ${dep}`}
                         >
                           {dep.split("/").pop()}
                         </button>

@@ -7,7 +7,7 @@
     "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

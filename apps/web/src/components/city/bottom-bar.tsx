@@ -99,7 +99,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
             {layoutLabels[layoutMode]}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+            <span className="w-1 h-1 rounded-full bg-primary motion-safe:animate-pulse" />
             <span className="text-[9px] text-white/65 font-medium">
               {modeLabels[visualizationMode]}
             </span>

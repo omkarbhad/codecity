@@ -136,14 +136,14 @@ function DeleteButton({
         <button
           onClick={confirm}
           className="flex items-center justify-center px-1.5 py-1 text-red-400 hover:bg-red-500/20 transition-colors"
-          title="Confirm delete"
+          aria-label="Confirm delete"
         >
           <Check className="h-3 w-3" />
         </button>
         <button
           onClick={cancel}
           className="flex items-center justify-center px-1.5 py-1 text-zinc-500 hover:bg-white/[0.06] transition-colors"
-          title="Cancel"
+          aria-label="Cancel delete"
         >
           <X className="h-3 w-3" />
         </button>
@@ -154,16 +154,16 @@ function DeleteButton({
   return (
     <button
       onClick={openConfirm}
-      className="p-1.5 rounded-md text-zinc-700 hover:text-red-400 hover:bg-red-500/[0.08] transition-all opacity-0 group-hover:opacity-100"
-      title="Delete"
+      className="p-1.5 rounded-md text-zinc-700 hover:text-red-400 hover:bg-red-500/[0.08] transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+      aria-label="Delete project"
     >
       <Trash2 className="h-3 w-3" />
     </button>
   )
 }
 
-/** Fetch snapshot on first hover and cache it in component state */
-function useSnapshotOnHover(projectId: string, enabled: boolean) {
+/** Fetch snapshot on mount for completed projects */
+function useSnapshot(projectId: string, enabled: boolean) {
   const [snapshot, setSnapshot] = useState<CitySnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const fetched = useRef(false)
@@ -198,9 +198,9 @@ function ProjectCard({
   queryClient: ReturnType<typeof useQueryClient>
 }) {
   const [hovered, setHovered] = useState(false)
-  const { snapshot, loading: snapshotLoading } = useSnapshotOnHover(
+  const { snapshot, loading: snapshotLoading } = useSnapshot(
     project.id,
-    project.status === "COMPLETED" && hovered
+    project.status === "COMPLETED"
   )
   const isProcessing = project.status === "PROCESSING" || project.status === "PENDING"
   const isCompleted = project.status === "COMPLETED"
@@ -260,9 +260,9 @@ function ProjectCard({
         />
       )}
 
-      {/* 3D city preview pane — lazy-loaded on hover */}
+      {/* 3D city preview pane */}
       {isCompleted && (
-        <div className="relative h-0 overflow-hidden transition-all duration-500 ease-out group-hover:h-[120px]">
+        <div className="relative h-[120px] overflow-hidden">
           {/* shimmer while loading */}
           {snapshotLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#06060b] overflow-hidden">
@@ -413,8 +413,8 @@ function ProjectCard({
             {/* Visibility toggle */}
             <button
               onClick={(e) => onToggleVisibility(e, project)}
-              className="p-1.5 rounded-md text-zinc-700 hover:text-zinc-400 hover:bg-white/[0.04] transition-all opacity-0 group-hover:opacity-100"
-              title={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
+              className="p-1.5 rounded-md text-zinc-700 hover:text-zinc-400 hover:bg-white/[0.04] transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+              aria-label={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
             >
               {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
             </button>

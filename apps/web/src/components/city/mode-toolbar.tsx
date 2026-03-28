@@ -41,7 +41,7 @@ export function ModeToolbar() {
             `}
           >
             <span
-              className={`inline-block w-2 h-2 rounded-full shrink-0 ${active ? "animate-pulse" : ""}`}
+              className={`inline-block w-2 h-2 rounded-full shrink-0 ${active ? "motion-safe:animate-pulse" : ""}`}
               style={{ backgroundColor: dotColor }}
             />
             {label}
