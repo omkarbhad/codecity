@@ -19,6 +19,8 @@ import {
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
+import { MiniCityPreview } from "@/components/city/mini-city-preview"
+import type { CitySnapshot } from "@/lib/types/city"
 
 interface Project {
   id: string
@@ -160,6 +162,26 @@ function DeleteButton({
   )
 }
 
+/** Fetch snapshot on first hover and cache it in component state */
+function useSnapshotOnHover(projectId: string, enabled: boolean) {
+  const [snapshot, setSnapshot] = useState<CitySnapshot | null>(null)
+  const [loading, setLoading] = useState(false)
+  const fetched = useRef(false)
+
+  useEffect(() => {
+    if (!enabled || fetched.current) return
+    fetched.current = true
+    setLoading(true)
+    fetch(`/api/projects/${projectId}/snapshot`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setSnapshot(data as CitySnapshot) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [enabled, projectId])
+
+  return { snapshot, loading }
+}
+
 function ProjectCard({
   project,
   isQueued,
@@ -175,6 +197,11 @@ function ProjectCard({
   onRetry: (project: Project) => void
   queryClient: ReturnType<typeof useQueryClient>
 }) {
+  const [hovered, setHovered] = useState(false)
+  const { snapshot, loading: snapshotLoading } = useSnapshotOnHover(
+    project.id,
+    project.status === "COMPLETED" && hovered
+  )
   const isProcessing = project.status === "PROCESSING" || project.status === "PENDING"
   const isCompleted = project.status === "COMPLETED"
   const isFailed = project.status === "FAILED"
@@ -200,6 +227,8 @@ function ProjectCard({
 
   return (
     <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={`group relative flex flex-col rounded-2xl border bg-[#09090e] transition-all duration-200 overflow-hidden
         ${isCompleted ? "border-white/[0.07] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]" : ""}
         ${isActive ? "border-primary/25 shadow-[0_0_0_1px_rgba(255,61,61,0.06),0_0_24px_rgba(255,61,61,0.06)]" : ""}
@@ -229,6 +258,28 @@ function ProjectCard({
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300"
           style={{ background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,255,255,0.025), transparent 70%)" }}
         />
+      )}
+
+      {/* 3D city preview pane — lazy-loaded on hover */}
+      {isCompleted && (
+        <div className="relative h-0 overflow-hidden transition-all duration-500 ease-out group-hover:h-[120px]">
+          {/* shimmer while loading */}
+          {snapshotLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#06060b] overflow-hidden">
+              <div className="absolute inset-0 -translate-x-full animate-[shimmer-slide_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
+              <span className="text-[10px] font-mono text-zinc-700 relative z-10">loading city…</span>
+            </div>
+          )}
+          {snapshot && (
+            <div className="absolute inset-0 pointer-events-none">
+              <MiniCityPreview snapshot={snapshot} speed={0.4} className="w-full h-full" />
+              {/* bottom fade to card body */}
+              <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#09090e] to-transparent pointer-events-none" />
+            </div>
+          )}
+          {/* top border separator */}
+          <div className="absolute inset-x-0 top-0 h-px bg-white/[0.05]" />
+        </div>
       )}
 
       <div className="relative p-4 flex flex-col gap-3">

@@ -84,5 +84,6 @@ export async function getSessionUser() {
     email: remoteUser.email ?? "",
     role: resolveRole(remoteUser) as "USER" | "ADMIN",
     githubToken: remoteUser.github_token ?? null,
+    githubUsername: remoteUser.github_username ?? null,
   }
 }
