@@ -6,6 +6,7 @@ const MOCK_USER = {
   email: "dev@codecity.local",
   role: "USER" as const,
   githubToken: null as string | null,
+  githubUsername: "dev-user",
 }
 
 const AUTH_COOKIE = "magnova_session"
