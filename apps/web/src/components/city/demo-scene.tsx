@@ -97,6 +97,7 @@ function DemoSceneInner() {
         toneMappingExposure: 1.4,
         powerPreference: "low-power",
       }}
+      shadows={{ type: THREE.PCFShadowMap }}
       camera={{ position: [30, 20, 30], fov: 50, near: 0.5, far: 3000 }}
       style={{ width: "100%", height: "100%" }}
       onCreated={({ gl }) => {
@@ -104,6 +105,9 @@ function DemoSceneInner() {
         const canvas = gl.domElement
         canvas.addEventListener("webglcontextlost", (e) => {
           e.preventDefault()
+        })
+        canvas.addEventListener("webglcontextrestored", () => {
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         })
       }}
     >

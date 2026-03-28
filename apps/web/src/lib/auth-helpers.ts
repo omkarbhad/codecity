@@ -75,7 +75,8 @@ export async function getSessionUser() {
     return null
   }
 
-  const displayName = remoteUser.name ?? remoteUser.fullName ?? remoteUser.displayName ?? "User"
+  const rawName = remoteUser.name ?? remoteUser.fullName ?? remoteUser.displayName ?? ""
+  const displayName = rawName.trim() && rawName.trim() !== "??" ? rawName.trim() : null
 
   return {
     id: remoteUser.id,

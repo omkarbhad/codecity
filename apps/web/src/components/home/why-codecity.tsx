@@ -9,24 +9,24 @@ const fadeUp = {
 
 const useCases = [
   {
-    title: "Onboard New Developers",
+    title: "Onboard Faster",
     description:
-      "Help new team members understand a codebase in minutes instead of days. The city view reveals architecture, module boundaries, and where the important code lives.",
+      "New team members understand codebase structure in minutes — not days. The city reveals module boundaries and where the important code actually lives.",
   },
   {
     title: "Spot Technical Debt",
     description:
-      "Towering buildings signal large, complex files. Sprawling districts indicate directories that need refactoring. Identify code smells visually before they become problems.",
+      "Towering buildings mean large, complex files. Sprawling districts mean over-coupled directories. See refactoring targets before opening a single file.",
   },
   {
     title: "Architecture Reviews",
     description:
-      "Present codebase structure to stakeholders without drowning in file trees. The 3D city makes architecture tangible — perfect for design reviews and tech talks.",
+      "Present codebase structure without drowning in file trees. The 3D city makes architecture tangible — perfect for design reviews, team demos, and tech talks.",
   },
   {
-    title: "Compare Repositories",
+    title: "Compare Repos",
     description:
-      "Analyze multiple repos to compare structure and complexity. See how microservices stack up, or compare your fork to upstream at a glance.",
+      "Analyze multiple repos side by side. See how microservices stack up, track growth over time, or compare your fork to upstream at a glance.",
   },
 ]
 
@@ -62,12 +62,12 @@ export function WhyCodeCity() {
           className="text-center mb-16"
         >
           <h2 className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-            Your Brain Already Knows How to Navigate a City
+            Code You Can Actually Navigate
           </h2>
           <div className="mx-auto mb-4 h-[3px] w-12 rounded-full bg-primary" />
           <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-            Reading code is hard. Understanding how tens of thousands of files fit together is harder.
-            CodeCity turns abstract file trees into something your brain already understands — a city.
+            File trees scale poorly. Tens of thousands of files become impossible to reason about.
+            CodeCity maps your codebase onto a 3D city — a mental model your brain already knows how to use.
           </p>
         </motion.div>
 

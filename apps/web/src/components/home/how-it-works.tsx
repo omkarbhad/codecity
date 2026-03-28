@@ -34,7 +34,7 @@ const fadeUp = {
 
 export function HowItWorks() {
   return (
-    <section className="relative py-24 sm:py-32">
+    <section id="how-it-works" className="relative py-24 sm:py-32">
       <div className="absolute top-0 left-0 right-0 h-px bg-white/[0.06]" />
 
       <div className="max-w-5xl mx-auto px-5 sm:px-8 md:px-10">

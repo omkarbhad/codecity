@@ -27,7 +27,7 @@ export function Header({
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-300",
         scrolled
-          ? "bg-[#07070c]/80 backdrop-blur-xl border-b border-white/[0.06]"
+          ? "bg-[#07070c]/85 backdrop-blur-xl border-b border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.03)]"
           : "bg-transparent border-b border-transparent",
       )}
     >
@@ -36,11 +36,14 @@ export function Header({
         compact ? "h-10" : "h-14",
       )}>
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link href="/" className="flex items-center gap-2 group shrink-0">
           <img
             src="/logo.png"
             alt="CodeCity"
-            className={cn("rounded-lg object-cover", compact ? "h-5 w-5" : "h-7 w-7")}
+            className={cn(
+              "rounded-lg object-cover transition-transform duration-200 group-hover:scale-105",
+              compact ? "h-5 w-5" : "h-7 w-7"
+            )}
           />
           <span className={cn(
             "font-semibold text-zinc-100 tracking-tight",
@@ -70,17 +73,18 @@ export function Header({
             )
           })}
 
-          <div className="w-px h-4 bg-white/[0.08] mx-2" />
+          <div className="w-px h-4 bg-white/[0.07] mx-2.5" />
 
           {user ? (
             <Link
               href="/dashboard"
-              className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] transition-all duration-150"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] transition-all duration-150"
             >
-              {user.name ?? "Dashboard"}
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+              {user.name && user.name !== "User" && user.name !== "??" ? user.name : "Dashboard"}
             </Link>
           ) : (
-            <>
+            <div className="flex items-center gap-1">
               <Link
                 href="/login"
                 className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] transition-all duration-150"
@@ -89,11 +93,11 @@ export function Header({
               </Link>
               <Link
                 href="/dashboard"
-                className="ml-1 px-3.5 py-1.5 rounded-lg text-[13px] font-medium bg-primary hover:bg-primary/90 text-white transition-colors duration-150"
+                className="ml-1 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white transition-all duration-150 shadow-[0_0_16px_rgba(255,61,61,0.25)] hover:shadow-[0_0_20px_rgba(255,61,61,0.35)]"
               >
                 Try It Free
               </Link>
-            </>
+            </div>
           )}
         </div>
 

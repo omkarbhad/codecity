@@ -88,7 +88,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
   ]
 
   return (
-    <div className="fixed bottom-3 left-1/2 z-40" style={{ transform: "translateX(-50%)" }}>
+    <div className="fixed bottom-3 left-1/2 z-[55]" style={{ transform: "translateX(-50%)" }}>
       <div
         className="bg-black/40 backdrop-blur-2xl rounded-lg border border-white/[0.07] shadow-2xl shadow-black/50 px-3 py-1.5 flex items-center gap-1"
       >
@@ -147,7 +147,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
 
         {helpOpen && (
           <div
-            className="fixed w-[320px] bg-black/50 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/60 p-3 z-[100]"
+            className="fixed w-[320px] bg-black/50 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/60 p-3 z-[70] overflow-y-auto max-h-[80vh]"
             style={{ bottom: helpPos.bottom, right: helpPos.right }}
           >
             {/* Legend */}

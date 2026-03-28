@@ -285,7 +285,7 @@ export function FileTree({ snapshot }: FileTreeProps) {
   }, [])
 
   return (
-    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
+    <div>
       <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
         <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
           Files
@@ -317,7 +317,7 @@ export function FileTree({ snapshot }: FileTreeProps) {
           </button>
         </div>
       </div>
-      <div className="overflow-y-auto scroll-thin max-h-[50vh] py-0.5">
+      <div className="py-0.5">
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}

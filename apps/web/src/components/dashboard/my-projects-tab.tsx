@@ -14,6 +14,8 @@ import {
   RefreshCw,
   GitBranch,
   AlertCircle,
+  X,
+  Check,
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
@@ -87,10 +89,80 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString()
 }
 
+function DeleteButton({
+  projectId,
+  onDelete,
+}: {
+  projectId: string
+  onDelete: (id: string) => void
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function openConfirm(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setConfirmOpen(true)
+    timeoutRef.current = setTimeout(() => setConfirmOpen(false), 4000)
+  }
+
+  function cancel(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setConfirmOpen(false)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+  }
+
+  function confirm(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    setConfirmOpen(false)
+    onDelete(projectId)
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }, [])
+
+  if (confirmOpen) {
+    return (
+      <div
+        className="flex items-center gap-0.5 rounded-md overflow-hidden border border-red-500/30 bg-red-500/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-[10px] font-medium text-red-400 px-2 py-1 leading-none">Delete?</span>
+        <button
+          onClick={confirm}
+          className="flex items-center justify-center px-1.5 py-1 text-red-400 hover:bg-red-500/20 transition-colors"
+          title="Confirm delete"
+        >
+          <Check className="h-3 w-3" />
+        </button>
+        <button
+          onClick={cancel}
+          className="flex items-center justify-center px-1.5 py-1 text-zinc-500 hover:bg-white/[0.06] transition-colors"
+          title="Cancel"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={openConfirm}
+      className="p-1.5 rounded-md text-zinc-700 hover:text-red-400 hover:bg-red-500/[0.08] transition-all opacity-0 group-hover:opacity-100"
+      title="Delete"
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  )
+}
+
 function ProjectCard({
   project,
   isQueued,
-  deletingId,
   onDelete,
   onToggleVisibility,
   onRetry,
@@ -98,8 +170,7 @@ function ProjectCard({
 }: {
   project: Project
   isQueued: boolean
-  deletingId: string | null
-  onDelete: (e: React.MouseEvent, id: string) => void
+  onDelete: (id: string) => void
   onToggleVisibility: (e: React.MouseEvent, project: Project) => void
   onRetry: (project: Project) => void
   queryClient: ReturnType<typeof useQueryClient>
@@ -117,7 +188,6 @@ function ProjectCard({
     }
   }, [progress?.stage, queryClient])
 
-  // Parse repo name (owner/repo)
   const repoPath = project.repoUrl.replace("https://github.com/", "")
   const [owner, repo] = repoPath.split("/")
 
@@ -129,13 +199,15 @@ function ProjectCard({
       : null
 
   return (
-    <div className={`group relative flex flex-col rounded-xl border bg-[#0a0a0f] transition-all duration-200 overflow-hidden
-      ${isCompleted ? "border-white/[0.07] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]" : ""}
-      ${isActive ? "border-primary/30 shadow-[0_0_0_1px_rgba(255,61,61,0.08)]" : ""}
-      ${isQueued ? "border-white/[0.05] opacity-70" : ""}
-      ${isFailed ? "border-red-500/20" : ""}
-    `}>
-      {/* Active analysis — scanning line animation */}
+    <div
+      className={`group relative flex flex-col rounded-2xl border bg-[#09090e] transition-all duration-200 overflow-hidden
+        ${isCompleted ? "border-white/[0.07] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]" : ""}
+        ${isActive ? "border-primary/25 shadow-[0_0_0_1px_rgba(255,61,61,0.06),0_0_24px_rgba(255,61,61,0.06)]" : ""}
+        ${isQueued ? "border-white/[0.04] opacity-60" : ""}
+        ${isFailed ? "border-red-500/15" : ""}
+      `}
+    >
+      {/* Active — scanning line */}
       {isActive && (
         <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
           <div className="h-full bg-gradient-to-r from-transparent via-primary to-transparent animate-[scan_2s_ease-in-out_infinite]" />
@@ -147,81 +219,88 @@ function ProjectCard({
         <div
           className="absolute inset-0 pointer-events-none transition-all duration-1000 ease-out"
           style={{
-            background: `linear-gradient(90deg, rgba(255,61,61,0.04) 0%, transparent ${currentProgress}%)`,
+            background: `linear-gradient(90deg, rgba(255,61,61,0.05) 0%, transparent ${currentProgress}%)`,
           }}
         />
       )}
 
+      {/* Hover shimmer for completed cards */}
+      {isCompleted && (
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300"
+          style={{ background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,255,255,0.025), transparent 70%)" }}
+        />
+      )}
+
       <div className="relative p-4 flex flex-col gap-3">
-        {/* Top row: repo name + status pill */}
+        {/* Top row */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 mb-0.5">
               {project.visibility === "PRIVATE" ? (
-                <Lock className="h-3 w-3 text-zinc-600 shrink-0" />
+                <Lock className="h-3 w-3 text-zinc-700 shrink-0" />
               ) : (
-                <Globe className="h-3 w-3 text-zinc-600 shrink-0" />
+                <Globe className="h-3 w-3 text-zinc-700 shrink-0" />
               )}
               <span className="text-[11px] text-zinc-600 font-mono truncate">{owner}/</span>
             </div>
-            <h3 className="text-[15px] font-semibold text-zinc-50 truncate leading-tight">
+            <h3 className="text-[15px] font-semibold text-zinc-100 truncate leading-tight">
               {repo}
             </h3>
           </div>
 
           {/* Status pill */}
           {isCompleted && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-emerald-500/[0.08] text-emerald-400 border border-emerald-500/20">
               <span className="h-1 w-1 rounded-full bg-emerald-400" />
               done
             </span>
           )}
           {isActive && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+            <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/[0.08] text-primary border border-primary/20">
               <span className="h-1 w-1 rounded-full bg-primary animate-pulse" />
               analyzing
             </span>
           )}
           {isQueued && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700">
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full bg-zinc-800/60 text-zinc-600 border border-zinc-700/60">
               queued
             </span>
           )}
           {isFailed && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+            <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-red-500/[0.08] text-red-400 border border-red-500/20">
               <AlertCircle className="h-2.5 w-2.5" />
               failed
             </span>
           )}
         </div>
 
-        {/* Stats row — only for completed */}
+        {/* Stats — completed only */}
         {isCompleted && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <FileCode className="h-3 w-3 text-zinc-600" />
+              <FileCode className="h-3 w-3 text-zinc-700" />
               <span className="text-xs font-mono text-zinc-400">{formatNumber(project.fileCount ?? 0)}</span>
-              <span className="text-[10px] text-zinc-600">files</span>
+              <span className="text-[10px] text-zinc-700">files</span>
             </div>
-            <span className="text-zinc-700">·</span>
+            <div className="h-3 w-px bg-white/[0.06]" />
             <div className="flex items-center gap-1.5">
-              <Code2 className="h-3 w-3 text-zinc-600" />
+              <Code2 className="h-3 w-3 text-zinc-700" />
               <span className="text-xs font-mono text-zinc-400">{formatNumber(project.lineCount ?? 0)}</span>
-              <span className="text-[10px] text-zinc-600">lines</span>
+              <span className="text-[10px] text-zinc-700">lines</span>
             </div>
           </div>
         )}
 
-        {/* Progress area — active job */}
+        {/* Progress — active */}
         {isActive && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-zinc-500 font-mono truncate">{currentMessage}</span>
+              <span className="text-[10px] text-zinc-600 font-mono truncate">{currentMessage}</span>
               <span className="text-[10px] font-mono text-zinc-500 tabular-nums ml-2 shrink-0">{currentProgress}%</span>
             </div>
-            <div className="h-[3px] w-full rounded-full bg-white/[0.05] overflow-hidden">
+            <div className="h-[2px] w-full rounded-full bg-white/[0.05] overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out"
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
@@ -230,18 +309,18 @@ function ProjectCard({
 
         {/* Queued message */}
         {isQueued && (
-          <p className="text-[10px] font-mono text-zinc-600">{currentMessage}</p>
+          <p className="text-[10px] font-mono text-zinc-700">{currentMessage}</p>
         )}
 
         {/* Error */}
         {isFailed && project.error && (
-          <p className="text-[10px] text-red-400/80 font-mono line-clamp-2 bg-red-500/5 border border-red-500/10 rounded-lg px-2.5 py-1.5">
+          <p className="text-[10px] text-red-400/70 font-mono line-clamp-2 bg-red-500/[0.04] border border-red-500/10 rounded-lg px-2.5 py-2">
             {project.error}
           </p>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+        <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.04]">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono text-zinc-700">{timeAgo(project.createdAt)}</span>
             <a
@@ -261,7 +340,7 @@ function ProjectCard({
             {isFailed && (
               <button
                 onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md text-amber-400 bg-amber-500/10 hover:bg-amber-500/15 transition-colors border border-amber-500/15"
+                className="flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-md text-amber-400 bg-amber-500/[0.08] hover:bg-amber-500/15 transition-colors border border-amber-500/15"
               >
                 <RefreshCw className="h-2.5 w-2.5" />
                 Retry
@@ -273,7 +352,7 @@ function ProjectCard({
               <Link
                 href={`/project/${project.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-md text-white bg-primary hover:bg-primary/90 transition-colors"
+                className="flex items-center gap-1.5 text-[10px] font-semibold px-3 py-1 rounded-md text-white bg-primary hover:bg-primary/85 transition-colors shadow-[0_0_12px_rgba(255,61,61,0.2)]"
               >
                 Open
                 <ExternalLink className="h-2.5 w-2.5" />
@@ -289,18 +368,8 @@ function ProjectCard({
               {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
             </button>
 
-            {/* Delete */}
-            <button
-              onClick={(e) => onDelete(e, project.id)}
-              className={`p-1.5 rounded-md transition-all opacity-0 group-hover:opacity-100 ${
-                deletingId === project.id
-                  ? "bg-red-500/15 text-red-400 opacity-100"
-                  : "text-zinc-700 hover:text-red-400 hover:bg-white/[0.04]"
-              }`}
-              title={deletingId === project.id ? "Click again to confirm" : "Delete"}
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
+            {/* Delete — inline confirm */}
+            <DeleteButton projectId={project.id} onDelete={onDelete} />
           </div>
         </div>
       </div>
@@ -310,7 +379,6 @@ function ProjectCard({
 
 export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   const queryClient = useQueryClient()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects"],
@@ -329,21 +397,14 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   const processingProjects = projects.filter((p) => p.status === "PROCESSING" || p.status === "PENDING")
   const activeProjectId = processingProjects[0]?.id ?? null
 
-  async function handleDelete(e: React.MouseEvent, id: string) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (deletingId === id) {
-      try {
-        await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
-        queryClient.setQueryData<Project[]>(["projects"], (old) =>
-          old ? old.filter((p) => p.id !== id) : []
-        )
-      } finally {
-        setDeletingId(null)
-      }
-    } else {
-      setDeletingId(id)
-      setTimeout(() => setDeletingId((prev) => (prev === id ? null : prev)), 3000)
+  async function handleDelete(id: string) {
+    try {
+      await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
+      queryClient.setQueryData<Project[]>(["projects"], (old) =>
+        old ? old.filter((p) => p.id !== id) : []
+      )
+    } catch {
+      // ignore
     }
   }
 
@@ -385,15 +446,15 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-xl bg-[#0a0a0f] border border-white/[0.06] p-4 h-36">
+          <div key={i} className="rounded-2xl bg-[#09090e] border border-white/[0.05] p-4 h-36">
             <div className="flex items-start justify-between mb-3">
-              <div className="space-y-1.5">
-                <div className="h-2.5 w-12 rounded bg-white/[0.05] animate-pulse" />
-                <div className="h-4 w-28 rounded bg-white/[0.05] animate-pulse" />
+              <div className="space-y-2">
+                <div className="h-2 w-14 rounded-full bg-white/[0.05] animate-pulse" />
+                <div className="h-4 w-28 rounded-md bg-white/[0.06] animate-pulse" />
               </div>
               <div className="h-5 w-14 rounded-full bg-white/[0.05] animate-pulse" />
             </div>
-            <div className="h-2 w-full rounded bg-white/[0.05] animate-pulse mt-4" />
+            <div className="h-1.5 w-full rounded-full bg-white/[0.04] animate-pulse mt-6" />
           </div>
         ))}
       </div>
@@ -402,19 +463,19 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-white/[0.06] border-dashed bg-white/[0.01] min-h-[320px]">
-        <div className="flex flex-col items-center text-center py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 mb-4">
-            <Building2 className="h-6 w-6 text-primary" />
+      <div className="flex items-center justify-center rounded-2xl border border-white/[0.06] border-dashed bg-white/[0.01] min-h-[280px]">
+        <div className="flex flex-col items-center text-center py-10">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/[0.08] border border-primary/15 mb-5">
+            <Building2 className="h-6 w-6 text-primary/70" />
           </div>
-          <p className="text-sm font-semibold text-zinc-200">No cities yet</p>
-          <p className="text-xs text-zinc-600 mt-1 max-w-xs leading-relaxed">
+          <p className="text-sm font-semibold text-zinc-300">No cities yet</p>
+          <p className="text-xs text-zinc-600 mt-1.5 max-w-xs leading-relaxed">
             Analyze a GitHub repo to generate an interactive 3D city from its codebase.
           </p>
           <Button
             onClick={() => onCreateCity?.()}
             size="sm"
-            className="mt-5 gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs"
+            className="mt-5 gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs h-8 px-4 rounded-lg shadow-[0_0_20px_rgba(255,61,61,0.25)]"
           >
             <Plus className="h-3.5 w-3.5" />
             New City
@@ -433,8 +494,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-[11px] font-medium text-zinc-600 uppercase tracking-widest">{label}</span>
-          <span className="text-[11px] font-mono text-zinc-700">{items.length}</span>
+          <span className="text-[10px] font-medium text-zinc-700 uppercase tracking-widest">{label}</span>
+          <div className="h-px flex-1 bg-white/[0.04]" />
+          <span className="text-[10px] font-mono text-zinc-700">{items.length}</span>
         </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((project) => (
@@ -445,7 +507,6 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                 (project.status === "PROCESSING" || project.status === "PENDING") &&
                 project.id !== activeProjectId
               }
-              deletingId={deletingId}
               onDelete={handleDelete}
               onToggleVisibility={handleToggleVisibility}
               onRetry={handleRetry}
