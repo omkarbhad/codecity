@@ -43,7 +43,7 @@ export function HeroSection() {
             Turn Any GitHub Repo
           </span>
           <br />
-          <span className="bg-gradient-to-r from-red-300 via-red-400 to-red-500 bg-clip-text text-transparent">
+          <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, #fff5f5 0%, #fca5a5 25%, #ff3d3d 60%, #dc2626 100%)" }}>
             Into a 3D City
           </span>
         </motion.h1>

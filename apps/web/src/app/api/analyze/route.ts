@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { repoUrl, visibility } = body as { repoUrl?: string; visibility?: string }
+  const { repoUrl, visibility, forceRetry } = body as { repoUrl?: string; visibility?: string; forceRetry?: boolean }
   if (!repoUrl || typeof repoUrl !== "string") {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 })
   }
@@ -35,6 +35,31 @@ export async function POST(request: Request) {
   }
 
   const name = `${owner}/${repo}`
+
+  // Prevent duplicate: check if user already has this repo+visibility
+  const { getProjectsByUser, deleteProject } = await import("@/lib/project-store")
+  const existingProjects = await getProjectsByUser(user.id)
+  const visibilityVal = visibility === "PUBLIC" ? "PUBLIC" : "PRIVATE"
+  const duplicate = existingProjects.find(
+    (p) => p.repoUrl === repoUrl && p.visibility === visibilityVal
+  )
+  if (duplicate) {
+    if (duplicate.status === "COMPLETED") {
+      return NextResponse.json({ projectId: duplicate.id }, { status: 200 })
+    }
+    if (duplicate.status === "FAILED" && forceRetry) {
+      // Delete old failed project so we create a fresh one below
+      await deleteProject(duplicate.id).catch(() => {})
+    } else if (duplicate.status === "FAILED") {
+      // Allow retry by deleting and falling through
+      await deleteProject(duplicate.id).catch(() => {})
+    } else {
+      return NextResponse.json(
+        { error: `You already have this repository ${duplicate.status === "PROCESSING" ? "being analyzed" : "queued"}.` },
+        { status: 409 }
+      )
+    }
+  }
 
   // Check in-memory cache first
   const cacheKey = `repo:${owner}/${repo}`
