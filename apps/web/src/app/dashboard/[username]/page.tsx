@@ -97,19 +97,36 @@ function StatCard({ icon: Icon, label, value, accent, mono = false, trend }: Sta
   )
 }
 
+interface SessionUser {
+  id: string
+  name: string | null
+  email: string
+  role: "USER" | "ADMIN"
+}
+
+interface Project {
+  id: string
+  name: string
+  status: "COMPLETED" | "PROCESSING" | "FAILED"
+  visibility: "PUBLIC" | "PRIVATE"
+  fileCount?: number
+  lineCount?: number
+}
+
 function DashboardContent() {
   const params = useParams()
   const username = params.username as string
   const [showNewDialog, setShowNewDialog] = useState(false)
 
-  interface Project {
-    id: string
-    name: string
-    status: "COMPLETED" | "PROCESSING" | "FAILED"
-    visibility: "PUBLIC" | "PRIVATE"
-    fileCount?: number
-    lineCount?: number
-  }
+  const { data: me } = useQuery<SessionUser>({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const res = await fetch("/api/me")
+      if (!res.ok) throw new Error("Unauthorized")
+      return res.json()
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["projects"],
@@ -125,8 +142,10 @@ function DashboardContent() {
   const totalFiles = projects.reduce((sum, p) => sum + (p.fileCount ?? 0), 0)
   const totalLines = projects.reduce((sum, p) => sum + (p.lineCount ?? 0), 0)
 
-  const displayName = username.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  const firstName = displayName.split(" ")[0]
+  // Prefer real session name, fall back to URL param only if no session yet
+  const resolvedName = me?.name
+    ?? username.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  const firstName = resolvedName.split(" ")[0]
 
   const greeting = useMemo(() => {
     const h = new Date().getHours()
@@ -143,7 +162,10 @@ function DashboardContent() {
 
   return (
     <>
-      <AppSidebar onNewCity={() => setShowNewDialog(true)} />
+      <AppSidebar
+        onNewCity={() => setShowNewDialog(true)}
+        user={me ? { name: me.name, image: null, email: me.email } : null}
+      />
       <SidebarInset>
         {/* Topbar */}
         <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-white/[0.05] bg-[#07070c]/90 backdrop-blur-md px-4">
