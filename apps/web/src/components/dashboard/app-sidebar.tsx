@@ -9,6 +9,8 @@ import {
   User,
   Plus,
   Building2,
+  Globe,
+  Lock,
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -20,9 +22,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarRail,
 } from "@codecity/ui/components/sidebar"
+
+type Project = {
+  id: string
+  name: string
+  status: string
+  visibility: string
+}
 
 export function AppSidebar({
   onNewCity,
@@ -36,7 +44,7 @@ export function AppSidebar({
   const isExplore = pathname.startsWith("/explore")
   const isDashboard = pathname.startsWith("/dashboard")
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
       const res = await fetch("/api/projects")
@@ -45,55 +53,74 @@ export function AppSidebar({
     },
   })
 
+  const completedProjects = projects.filter((p) => p.status === "COMPLETED").slice(0, 6)
+  const activeCount = projects.filter((p) => p.status === "PROCESSING").length
+
   return (
     <Sidebar {...props}>
-      <SidebarHeader>
+      {/* Header */}
+      <SidebarHeader className="border-b border-white/[0.05] pb-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between">
-              <SidebarMenuButton size="lg" asChild>
-                <Link href="/">
-                  <img
-                    src="/logo.png"
-                    alt="CodeCity"
-                    className="size-8 rounded-lg"
-                  />
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold">CodeCity</span>
-                    <span className="text-xs text-muted-foreground">
-                      Visualize Code
-                    </span>
-                  </div>
-                </Link>
-              </SidebarMenuButton>
+            <div className="flex items-center justify-between px-1 pt-1">
+              <Link href="/" className="flex items-center gap-2.5 group">
+                <img
+                  src="/logo.png"
+                  alt="CodeCity"
+                  className="size-7 rounded-lg object-cover"
+                  onError={(e) => {
+                    const t = e.currentTarget
+                    t.style.display = "none"
+                    const fallback = t.nextElementSibling as HTMLElement | null
+                    if (fallback) fallback.style.display = "flex"
+                  }}
+                />
+                <div className="hidden items-center justify-center size-7 rounded-lg bg-primary/15 border border-primary/25">
+                  <Building2 className="size-3.5 text-primary" />
+                </div>
+                <div className="flex flex-col gap-0 leading-none">
+                  <span className="text-[13px] font-semibold text-zinc-100 tracking-tight">CodeCity</span>
+                  <span className="text-[10px] text-zinc-600">Visualize Code</span>
+                </div>
+              </Link>
               {onNewCity && (
                 <button
                   onClick={onNewCity}
-                  className="flex items-center justify-center size-7 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  className="flex items-center justify-center size-6 rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-primary/40 hover:text-primary hover:bg-primary/10 transition-all duration-200"
                   title="New City"
                 >
-                  <Plus className="size-4" />
+                  <Plus className="size-3" />
                 </button>
               )}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
+
+      <SidebarContent className="gap-0 pt-2">
+        {/* Nav */}
+        <SidebarGroup className="px-2 pb-2">
+          <SidebarMenu className="gap-0.5">
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isDashboard}>
+              <SidebarMenuButton
+                asChild
+                isActive={isDashboard}
+                className="h-8 rounded-lg text-[12px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.06] transition-all duration-150"
+              >
                 <Link href="/dashboard">
-                  <FolderGit2 className="size-4" />
-                  My Projects
+                  <FolderGit2 className="size-3.5" />
+                  My Cities
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isExplore}>
+              <SidebarMenuButton
+                asChild
+                isActive={isExplore}
+                className="h-8 rounded-lg text-[12px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.06] transition-all duration-150"
+              >
                 <Link href="/explore">
-                  <Compass className="size-4" />
+                  <Compass className="size-3.5" />
                   Explore
                 </Link>
               </SidebarMenuButton>
@@ -101,41 +128,68 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>My Cities</SidebarGroupLabel>
-          <SidebarMenu>
-            {projects.slice(0, 5).map((project: { id: string; name: string; status: string; visibility: string }) => (
-              <SidebarMenuItem key={project.id}>
-                <SidebarMenuButton asChild>
-                  <Link href={`/project/${project.id}`}>
-                    <Building2 className="size-4" />
-                    <span className="truncate">{project.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-            {projects.length === 0 && (
-              <div className="px-3 py-2">
-                <p className="text-xs text-muted-foreground">No projects yet</p>
+        {/* Divider */}
+        <div className="mx-3 border-t border-white/[0.05] mb-2" />
+
+        {/* Recent Cities */}
+        <SidebarGroup className="px-2 pb-2">
+          <div className="flex items-center justify-between px-1 mb-1.5">
+            <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-700">Recent</span>
+            {activeCount > 0 && (
+              <span className="flex items-center gap-1 text-[9px] font-mono text-primary/70">
+                <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
+                {activeCount} running
+              </span>
+            )}
+          </div>
+          <SidebarMenu className="gap-0.5">
+            {completedProjects.map((project) => {
+              const parts = project.name.split("/")
+              const repo = parts[1] ?? project.name
+              const owner = parts[0]
+              return (
+                <SidebarMenuItem key={project.id}>
+                  <SidebarMenuButton
+                    asChild
+                    className="h-7 rounded-md text-[11px] text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.03] transition-all duration-150 group"
+                  >
+                    <Link href={`/project/${project.id}`}>
+                      {project.visibility === "PUBLIC" ? (
+                        <Globe className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
+                      ) : (
+                        <Lock className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
+                      )}
+                      <span className="truncate font-mono">
+                        <span className="text-zinc-700">{owner}/</span>
+                        <span className="text-zinc-400 group-hover:text-zinc-200">{repo}</span>
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
+            {completedProjects.length === 0 && (
+              <div className="px-2 py-3 text-center">
+                <p className="text-[10px] font-mono text-zinc-700">no cities yet</p>
               </div>
             )}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="p-2">
-          <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors">
-            {user?.image ? (
-              <img src={user.image} alt="" className="h-7 w-7 rounded-full ring-1 ring-white/[0.08]" />
-            ) : (
-              <div className="h-7 w-7 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium truncate">{user?.name ?? "Dev User"}</span>
-              <span className="text-[10px] text-muted-foreground truncate">Free Plan</span>
+
+      {/* Footer */}
+      <SidebarFooter className="border-t border-white/[0.05] p-2">
+        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/[0.03] transition-colors cursor-default">
+          {user?.image ? (
+            <img src={user.image} alt="" className="h-6 w-6 rounded-full ring-1 ring-white/[0.08]" />
+          ) : (
+            <div className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+              <User className="h-3 w-3 text-zinc-600" />
             </div>
+          )}
+          <div className="flex flex-col min-w-0 gap-0">
+            <span className="text-[11px] font-medium text-zinc-400 truncate">{user?.name ?? "dev user"}</span>
+            <span className="text-[9px] font-mono text-zinc-700 truncate">free plan</span>
           </div>
         </div>
       </SidebarFooter>

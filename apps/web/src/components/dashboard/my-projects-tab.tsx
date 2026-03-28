@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   Plus,
@@ -9,10 +9,11 @@ import {
   Trash2,
   Building2,
   FileCode,
-  ArrowUpRight,
   Code2,
-  Clock,
-  GitFork,
+  ExternalLink,
+  RefreshCw,
+  GitBranch,
+  AlertCircle,
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
@@ -25,37 +26,286 @@ interface Project {
   status: string
   fileCount?: number
   lineCount?: number
+  error?: string | null
   createdAt: string
 }
 
-function StatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case "COMPLETED":
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Completed
-        </span>
-      )
-    case "FAILED":
-      return (
-        <span className="text-[10px] px-2 py-0.5 font-medium rounded bg-red-500/10 text-red-400 border border-red-500/30">
-          Failed
-        </span>
-      )
-    case "PROCESSING":
-      return (
-        <span className="text-[10px] px-2 py-0.5 font-medium rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
-          Processing
-        </span>
-      )
-    default:
-      return (
-        <span className="text-[10px] px-2 py-0.5 font-medium rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
-          Pending
-        </span>
-      )
-  }
+interface ProgressData {
+  stage: string
+  progress: number
+  message: string
+}
+
+function useProjectProgress(projectId: string, enabled: boolean) {
+  const [progress, setProgress] = useState<ProgressData | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (!enabled) {
+      setProgress(null)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      return
+    }
+
+    async function fetchProgress() {
+      try {
+        const res = await fetch(`/api/analyze/${projectId}/progress-poll`)
+        if (res.ok) {
+          const data = await res.json()
+          setProgress(data)
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchProgress()
+    intervalRef.current = setInterval(fetchProgress, 5000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [projectId, enabled])
+
+  return progress
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return n.toString()
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString()
+}
+
+function ProjectCard({
+  project,
+  isQueued,
+  deletingId,
+  onDelete,
+  onToggleVisibility,
+  onRetry,
+  queryClient,
+}: {
+  project: Project
+  isQueued: boolean
+  deletingId: string | null
+  onDelete: (e: React.MouseEvent, id: string) => void
+  onToggleVisibility: (e: React.MouseEvent, project: Project) => void
+  onRetry: (project: Project) => void
+  queryClient: ReturnType<typeof useQueryClient>
+}) {
+  const isProcessing = project.status === "PROCESSING" || project.status === "PENDING"
+  const isCompleted = project.status === "COMPLETED"
+  const isFailed = project.status === "FAILED"
+  const isActive = isProcessing && !isQueued
+
+  const progress = useProjectProgress(project.id, isActive)
+
+  useEffect(() => {
+    if (progress?.stage === "complete" || progress?.stage === "error") {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+    }
+  }, [progress?.stage, queryClient])
+
+  // Parse repo name (owner/repo)
+  const repoPath = project.repoUrl.replace("https://github.com/", "")
+  const [owner, repo] = repoPath.split("/")
+
+  const currentProgress = isActive && progress ? progress.progress : 0
+  const currentMessage = isActive && progress
+    ? progress.message
+    : isQueued
+      ? "Queued — waiting for active job to finish"
+      : null
+
+  return (
+    <div className={`group relative flex flex-col rounded-xl border bg-[#0a0a0f] transition-all duration-200 overflow-hidden
+      ${isCompleted ? "border-white/[0.07] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]" : ""}
+      ${isActive ? "border-primary/30 shadow-[0_0_0_1px_rgba(255,61,61,0.08)]" : ""}
+      ${isQueued ? "border-white/[0.05] opacity-70" : ""}
+      ${isFailed ? "border-red-500/20" : ""}
+    `}>
+      {/* Active analysis — scanning line animation */}
+      {isActive && (
+        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-transparent via-primary to-transparent animate-[scan_2s_ease-in-out_infinite]" />
+        </div>
+      )}
+
+      {/* Progress fill background */}
+      {isActive && currentProgress > 0 && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-all duration-1000 ease-out"
+          style={{
+            background: `linear-gradient(90deg, rgba(255,61,61,0.04) 0%, transparent ${currentProgress}%)`,
+          }}
+        />
+      )}
+
+      <div className="relative p-4 flex flex-col gap-3">
+        {/* Top row: repo name + status pill */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              {project.visibility === "PRIVATE" ? (
+                <Lock className="h-3 w-3 text-zinc-600 shrink-0" />
+              ) : (
+                <Globe className="h-3 w-3 text-zinc-600 shrink-0" />
+              )}
+              <span className="text-[11px] text-zinc-600 font-mono truncate">{owner}/</span>
+            </div>
+            <h3 className="text-[15px] font-semibold text-zinc-50 truncate leading-tight">
+              {repo}
+            </h3>
+          </div>
+
+          {/* Status pill */}
+          {isCompleted && (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="h-1 w-1 rounded-full bg-emerald-400" />
+              done
+            </span>
+          )}
+          {isActive && (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <span className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+              analyzing
+            </span>
+          )}
+          {isQueued && (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700">
+              queued
+            </span>
+          )}
+          {isFailed && (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+              <AlertCircle className="h-2.5 w-2.5" />
+              failed
+            </span>
+          )}
+        </div>
+
+        {/* Stats row — only for completed */}
+        {isCompleted && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <FileCode className="h-3 w-3 text-zinc-600" />
+              <span className="text-xs font-mono text-zinc-400">{formatNumber(project.fileCount ?? 0)}</span>
+              <span className="text-[10px] text-zinc-600">files</span>
+            </div>
+            <span className="text-zinc-700">·</span>
+            <div className="flex items-center gap-1.5">
+              <Code2 className="h-3 w-3 text-zinc-600" />
+              <span className="text-xs font-mono text-zinc-400">{formatNumber(project.lineCount ?? 0)}</span>
+              <span className="text-[10px] text-zinc-600">lines</span>
+            </div>
+          </div>
+        )}
+
+        {/* Progress area — active job */}
+        {isActive && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-zinc-500 font-mono truncate">{currentMessage}</span>
+              <span className="text-[10px] font-mono text-zinc-500 tabular-nums ml-2 shrink-0">{currentProgress}%</span>
+            </div>
+            <div className="h-[3px] w-full rounded-full bg-white/[0.05] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                style={{ width: `${currentProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Queued message */}
+        {isQueued && (
+          <p className="text-[10px] font-mono text-zinc-600">{currentMessage}</p>
+        )}
+
+        {/* Error */}
+        {isFailed && project.error && (
+          <p className="text-[10px] text-red-400/80 font-mono line-clamp-2 bg-red-500/5 border border-red-500/10 rounded-lg px-2.5 py-1.5">
+            {project.error}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-zinc-700">{timeAgo(project.createdAt)}</span>
+            <a
+              href={project.repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-zinc-700 hover:text-zinc-400 transition-colors"
+              title="Open on GitHub"
+            >
+              <GitBranch className="h-3 w-3" />
+            </a>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Retry */}
+            {isFailed && (
+              <button
+                onClick={(e) => { e.preventDefault(); onRetry(project) }}
+                className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md text-amber-400 bg-amber-500/10 hover:bg-amber-500/15 transition-colors border border-amber-500/15"
+              >
+                <RefreshCw className="h-2.5 w-2.5" />
+                Retry
+              </button>
+            )}
+
+            {/* Open */}
+            {isCompleted && (
+              <Link
+                href={`/project/${project.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-md text-white bg-primary hover:bg-primary/90 transition-colors"
+              >
+                Open
+                <ExternalLink className="h-2.5 w-2.5" />
+              </Link>
+            )}
+
+            {/* Visibility toggle */}
+            <button
+              onClick={(e) => onToggleVisibility(e, project)}
+              className="p-1.5 rounded-md text-zinc-700 hover:text-zinc-400 hover:bg-white/[0.04] transition-all opacity-0 group-hover:opacity-100"
+              title={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
+            >
+              {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={(e) => onDelete(e, project.id)}
+              className={`p-1.5 rounded-md transition-all opacity-0 group-hover:opacity-100 ${
+                deletingId === project.id
+                  ? "bg-red-500/15 text-red-400 opacity-100"
+                  : "text-zinc-700 hover:text-red-400 hover:bg-white/[0.04]"
+              }`}
+              title={deletingId === project.id ? "Click again to confirm" : "Delete"}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
@@ -69,12 +319,19 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       if (!res.ok) return []
       return res.json()
     },
+    refetchInterval: (query) => {
+      const data = query.state.data as Project[] | undefined
+      const hasActive = data?.some((p) => p.status === "PROCESSING" || p.status === "PENDING")
+      return hasActive ? 5000 : false
+    },
   })
+
+  const processingProjects = projects.filter((p) => p.status === "PROCESSING" || p.status === "PENDING")
+  const activeProjectId = processingProjects[0]?.id ?? null
 
   async function handleDelete(e: React.MouseEvent, id: string) {
     e.preventDefault()
     e.stopPropagation()
-
     if (deletingId === id) {
       try {
         await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
@@ -102,34 +359,98 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       })
       if (!res.ok) return
       queryClient.setQueryData<Project[]>(["projects"], (old) =>
-        old
-          ? old.map((p) =>
-              p.id === project.id ? { ...p, visibility: newVisibility } : p
-            )
-          : []
+        old ? old.map((p) => p.id === project.id ? { ...p, visibility: newVisibility } : p) : []
       )
-    } catch (err) {
-      console.error("Network error updating visibility:", err)
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleRetry(project: Project) {
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoUrl: project.repoUrl, visibility: project.visibility, forceRetry: true }),
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["projects"] })
+      }
+    } catch {
+      // ignore
     }
   }
 
   if (isLoading) {
     return (
-      <div className="space-y-5">
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
-          <div className="h-3 w-20 rounded-lg bg-white/[0.04] animate-pulse mb-2" />
-          <div className="h-4 w-36 rounded-lg bg-white/[0.04] animate-pulse" />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
-              <div className="h-4 w-3/4 rounded-lg bg-white/[0.04] animate-pulse mb-3" />
-              <div className="h-3 w-full rounded-lg bg-white/[0.04] animate-pulse mb-2" />
-              <div className="flex gap-3 mt-2">
-                <div className="h-3 w-16 rounded-lg bg-white/[0.04] animate-pulse" />
-                <div className="h-3 w-20 rounded-lg bg-white/[0.04] animate-pulse" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="rounded-xl bg-[#0a0a0f] border border-white/[0.06] p-4 h-36">
+            <div className="flex items-start justify-between mb-3">
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-12 rounded bg-white/[0.05] animate-pulse" />
+                <div className="h-4 w-28 rounded bg-white/[0.05] animate-pulse" />
               </div>
+              <div className="h-5 w-14 rounded-full bg-white/[0.05] animate-pulse" />
             </div>
+            <div className="h-2 w-full rounded bg-white/[0.05] animate-pulse mt-4" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (projects.length === 0) {
+    return (
+      <div className="flex items-center justify-center rounded-xl border border-white/[0.06] border-dashed bg-white/[0.01] min-h-[320px]">
+        <div className="flex flex-col items-center text-center py-12">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 mb-4">
+            <Building2 className="h-6 w-6 text-primary" />
+          </div>
+          <p className="text-sm font-semibold text-zinc-200">No cities yet</p>
+          <p className="text-xs text-zinc-600 mt-1 max-w-xs leading-relaxed">
+            Analyze a GitHub repo to generate an interactive 3D city from its codebase.
+          </p>
+          <Button
+            onClick={() => onCreateCity?.()}
+            size="sm"
+            className="mt-5 gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New City
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const privateProjects = projects.filter((p) => p.visibility === "PRIVATE")
+  const publicProjects = projects.filter((p) => p.visibility === "PUBLIC")
+
+  function renderGroup(label: string, icon: React.ReactNode, items: Project[]) {
+    if (items.length === 0) return null
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-[11px] font-medium text-zinc-600 uppercase tracking-widest">{label}</span>
+          <span className="text-[11px] font-mono text-zinc-700">{items.length}</span>
+        </div>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              isQueued={
+                (project.status === "PROCESSING" || project.status === "PENDING") &&
+                project.id !== activeProjectId
+              }
+              deletingId={deletingId}
+              onDelete={handleDelete}
+              onToggleVisibility={handleToggleVisibility}
+              onRetry={handleRetry}
+              queryClient={queryClient}
+            />
           ))}
         </div>
       </div>
@@ -137,126 +458,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-zinc-400">
-          My Cities
-        </h2>
-        <span className="text-xs text-zinc-600 tabular-nums">
-          {projects.length} project{projects.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      {projects.length === 0 ? (
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] min-h-[400px] flex items-center justify-center">
-          <div className="flex flex-col items-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10">
-              <Building2 className="h-7 w-7 text-primary" />
-            </div>
-            <p className="mt-4 text-base font-semibold text-zinc-50">No cities built yet</p>
-            <p className="mt-1.5 text-sm text-zinc-400 max-w-sm text-center leading-relaxed">
-              Analyze a GitHub repository to transform its codebase into an interactive 3D city visualization.
-            </p>
-            <Button
-              onClick={() => onCreateCity?.()}
-              className="mt-6 gap-1.5 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Create Your First City
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="mx-auto grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {projects.map((project) => (
-            <Link
-              key={project.id}
-              href={
-                project.status === "PROCESSING"
-                  ? `/analyze/${project.id}`
-                  : `/project/${project.id}`
-              }
-            >
-              <div className="group relative h-full rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 sm:p-5 hover:border-primary/25 hover:translate-y-[-2px] transition-all duration-300">
-                {/* Header: status + arrow */}
-                <div className="flex items-center justify-between mb-3">
-                  <StatusBadge status={project.status} />
-                  <ArrowUpRight className="h-3.5 w-3.5 text-zinc-500 transition-colors group-hover:text-primary" />
-                </div>
-
-                {/* Project name + visibility */}
-                <div className="flex items-center gap-2 mb-1">
-                  {project.visibility === "PUBLIC" ? (
-                    <Globe className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
-                  ) : (
-                    <Lock className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
-                  )}
-                  <h3 className="text-sm font-semibold text-zinc-50 truncate">
-                    {project.name}
-                  </h3>
-                </div>
-
-                <p className="text-[11px] text-zinc-500 truncate mb-3">
-                  {project.repoUrl}
-                </p>
-
-                {/* Stats */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <FileCode className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">
-                      {project.fileCount ?? 0} files
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Code2 className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">
-                      {(project.lineCount ?? 0).toLocaleString()} lines
-                    </span>
-                  </div>
-                  <div className="hidden items-center gap-1.5 md:flex">
-                    <GitFork className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">
-                      {project.visibility === "PUBLIC" ? "Shared" : "Private"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[10px] text-zinc-500">
-                      {new Date(project.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      onClick={(e) => handleToggleVisibility(e, project)}
-                      className="rounded-lg p-1.5 text-zinc-500 transition-all duration-200 hover:bg-white/[0.04] hover:text-zinc-50 opacity-50 sm:opacity-0 group-hover:opacity-100"
-                      title={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
-                    >
-                      {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                    </button>
-                    <button
-                      onClick={(e) => handleDelete(e, project.id)}
-                      className={`rounded-lg p-1.5 transition-all duration-200 opacity-50 sm:opacity-0 group-hover:opacity-100 ${
-                        deletingId === project.id
-                          ? "bg-red-500/10 text-red-400"
-                          : "text-zinc-500 hover:bg-white/[0.04] hover:text-red-400"
-                      }`}
-                      title={deletingId === project.id ? "Click again to confirm delete" : "Delete project"}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+    <div className="space-y-8">
+      {renderGroup("Private", <Lock className="h-3 w-3 text-zinc-700" />, privateProjects)}
+      {renderGroup("Public", <Globe className="h-3 w-3 text-zinc-700" />, publicProjects)}
     </div>
   )
 }

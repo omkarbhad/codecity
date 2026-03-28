@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, FileCode, ArrowUpRight, Code2, ArrowDownAZ, Clock, TrendingUp, Globe, Sparkles } from "lucide-react"
+import { Search, FileCode, ArrowUpRight, Code2, ArrowDownAZ, Clock, TrendingUp, Globe } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { Input } from "@codecity/ui/components/input"
 
@@ -39,12 +39,13 @@ function sortProjects(projects: PublicProject[], mode: SortMode): PublicProject[
 
 const SORT_OPTIONS: { value: SortMode; label: string; icon: typeof Clock }[] = [
   { value: "recent", label: "Recent", icon: Clock },
-  { value: "name", label: "Name", icon: ArrowDownAZ },
-  { value: "size", label: "Size", icon: TrendingUp },
+  { value: "name", label: "A–Z", icon: ArrowDownAZ },
+  { value: "size", label: "Largest", icon: TrendingUp },
 ]
 
 function formatNumber(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
   return n.toString()
 }
 
@@ -54,7 +55,7 @@ function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const days = Math.floor(diff / MS_PER_DAY)
   if (days === 0) return "today"
-  if (days === 1) return "yesterday"
+  if (days === 1) return "1d ago"
   if (days < 7) return `${days}d ago`
   if (days < 30) return `${Math.floor(days / 7)}w ago`
   return `${Math.floor(days / 30)}mo ago`
@@ -69,197 +70,169 @@ export function ExploreTab() {
     queryFn: fetchExploreProjects,
   })
 
-  if (isError) {
-    return (
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center py-20">
-        <p className="text-base font-semibold text-zinc-50">Failed to load projects</p>
-        <p className="mt-1.5 text-sm text-zinc-400 max-w-sm text-center">
-          Something went wrong while fetching community projects. Please try again later.
-        </p>
-      </div>
-    )
-  }
-
   const filtered = sortProjects(
     projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
     sort
   )
 
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] px-6 py-12 text-center">
+        <p className="text-[13px] font-mono text-red-400">failed to load community projects</p>
+        <p className="text-[11px] text-zinc-600 mt-1">Check your connection and try again</p>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
-      <div className="space-y-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-4">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-3 w-32 rounded bg-white/[0.04] animate-pulse" />
+          <div className="h-8 w-48 rounded-lg bg-white/[0.03] animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
-              <div className="h-32 bg-white/[0.02] animate-pulse" />
-              <div className="p-4 space-y-3">
-                <div className="h-4 w-3/4 rounded-lg bg-white/[0.04] animate-pulse" />
-                <div className="h-3 w-1/2 rounded-lg bg-white/[0.04] animate-pulse" />
-              </div>
-            </div>
+            <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-4 h-28 animate-pulse" />
           ))}
         </div>
       </div>
     )
   }
 
-  const featured = filtered.slice(0, 3)
-  const rest = filtered.slice(3)
-
   return (
-    <div className="space-y-6">
-      {/* Hero header */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-primary/[0.08] via-white/[0.02] to-transparent border border-white/[0.06] p-6 sm:p-8 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.06] via-transparent to-transparent" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
-            <Globe className="h-4 w-4 text-primary" />
-            <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-semibold">Community</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-50 mb-1.5">
-            Explore Cities
-          </h1>
-          <p className="text-sm text-zinc-400 max-w-lg">
-            Discover how teams architect their codebases. Browse {projects.length} public visualization{projects.length !== 1 ? "s" : ""} from the community.
-          </p>
-        </div>
-      </div>
-
-      {/* Search + sort */}
+    <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-          <Input
-            type="text"
-            placeholder="Search repositories..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 rounded-lg bg-white/[0.03] border-white/[0.08] pl-10 text-sm text-zinc-200 placeholder:text-zinc-500 focus-visible:border-primary/45 focus-visible:ring-0 transition-colors duration-200"
-          />
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-700">
+            {filtered.length} cities
+          </span>
+          {search && (
+            <span className="text-[10px] font-mono text-zinc-600">
+              matching &quot;{search}&quot;
+            </span>
+          )}
         </div>
-        <div className="flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02] p-0.5">
-          {SORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setSort(opt.value)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] uppercase tracking-wide font-medium transition-all duration-200 ${
-                sort === opt.value
-                  ? "text-white bg-white/[0.08]"
-                  : "text-zinc-500 hover:text-white"
-              }`}
-            >
-              <opt.icon className="h-3 w-3" />
-              {opt.label}
-            </button>
-          ))}
+
+        <div className="flex items-center gap-2">
+          {/* Sort pills */}
+          <div className="flex items-center rounded-lg border border-white/[0.07] bg-white/[0.02] p-0.5 gap-0.5">
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setSort(opt.value)}
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-mono transition-all duration-150 ${
+                  sort === opt.value
+                    ? "text-zinc-100 bg-white/[0.08]"
+                    : "text-zinc-600 hover:text-zinc-300"
+                }`}
+              >
+                <opt.icon className="h-2.5 w-2.5" />
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-600" />
+            <Input
+              type="text"
+              placeholder="search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-44 rounded-lg bg-white/[0.03] border-white/[0.07] pl-7 text-[12px] font-mono text-zinc-300 placeholder:text-zinc-700 focus-visible:border-primary/35 focus-visible:ring-0 transition-colors"
+            />
+          </div>
         </div>
       </div>
 
+      {/* Empty state */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center py-20">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-            <Globe className="h-7 w-7 text-primary" />
-          </div>
-          <p className="text-base font-semibold text-zinc-50">
-            {search ? "No matching cities" : "No public cities yet"}
+        <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] flex flex-col items-center py-16">
+          <Globe className="h-8 w-8 text-zinc-700 mb-3" />
+          <p className="text-[13px] font-mono text-zinc-500">
+            {search ? `no results for "${search}"` : "no public cities yet"}
           </p>
-          <p className="mt-1.5 text-sm text-zinc-400 max-w-sm text-center">
-            {search
-              ? `No cities match "${search}". Try a different search term.`
-              : "Be the first to share a city visualization with the community."}
+          <p className="text-[11px] text-zinc-700 mt-1">
+            {search ? "Try a different search term" : "Be the first to share one"}
           </p>
         </div>
       ) : (
-        <>
-          {/* Featured (top 3) — larger cards */}
-          {!search && featured.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-medium">Featured</span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {featured.map((project) => (
-                  <ProjectCard key={project.id} project={project} featured />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Rest of the projects */}
-          {rest.length > 0 && (
-            <div>
-              {!search && featured.length > 0 && (
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-medium">All Projects</span>
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {(search ? filtered : rest).map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((project, i) => (
+            <ProjectCard key={project.id} project={project} rank={i + 1} />
+          ))}
+        </div>
       )}
     </div>
   )
 }
 
-function ProjectCard({ project, featured }: { project: PublicProject; featured?: boolean }) {
-  const username = project.user?.name || project.name.split("/")[0] || "Anonymous"
-  const repoName = project.name.split("/")[1] || project.name
+function ProjectCard({ project, rank }: { project: PublicProject; rank: number }) {
+  const parts = project.name.split("/")
+  const owner = parts[0] ?? ""
+  const repo = parts[1] ?? project.name
+  const username = project.user?.name || owner || "anon"
+  const isTop3 = rank <= 3
 
   return (
     <Link href={`/project/${project.id}`}>
-      <div className={`group rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden hover:border-primary/25 hover:translate-y-[-2px] transition-all duration-300 ${featured ? "ring-1 ring-primary/[0.08]" : ""}`}>
-        {/* Color accent bar */}
-        <div className={`h-1 w-full ${featured ? "bg-gradient-to-r from-primary/60 via-primary/30 to-transparent" : "bg-white/[0.04]"}`} />
+      <div className={`group relative rounded-xl border bg-[#0a0a0f] overflow-hidden hover:translate-y-[-1px] transition-all duration-200 ${
+        isTop3
+          ? "border-white/[0.08] hover:border-primary/25"
+          : "border-white/[0.05] hover:border-white/[0.10]"
+      }`}>
+        {/* Top accent */}
+        {isTop3 && (
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        )}
 
-        <div className="p-4 sm:p-5">
-          {/* Repo name + arrow */}
-          <div className="flex items-start justify-between mb-1">
+        <div className="p-4">
+          {/* Repo header */}
+          <div className="flex items-start justify-between mb-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] text-zinc-500 truncate">{username}</p>
-              <h3 className="text-sm font-semibold text-zinc-50 truncate mt-0.5">
-                {repoName}
+              <p className="text-[10px] font-mono text-zinc-700 truncate">{owner}/</p>
+              <h3 className="text-[13px] font-semibold text-zinc-100 truncate leading-tight">
+                {repo}
               </h3>
             </div>
-            <ArrowUpRight className="h-4 w-4 text-zinc-500 transition-all group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 ml-3 mt-1" />
+            <ArrowUpRight className="h-3.5 w-3.5 text-zinc-700 transition-all duration-200 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 ml-2 mt-0.5" />
           </div>
 
-          {/* Stats row */}
-          <div className="flex items-center gap-4 mt-3">
-            <div className="flex items-center gap-1.5">
-              <FileCode className="h-3 w-3 text-zinc-500" />
-              <span className="text-[11px] text-zinc-400 tabular-nums">
-                {formatNumber(project.fileCount ?? 0)} files
+          {/* Stats */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <FileCode className="h-2.5 w-2.5 text-zinc-600" />
+              <span className="text-[10px] font-mono text-zinc-500 tabular-nums">
+                {formatNumber(project.fileCount ?? 0)}f
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Code2 className="h-3 w-3 text-zinc-500" />
-              <span className="text-[11px] text-zinc-400 tabular-nums">
-                {formatNumber(project.lineCount ?? 0)} lines
+            <div className="flex items-center gap-1">
+              <Code2 className="h-2.5 w-2.5 text-zinc-600" />
+              <span className="text-[10px] font-mono text-zinc-500 tabular-nums">
+                {formatNumber(project.lineCount ?? 0)}l
               </span>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.04]">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.04]">
+            <div className="flex items-center gap-1.5">
               {project.user?.image ? (
-                <img src={project.user.image} alt="" className="h-5 w-5 rounded-full ring-1 ring-white/[0.08]" />
+                <img src={project.user.image} alt="" className="h-4 w-4 rounded-full ring-1 ring-white/[0.08]" />
               ) : (
-                <div className="h-5 w-5 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-white/[0.08] flex items-center justify-center">
-                  <span className="text-[7px] font-bold text-primary/80">
+                <div className="h-4 w-4 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
+                  <span className="text-[6px] font-bold text-zinc-500">
                     {username.charAt(0).toUpperCase()}
                   </span>
                 </div>
               )}
-              <span className="text-[11px] text-zinc-500">{username}</span>
+              <span className="text-[10px] font-mono text-zinc-600 truncate max-w-[80px]">{username}</span>
             </div>
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] font-mono text-zinc-700">
               {timeAgo(project.createdAt)}
             </span>
           </div>
