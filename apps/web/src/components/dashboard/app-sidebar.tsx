@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -42,6 +43,12 @@ export function AppSidebar({
   user?: { name: string | null; image: string | null; email?: string } | null
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" })
+    router.push("/")
+  }
   const isExplore = pathname.startsWith("/explore")
   const isDashboard = pathname.startsWith("/dashboard")
 
@@ -189,13 +196,13 @@ export function AppSidebar({
               {user?.email ?? "free plan"}
             </span>
           </div>
-          <a
-            href="/api/auth/logout"
+          <button
+            onClick={handleLogout}
             title="Sign out"
             className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.05] transition-all shrink-0"
           >
             <LogOut className="h-3 w-3" />
-          </a>
+          </button>
         </div>
       </SidebarFooter>
       <SidebarRail />
