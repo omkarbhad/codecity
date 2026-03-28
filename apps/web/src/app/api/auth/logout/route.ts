@@ -16,9 +16,8 @@ export async function GET(request: Request) {
   return res
 }
 
-export async function POST(request: Request) {
-  const { origin } = new URL(request.url)
-  const res = NextResponse.redirect(`${origin}/`, { status: 303 })
+export async function POST() {
+  const res = NextResponse.json({ ok: true })
   res.cookies.set(AUTH_COOKIE, "", COOKIE_OPTS)
   return res
 }

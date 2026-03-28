@@ -126,7 +126,10 @@ export function TopBar({ projectName }: TopBarProps) {
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] text-[11px] font-medium text-primary"
           >
-            {(() => { const l = LAYOUTS.find((l) => l.key === layoutMode)!; const Icon = l.icon; return <Icon className="w-3 h-3" /> })()}
+            {(() => {
+              const ActiveIcon = LAYOUTS.find((l) => l.key === layoutMode)!.icon
+              return <ActiveIcon className="w-3 h-3" />
+            })()}
           </button>
           <button
             onClick={() => {
