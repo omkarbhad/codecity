@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "nextjs-react-typescript": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "eb995cc826bf48498e0e90969fc7dadfa2ec634002c26cfcfde565134cefa738"
+    },
+    "nextjs-turbopack": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "4c83f7e5437fa185656ab5a96de3694d79cad3125cc0d371390f4cd351f9b7db"
+    }
+  }
+}

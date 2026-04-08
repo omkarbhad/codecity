@@ -1,7 +1,13 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
-import { X, ChevronDown, ChevronRight, ArrowRight, ArrowLeft, Package, Copy, Check, Pin, PinOff } from "lucide-react"
+import { X, ChevronDown, ChevronRight, ArrowRight, ArrowLeft, Package, Copy, Check, FileCode } from "lucide-react"
+import { getIconForFile as _getIconForFile } from "vscode-icons-js"
+
+function getFileIcon(name: string): string {
+  const icon = _getIconForFile(name) ?? "default_file.svg"
+  return icon.includes("_light_") ? icon.replace("_light_", "_") : icon
+}
 import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore } from "./use-city-store"
 
@@ -41,9 +47,8 @@ function Section({
 export function SidePanel({ snapshot }: SidePanelProps) {
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectFile = useCityStore((s) => s.selectFile)
-  const sidePanelPinned = useCityStore((s) => s.sidePanelPinned)
-  const togglePinSidePanel = useCityStore((s) => s.togglePinSidePanel)
   const repoUrl = useCityStore((s) => s.repoUrl)
+  const openCodeViewer = useCityStore((s) => s.openCodeViewer)
   const [copied, setCopied] = useState(false)
 
   const file = useMemo(() => {
@@ -77,32 +82,22 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   const cplxLabel = file.complexity <= 10 ? "Low" : file.complexity <= 25 ? "Med" : "High"
 
   return (
-    <>
-      {/* Mobile backdrop */}
-      <div
-        className="fixed inset-0 z-[49] bg-black/50 sm:hidden"
-        onClick={() => selectFile(null, null)}
-        aria-hidden="true"
-      />
-
-      {/* Panel — bottom sheet on mobile, right sidebar on sm+ */}
-      <div className="fixed z-[50] bg-black/40 backdrop-blur-2xl border border-white/[0.07] shadow-2xl shadow-black/50 flex flex-col overflow-hidden left-0 right-0 bottom-0 w-full rounded-t-2xl max-h-[75vh] animate-slide-up sm:left-auto sm:top-10 sm:bottom-0 sm:right-0 sm:w-[300px] sm:m-1.5 sm:mb-2 sm:rounded-lg sm:max-h-none sm:animate-slide-in-right">
-        {/* Mobile drag handle */}
-        <div className="sm:hidden flex justify-center pt-2 pb-1 shrink-0">
-          <div className="w-8 h-1 rounded-full bg-white/20" />
-        </div>
-
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="px-3 py-2.5 border-b border-white/[0.04] shrink-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: districtColor, boxShadow: `0 0 8px ${districtColor}30` }} />
-                <h3 className="text-[13px] font-semibold text-white/90 truncate">{fileName}</h3>
+                <img src={`/icons/vscode/${getFileIcon(fileName)}`} alt="" className="w-4 h-4 shrink-0" />
+                <button onClick={() => openCodeViewer(file.path)} className="text-[13px] font-semibold text-white/90 truncate hover:text-primary transition-colors">{fileName}</button>
               </div>
-              <div className="flex items-center gap-1 mt-1 ml-[18px]">
-                <p className="text-[10px] text-white/65 truncate">{file.path}</p>
-                <button onClick={handleCopyPath} aria-label="Copy file path" className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors">
+              <div className="flex items-center gap-1 mt-1 ml-[24px]">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: districtColor }} />
+                <p className="text-[10px] text-white/65 truncate">{file.district}</p>
+                <button onClick={() => openCodeViewer(file.path)} aria-label="View source" className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors" title="View source">
+                  <FileCode className="w-2.5 h-2.5" />
+                </button>
+                <button onClick={handleCopyPath} aria-label="Copy file path" className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors" title="Copy path">
                   {copied ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                 </button>
                 {repoUrl && (
@@ -118,18 +113,9 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-px shrink-0">
-              <button
-                onClick={togglePinSidePanel}
-                aria-label={sidePanelPinned ? "Unpin panel" : "Pin panel"}
-                className={`p-1 rounded-md hover:bg-white/[0.06] transition-colors ${sidePanelPinned ? "text-primary" : "text-white/45 hover:text-white/65"}`}
-              >
-                {sidePanelPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
-              </button>
-              <button onClick={() => selectFile(null, null)} aria-label="Close panel" className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <button onClick={() => selectFile(null, null)} aria-label="Close panel" className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors shrink-0">
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -160,14 +146,18 @@ export function SidePanel({ snapshot }: SidePanelProps) {
           {file.functions.length > 0 && (
             <Section title="Functions" count={file.functions.length}>
               <div className="space-y-px">
-                {file.functions.map((fn) => (
-                  <div key={fn.name} className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors">
-                    <span className="text-[11px] text-white/85 truncate flex items-center gap-1.5">
+                {file.functions.map((fn, i) => (
+                  <button
+                    key={`${fn.name}-${i}`}
+                    onClick={() => openCodeViewer(file.path, fn.name)}
+                    className="flex items-center justify-between w-full text-left px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                  >
+                    <span className="text-[11px] text-white/85 truncate flex items-center gap-1.5 group-hover:text-primary transition-colors">
                       {fn.exported && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />}
                       {fn.name}
                     </span>
                     <span className="text-[10px] text-white/45 shrink-0 ml-2 tabular-nums">{fn.lines}L</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </Section>
@@ -176,8 +166,8 @@ export function SidePanel({ snapshot }: SidePanelProps) {
           {file.types.length > 0 && (
             <Section title="Types" count={file.types.length} defaultOpen={file.types.length <= 8}>
               <div className="space-y-px">
-                {file.types.map((t) => (
-                  <div key={t.name} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors">
+                {file.types.map((t, i) => (
+                  <div key={`${t.name}-${i}`} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors">
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400/80 border border-amber-500/[0.08] font-medium">{t.kind}</span>
                     <span className="text-[11px] text-white/75 truncate">{t.name}</span>
                   </div>
@@ -195,9 +185,9 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                       <ArrowRight className="w-2.5 h-2.5" /> Imports
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {file.imports.map((imp) => (
+                      {file.imports.map((imp, i) => (
                         <button
-                          key={imp}
+                          key={`${imp}-${i}`}
                           onClick={() => handleNavigate(imp)}
                           className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-red-500/[0.06] text-red-400/80 border-red-500/[0.08] hover:bg-red-500/[0.12] transition-all truncate max-w-[130px]"
                           title={imp}
@@ -215,9 +205,9 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                       <ArrowLeft className="w-2.5 h-2.5" /> Imported By
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {file.importedBy.map((dep) => (
+                      {file.importedBy.map((dep, i) => (
                         <button
-                          key={dep}
+                          key={`${dep}-${i}`}
                           onClick={() => handleNavigate(dep)}
                           className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-blue-500/[0.06] text-blue-400/80 border-blue-500/[0.08] hover:bg-blue-500/[0.12] transition-all truncate max-w-[130px]"
                           title={dep}
@@ -235,8 +225,8 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                       <Package className="w-2.5 h-2.5" /> External
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {file.externalImports.map((ext) => (
-                        <span key={ext} className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-purple-500/[0.06] text-purple-400/80 border-purple-500/[0.08]">
+                      {file.externalImports.map((ext, i) => (
+                        <span key={`${ext}-${i}`} className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-purple-500/[0.06] text-purple-400/80 border-purple-500/[0.08]">
                           {ext}
                         </span>
                       ))}
@@ -248,7 +238,6 @@ export function SidePanel({ snapshot }: SidePanelProps) {
           )}
         </div>
       </div>
-    </>
   )
 }
 

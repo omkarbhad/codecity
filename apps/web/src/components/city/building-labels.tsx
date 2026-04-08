@@ -4,6 +4,8 @@ import { useRef, useMemo, useState } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import { Text, Billboard } from "@react-three/drei"
 import type { CitySnapshot } from "@/lib/types/city"
+import type { CityBounds } from "@/lib/visualization/city-bounds"
+import { getCityBounds } from "@/lib/visualization/city-bounds"
 import { useCityStore } from "./use-city-store"
 
 const MAX_VISIBLE_LABELS = 40
@@ -11,6 +13,7 @@ const BASE_DISTANCE_THRESHOLD = 35
 
 interface BuildingLabelsProps {
   snapshot: CitySnapshot
+  cityBounds?: CityBounds
 }
 
 function arraysEqual(a: number[], b: number[]): boolean {
@@ -21,7 +24,7 @@ function arraysEqual(a: number[], b: number[]): boolean {
   return true
 }
 
-export function BuildingLabels({ snapshot }: BuildingLabelsProps) {
+export function BuildingLabels({ snapshot, cityBounds }: BuildingLabelsProps) {
   const hoveredIndex = useCityStore((s) => s.hoveredIndex)
   const selectedIndex = useCityStore((s) => s.selectedIndex)
   const showBuildingLabels = useCityStore((s) => s.showBuildingLabels)
@@ -49,16 +52,10 @@ export function BuildingLabels({ snapshot }: BuildingLabelsProps) {
   }, [snapshot.districts])
 
   const distanceThreshold = useMemo(() => {
-    if (snapshot.files.length === 0) return BASE_DISTANCE_THRESHOLD
-    const xs = snapshot.files.map((f) => f.position.x)
-    const zs = snapshot.files.map((f) => f.position.z)
-    const spread = Math.max(
-      Math.max(...xs) - Math.min(...xs),
-      Math.max(...zs) - Math.min(...zs),
-      30
-    )
+    const bounds = cityBounds ?? getCityBounds(snapshot.files)
+    const spread = bounds.spread
     return Math.max(BASE_DISTANCE_THRESHOLD, spread * 0.15)
-  }, [snapshot.files])
+  }, [cityBounds, snapshot.files])
 
   const spatialGrid = useMemo(() => {
     const cellSize = distanceThreshold

@@ -1,7 +1,25 @@
 "use client"
 
-import { useMemo, useState, useEffect, useCallback } from "react"
-import { ChevronRight, ChevronDown, Folder, FolderOpen, Maximize2, Minimize2, Eye, EyeOff } from "lucide-react"
+import { useMemo, useState, useEffect, useCallback, memo } from "react"
+import { ChevronRight, ChevronDown, Eye, EyeOff } from "lucide-react"
+import { getIconForFile as _getIconForFile, getIconForFolder as _getIconForFolder, getIconForOpenFolder as _getIconForOpenFolder } from "vscode-icons-js"
+
+// vscode-icons-js returns "light_" variants by default, which are invisible on dark backgrounds.
+// Remap to dark variants when available.
+function darkIcon(icon: string): string {
+  if (!icon.includes("_light_")) return icon
+  const dark = icon.replace("_light_", "_")
+  return dark
+}
+function getFileIcon(name: string): string {
+  return darkIcon(_getIconForFile(name) ?? "default_file.svg")
+}
+function getFolderIcon(name: string): string {
+  return darkIcon(_getIconForFolder(name))
+}
+function getOpenFolderIcon(name: string): string {
+  return darkIcon(_getIconForOpenFolder(name))
+}
 import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore } from "./use-city-store"
 
@@ -93,7 +111,7 @@ function getAncestorPaths(filePath: string): Set<string> {
   return paths
 }
 
-function TreeNodeItem({
+const TreeNodeItem = memo(function TreeNodeItem({
   node,
   depth,
   expandedFolders,
@@ -108,6 +126,7 @@ function TreeNodeItem({
 }) {
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectFile = useCityStore((s) => s.selectFile)
+  const openCodeViewer = useCityStore((s) => s.openCodeViewer)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const togglePathVisibility = useCityStore((s) => s.togglePathVisibility)
   const isSelected = selectedFile === node.path
@@ -117,48 +136,37 @@ function TreeNodeItem({
   // Highlight search matches
   const isMatch = searchQuery && node.name.toLowerCase().includes(searchQuery.toLowerCase())
 
+  // Indent: 8px base + 16px per depth level
+  // Files get extra 16px to align with folder content (past the chevron)
+  const indent = node.isFile ? depth * 16 + 24 : depth * 16 + 8
+
   if (node.isFile) {
     return (
       <div
-        className={`
-          flex items-center gap-1 group py-0.5 px-1.5 rounded-md
-          font-sans text-[11px] transition-colors duration-100
-          ${isSelected
-            ? "bg-white/10 text-white"
+        className={`flex items-center h-[22px] group pr-2 cursor-pointer text-[12px] transition-colors select-none ${
+          isSelected
+            ? "bg-primary/[0.12] text-white"
             : isHidden
               ? "text-white/20"
               : isMatch
                 ? "text-primary/80 bg-primary/[0.06]"
-                : "text-white/50 hover:text-white/80 hover:bg-white/[0.04]"
-          }
-        `}
-        style={{ paddingLeft: `${depth * 12 + 6}px` }}
+                : "text-white/60 hover:text-white/90 hover:bg-white/[0.04]"
+        }`}
+        style={{ paddingLeft: indent }}
+        onClick={() => selectFile(node.path)}
+        onDoubleClick={() => openCodeViewer(node.path)}
       >
+        <img
+          src={`/icons/vscode/${getFileIcon(node.name)}`}
+          alt=""
+          className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : ""}`}
+        />
+        <span className={`truncate flex-1 ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
         <button
-          onClick={() => selectFile(node.path)}
-          className="flex items-center gap-1 flex-1 min-w-0 cursor-pointer"
-        >
-          {node.districtColor ? (
-            <span
-              className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isHidden ? "opacity-30" : ""}`}
-              style={{ backgroundColor: node.districtColor }}
-            />
-          ) : (
-            <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0 bg-white/20" />
-          )}
-          <span className={`truncate ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            togglePathVisibility(node.path)
-          }}
-          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all cursor-pointer
-            ${isHidden
-              ? "text-white/30 opacity-100"
-              : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
-            }`}
-          title={isHidden ? "Show file" : "Hide file"}
+          onClick={(e) => { e.stopPropagation(); togglePathVisibility(node.path) }}
+          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all ${
+            isHidden ? "text-white/30" : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
+          }`}
         >
           {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
         </button>
@@ -169,47 +177,31 @@ function TreeNodeItem({
   return (
     <div>
       <div
-        className={`flex items-center gap-0.5 group py-0.5 px-1.5 rounded-md
-          font-sans text-[11px] hover:bg-white/[0.04]
-          transition-colors duration-100
-          ${isHidden
+        className={`flex items-center h-[22px] group pr-2 cursor-pointer text-[12px] transition-colors select-none ${
+          isHidden
             ? "text-white/25"
             : isMatch
               ? "text-primary/80"
-              : "text-white/60 hover:text-white/80"
-          }`}
-        style={{ paddingLeft: `${depth * 12 + 6}px` }}
+              : "text-white/60 hover:text-white/90 hover:bg-white/[0.04]"
+        }`}
+        style={{ paddingLeft: indent }}
+        onClick={() => toggleFolder(node.path)}
       >
+        {isExpanded
+          ? <ChevronDown className="w-4 h-4 shrink-0 text-white/30 -ml-0.5" />
+          : <ChevronRight className="w-4 h-4 shrink-0 text-white/30 -ml-0.5" />
+        }
+        <img
+          src={`/icons/vscode/${isExpanded ? getOpenFolderIcon(node.name) : getFolderIcon(node.name)}`}
+          alt=""
+          className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : ""}`}
+        />
+        <span className={`truncate flex-1 ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
         <button
-          onClick={() => toggleFolder(node.path)}
-          className="flex items-center gap-0.5 flex-1 min-w-0 cursor-pointer"
-        >
-          {isExpanded ? (
-            <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${isHidden ? "text-amber-400/20" : "text-amber-400/60"}`} />
-          ) : (
-            <Folder className={`w-3.5 h-3.5 shrink-0 ${isHidden ? "text-amber-400/15" : "text-amber-400/40"}`} />
-          )}
-          <span className={`truncate flex-1 ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
-          <span className="text-white/20 text-[10px] shrink-0 ml-1">
-            {node.fileCount}
-          </span>
-          {isExpanded ? (
-            <ChevronDown className="w-3 h-3 shrink-0 text-white/20" />
-          ) : (
-            <ChevronRight className="w-3 h-3 shrink-0 text-white/20" />
-          )}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            togglePathVisibility(node.path)
-          }}
-          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all cursor-pointer
-            ${isHidden
-              ? "text-white/30 opacity-100"
-              : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
-            }`}
-          title={isHidden ? "Show folder" : "Hide folder"}
+          onClick={(e) => { e.stopPropagation(); togglePathVisibility(node.path) }}
+          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all ${
+            isHidden ? "text-white/30" : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
+          }`}
         >
           {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
         </button>
@@ -227,7 +219,7 @@ function TreeNodeItem({
         ))}
     </div>
   )
-}
+})
 
 export function FileTree({ snapshot }: FileTreeProps) {
   const selectedFile = useCityStore((s) => s.selectedFile)
@@ -276,48 +268,9 @@ export function FileTree({ snapshot }: FileTreeProps) {
     })
   }, [])
 
-  const expandAll = useCallback(() => {
-    setExpandedFolders(new Set(allFolderPaths))
-  }, [allFolderPaths])
-
-  const collapseAll = useCallback(() => {
-    setExpandedFolders(new Set())
-  }, [])
-
   return (
-    <div>
-      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
-        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
-          Files
-          <span className="ml-1.5 text-white/20">{snapshot.files.length}</span>
-        </span>
-        <div className="flex items-center gap-1">
-          {hiddenPaths.size > 0 && (
-            <button
-              onClick={showAllPaths}
-              className="text-[9px] font-sans text-amber-400/50 hover:text-amber-400 transition-colors px-1"
-              title="Show All Hidden"
-            >
-              Show all
-            </button>
-          )}
-          <button
-            onClick={expandAll}
-            className="p-0.5 rounded hover:bg-white/10 text-white/25 hover:text-white/50 transition-colors"
-            title="Expand All"
-          >
-            <Maximize2 className="w-3 h-3" />
-          </button>
-          <button
-            onClick={collapseAll}
-            className="p-0.5 rounded hover:bg-white/10 text-white/25 hover:text-white/50 transition-colors"
-            title="Collapse All"
-          >
-            <Minimize2 className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
-      <div className="py-0.5">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="py-0.5 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}
@@ -330,10 +283,16 @@ export function FileTree({ snapshot }: FileTreeProps) {
         ))}
       </div>
       {hiddenPaths.size > 0 && (
-        <div className="px-3 py-1 border-t border-white/[0.06]">
+        <div className="px-3 py-1 border-t border-white/[0.06] shrink-0 flex items-center justify-between">
           <span className="font-sans text-[9px] text-amber-400/40">
             {hiddenPaths.size} hidden
           </span>
+          <button
+            onClick={showAllPaths}
+            className="text-[9px] font-sans text-amber-400/50 hover:text-amber-400 transition-colors"
+          >
+            Show all
+          </button>
         </div>
       )}
     </div>

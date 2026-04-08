@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { Canvas, useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
+import { getCityBounds, type CityBounds } from "@/lib/visualization/city-bounds"
 import { Lighting } from "./lighting"
 import { Ground } from "./ground"
 import { DistrictGround } from "./district-ground"
@@ -18,23 +19,17 @@ interface MiniCityPreviewProps {
 }
 
 /** Auto-orbiting camera tuned for thumbnail-size canvases */
-function MiniCameraOrbit({ snapshot, speed = 0.5 }: { snapshot: CitySnapshot; speed?: number }) {
+function MiniCameraOrbit({ cityBounds, speed = 0.5 }: { cityBounds: CityBounds; speed?: number }) {
   const angleRef = useRef(Math.random() * Math.PI * 2) // random start angle per card
 
   const { center, radius, height } = useMemo(() => {
-    const files = snapshot.files
-    if (files.length === 0) return { center: [0, 0] as const, radius: 20, height: 14 }
-    const xs = files.map((f) => f.position.x)
-    const zs = files.map((f) => f.position.z)
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2
-    const cz = (Math.min(...zs) + Math.max(...zs)) / 2
-    const spread = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 8)
+    const spread = Math.max(cityBounds.spread, 8)
     return {
-      center: [cx, cz] as const,
+      center: [cityBounds.centerX, cityBounds.centerZ] as const,
       radius: spread * 0.75,
       height: spread * 0.55,
     }
-  }, [snapshot])
+  }, [cityBounds])
 
   useFrame(({ camera }, delta) => {
     angleRef.current += delta * speed * 0.35
@@ -86,6 +81,8 @@ function MiniParticles({ spread = 40 }: { spread?: number }) {
 }
 
 function MiniCityPreviewInner({ snapshot, speed = 0.5 }: MiniCityPreviewProps) {
+  const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
+
   return (
     <Canvas
       gl={{
@@ -103,9 +100,9 @@ function MiniCityPreviewInner({ snapshot, speed = 0.5 }: MiniCityPreviewProps) {
     >
       <color attach="background" args={["#040408"]} />
       <Suspense fallback={null}>
-        <MiniCameraOrbit snapshot={snapshot} speed={speed} />
-        <Lighting snapshot={snapshot} />
-        <Ground snapshot={snapshot} />
+        <MiniCameraOrbit cityBounds={cityBounds} speed={speed} />
+        <Lighting snapshot={snapshot} cityBounds={cityBounds} />
+        <Ground snapshot={snapshot} cityBounds={cityBounds} />
         {snapshot.districts.map((d) => (
           <DistrictGround key={d.name} district={d} />
         ))}

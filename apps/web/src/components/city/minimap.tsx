@@ -11,10 +11,21 @@ interface MinimapProps {
 export function Minimap({ snapshot }: MinimapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const selectedFile = useCityStore((s) => s.selectedFile)
-  const hoveredFile = useCityStore((s) => s.hoveredFile)
   const selectFile = useCityStore((s) => s.selectFile)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
+  // Use ref for hoveredFile to avoid full canvas redraws on mousemove
+  const hoveredFileRef = useRef(useCityStore.getState().hoveredFile)
+  useEffect(() => {
+    return useCityStore.subscribe((s) => { hoveredFileRef.current = s.hoveredFile })
+  }, [])
+
+  // O(1) file lookup map
+  const fileMap = useMemo(() => {
+    const map = new Map<string, (typeof snapshot.files)[0]>()
+    for (const f of snapshot.files) map.set(f.path, f)
+    return map
+  }, [snapshot.files])
 
   const bounds = useMemo(() => {
     let minX = Infinity
@@ -159,7 +170,7 @@ export function Minimap({ snapshot }: MinimapProps) {
 
       const [fx, fz] = toCanvas(file.position.x, file.position.z)
       const color = districtColorMap.get(file.district) ?? "#888888"
-      const isHovered = file.path === hoveredFile
+      const isHovered = file.path === hoveredFileRef.current
 
       ctx.fillStyle = isHovered ? "#ffffff" : color + "90"
       ctx.beginPath()
@@ -169,13 +180,13 @@ export function Minimap({ snapshot }: MinimapProps) {
 
     // Draw dependency lines and selected file highlight on minimap
     if (selectedFile) {
-      const srcFile = snapshot.files.find((f) => f.path === selectedFile)
+      const srcFile = fileMap.get(selectedFile)
       if (srcFile) {
         const [sx, sz] = toCanvas(srcFile.position.x, srcFile.position.z)
 
         // Draw outgoing imports (warm red)
         for (const imp of srcFile.imports) {
-          const target = snapshot.files.find((f) => f.path === imp)
+          const target = fileMap.get(imp)
           if (!target) continue
           const [tx, tz] = toCanvas(target.position.x, target.position.z)
           ctx.strokeStyle = "#ff6b6b50"
@@ -193,7 +204,7 @@ export function Minimap({ snapshot }: MinimapProps) {
 
         // Draw incoming importedBy (cool blue)
         for (const dep of srcFile.importedBy) {
-          const source = snapshot.files.find((f) => f.path === dep)
+          const source = fileMap.get(dep)
           if (!source) continue
           const [dx, dz] = toCanvas(source.position.x, source.position.z)
           ctx.strokeStyle = "#4dabf750"
@@ -222,17 +233,14 @@ export function Minimap({ snapshot }: MinimapProps) {
         ctx.fill()
       }
     }
-  }, [snapshot, selectedFile, hoveredFile, bounds, hiddenExtensions, hiddenPaths])
+  }, [snapshot, selectedFile, bounds, hiddenExtensions, hiddenPaths, fileMap])
 
   return (
-    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center">
-        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">Minimap</span>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
       <canvas
         ref={canvasRef}
-        className="w-full cursor-crosshair"
-        style={{ height: 140 }}
+        className="w-full flex-1 cursor-crosshair"
+        style={{ minHeight: 200 }}
         onClick={handleClick}
       />
     </div>

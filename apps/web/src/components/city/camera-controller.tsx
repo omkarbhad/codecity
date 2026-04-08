@@ -5,13 +5,16 @@ import { useFrame, useThree } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
+import type { CityBounds } from "@/lib/visualization/city-bounds"
+import { getCityBounds } from "@/lib/visualization/city-bounds"
 import { useCityStore } from "./use-city-store"
 
 interface CameraControllerProps {
   snapshot: CitySnapshot
+  cityBounds?: CityBounds
 }
 
-export function CameraController({ snapshot }: CameraControllerProps) {
+export function CameraController({ snapshot, cityBounds }: CameraControllerProps) {
   const selectedFile = useCityStore((s) => s.selectedFile)
   const { camera } = useThree()
 
@@ -44,32 +47,16 @@ export function CameraController({ snapshot }: CameraControllerProps) {
     return new THREE.Vector3()
   }, [])
 
-  // Compute city spread for dynamic camera limits
-  const citySpread = useRef(100)
-  useEffect(() => {
-    if (snapshot.files.length === 0) return
-    const xs = snapshot.files.map((f) => f.position.x)
-    const zs = snapshot.files.map((f) => f.position.z)
-    citySpread.current = Math.max(
-      Math.max(...xs) - Math.min(...xs),
-      Math.max(...zs) - Math.min(...zs),
-      30
-    )
-  }, [snapshot.files])
+  const currentBounds = cityBounds ?? getCityBounds(snapshot.files)
 
   // Auto-fit camera on initial load
   useEffect(() => {
-    if (hasInitialized.current || snapshot.files.length === 0) return
+    if (hasInitialized.current || !currentBounds.hasFiles) return
     hasInitialized.current = true
 
-    const xs = snapshot.files.map((f) => f.position.x)
-    const zs = snapshot.files.map((f) => f.position.z)
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2
-    const cz = (Math.min(...zs) + Math.max(...zs)) / 2
-    const spread = Math.max(
-      Math.max(...xs) - Math.min(...xs),
-      Math.max(...zs) - Math.min(...zs)
-    )
+    const cx = currentBounds.centerX
+    const cz = currentBounds.centerZ
+    const spread = currentBounds.spread
     const dist = Math.max(30, spread * 0.7)
 
     camera.position.set(
@@ -81,7 +68,7 @@ export function CameraController({ snapshot }: CameraControllerProps) {
 
     const target = getControlsTarget()
     target.set(cx, 0, cz)
-  }, [snapshot.files, camera, getControlsTarget])
+  }, [camera, currentBounds, getControlsTarget])
 
   // Fly-to when a building is selected
   useEffect(() => {
@@ -109,15 +96,13 @@ export function CameraController({ snapshot }: CameraControllerProps) {
     fly.endTarget.copy(targetPoint)
   }, [selectedFile, snapshot.files, camera, getControlsTarget])
 
-  // Store snapshot.files in a ref so event listeners stay stable
-  const filesRef = useRef(snapshot.files)
-  useEffect(() => { filesRef.current = snapshot.files }, [snapshot.files])
-
   // Stable references — read from refs inside listeners to avoid churn
   const cameraRef = useRef(camera)
   cameraRef.current = camera
   const getControlsTargetRef = useRef(getControlsTarget)
   getControlsTargetRef.current = getControlsTarget
+  const cityBoundsRef = useRef(currentBounds)
+  cityBoundsRef.current = currentBounds
 
   // "R" key resets camera, WASD/arrows for panning — registered once
   useEffect(() => {
@@ -132,17 +117,12 @@ export function CameraController({ snapshot }: CameraControllerProps) {
       }
 
       if (e.key === "r" || e.key === "R") {
-        const files = filesRef.current
-        const xs = files.map((f) => f.position.x)
-        const zs = files.map((f) => f.position.z)
-        if (xs.length === 0) return
+        const bounds = cityBoundsRef.current
+        if (!bounds.hasFiles) return
 
-        const cx = (Math.min(...xs) + Math.max(...xs)) / 2
-        const cz = (Math.min(...zs) + Math.max(...zs)) / 2
-        const spread = Math.max(
-          Math.max(...xs) - Math.min(...xs),
-          Math.max(...zs) - Math.min(...zs)
-        )
+        const cx = bounds.centerX
+        const cz = bounds.centerZ
+        const spread = bounds.spread
         const dist = Math.max(30, spread * 0.7)
 
         const fly = flyState.current
@@ -228,7 +208,7 @@ export function CameraController({ snapshot }: CameraControllerProps) {
   })
 
   // Generous limits — user should never hit invisible walls
-  const maxDist = Math.max(500, citySpread.current * 3)
+  const maxDist = Math.max(500, currentBounds.spread * 3)
 
   return (
     <OrbitControls

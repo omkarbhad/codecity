@@ -10,6 +10,11 @@ export type VisualizationMode =
   | "filesize"
   | "types"
 
+interface CodeViewerState {
+  filePath: string
+  functionName: string | null
+}
+
 interface CityState {
   selectedFile: string | null
   selectedIndex: number | null
@@ -27,6 +32,7 @@ interface CityState {
   showBuildingLabels: boolean
   highlightedFiles: Set<string>
   repoUrl: string
+  codeViewer: CodeViewerState | null
   setHighlightedFiles: (files: string[]) => void
   setRepoUrl: (url: string) => void
   selectFile: (path: string | null, index?: number | null) => void
@@ -44,6 +50,8 @@ interface CityState {
   toggleLeftPanel: () => void
   toggleShortcutsOverlay: () => void
   toggleBuildingLabels: () => void
+  openCodeViewer: (filePath: string, functionName?: string | null) => void
+  closeCodeViewer: () => void
 }
 
 export const useCityStore = create<CityState>((set) => ({
@@ -63,6 +71,7 @@ export const useCityStore = create<CityState>((set) => ({
   showBuildingLabels: true,
   highlightedFiles: new Set<string>(),
   repoUrl: "",
+  codeViewer: null,
   setHighlightedFiles: (files) => set({ highlightedFiles: new Set(files) }),
   setRepoUrl: (url) => set({ repoUrl: url }),
   selectFile: (path, index = null) =>
@@ -98,6 +107,9 @@ export const useCityStore = create<CityState>((set) => ({
     set((state) => ({ showShortcutsOverlay: !state.showShortcutsOverlay })),
   toggleBuildingLabels: () =>
     set((state) => ({ showBuildingLabels: !state.showBuildingLabels })),
+  openCodeViewer: (filePath, functionName = null) =>
+    set({ codeViewer: { filePath, functionName: functionName ?? null } }),
+  closeCodeViewer: () => set({ codeViewer: null }),
 }))
 
 /**

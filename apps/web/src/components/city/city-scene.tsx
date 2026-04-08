@@ -14,6 +14,7 @@ import { CameraController } from "./camera-controller"
 import { SelectionMarker } from "./selection-marker"
 import { BuildingLabels } from "./building-labels"
 import { useCityStore } from "./use-city-store"
+import { getCityBounds } from "@/lib/visualization/city-bounds"
 
 interface CitySceneProps {
   snapshot: CitySnapshot
@@ -120,23 +121,17 @@ function AmbientParticles({ count = 200, spread = 200 }: { count?: number; sprea
 
 /** Canvas-only scene — zustand store is global, no provider needed. */
 export function CitySceneCanvas({ snapshot }: CitySceneProps) {
+  const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
+
   // Compute dynamic fog density and spread based on city size
   const cityMetrics = useMemo(() => {
-    if (snapshot.files.length === 0) return { fogDensity: 0.002, spread: 30, particleCount: 100 }
-    const xs = snapshot.files.map((f) => f.position.x).filter(Number.isFinite)
-    const zs = snapshot.files.map((f) => f.position.z).filter(Number.isFinite)
-    if (xs.length === 0 || zs.length === 0) return { fogDensity: 0.002, spread: 30, particleCount: 100 }
-    const spread = Math.max(
-      Math.max(...xs) - Math.min(...xs),
-      Math.max(...zs) - Math.min(...zs),
-      30
-    )
+    const spread = cityBounds.spread
     return {
       fogDensity: Math.max(0.0002, Math.min(0.002, 1.5 / spread)),
       spread,
       particleCount: Math.min(500, Math.max(100, Math.round(spread * 1.5))),
     }
-  }, [snapshot.files])
+  }, [cityBounds])
 
   // Adaptive camera far plane based on city size
   const farPlane = Math.max(5000, cityMetrics.spread * 5)
@@ -165,8 +160,8 @@ export function CitySceneCanvas({ snapshot }: CitySceneProps) {
     >
       <color attach="background" args={["#040408"]} />
       <Suspense fallback={null}>
-        <Lighting snapshot={snapshot} />
-        <Ground snapshot={snapshot} />
+        <Lighting snapshot={snapshot} cityBounds={cityBounds} />
+        <Ground snapshot={snapshot} cityBounds={cityBounds} />
         <ClickCatcher />
 
         {snapshot.districts.map((d) => (
@@ -174,10 +169,10 @@ export function CitySceneCanvas({ snapshot }: CitySceneProps) {
         ))}
 
         <InstancedBuildings snapshot={snapshot} />
-        <BuildingLabels snapshot={snapshot} />
+        <BuildingLabels snapshot={snapshot} cityBounds={cityBounds} />
         <SelectionMarker snapshot={snapshot} />
         <DependencyPipes snapshot={snapshot} />
-        <CameraController snapshot={snapshot} />
+        <CameraController snapshot={snapshot} cityBounds={cityBounds} />
 
         {/* Ambient atmosphere */}
         <AmbientParticles count={cityMetrics.particleCount} spread={cityMetrics.spread * 1.5} />
