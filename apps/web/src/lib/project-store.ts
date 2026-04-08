@@ -1,3 +1,4 @@
+import { gzipSync, gunzipSync } from "node:zlib"
 import { sql } from "./db"
 
 export type Visibility = "PUBLIC" | "PRIVATE"
@@ -43,11 +44,20 @@ function toProject(row: Record<string, unknown>): ProjectRecord {
 }
 
 function toSnapshot(row: Record<string, unknown>): SnapshotRecord {
+  // Prefer gzipped data_compressed; fall back to jsonb data for old rows
+  let data: unknown = row.data
+  if (row.data_compressed) {
+    const buf = Buffer.isBuffer(row.data_compressed)
+      ? row.data_compressed
+      : Buffer.from(row.data_compressed as Uint8Array)
+    data = JSON.parse(gunzipSync(buf).toString())
+  }
+
   return {
     id: row.id as string,
     projectId: row.project_id as string,
     name: row.name as string,
-    data: row.data,
+    data,
     createdAt: (row.created_at as Date)?.toISOString?.() ?? (row.created_at as string),
   }
 }
@@ -183,12 +193,18 @@ export async function saveSnapshot(
   // Delete old snapshots for this project first (keep only latest)
   await sql`DELETE FROM snapshots WHERE project_id = ${projectId}`
 
-  const rows = await sql`
-    INSERT INTO snapshots (project_id, name, data)
-    VALUES (${projectId}, ${name ?? "default"}, ${JSON.stringify(data)})
-    RETURNING *
-  `
-  return toSnapshot(rows[0])
+  // Gzip the JSON to stay under Neon's 64MB HTTP request limit
+  const compressed = gzipSync(JSON.stringify(data))
+
+  const { getPool } = await import("./db")
+  const pool = getPool()
+  const result = await pool.query(
+    `INSERT INTO snapshots (project_id, name, data, data_compressed)
+     VALUES ($1, $2, '{}'::jsonb, $3)
+     RETURNING *`,
+    [projectId, name ?? "default", compressed]
+  )
+  return toSnapshot(result.rows[0])
 }
 
 export async function getSnapshot(
