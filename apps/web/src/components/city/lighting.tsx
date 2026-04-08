@@ -4,12 +4,14 @@ import { useRef, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
+import type { CityBounds } from "@/lib/visualization/city-bounds"
+import { getCityBounds } from "@/lib/visualization/city-bounds"
 import { useCityStore } from "./use-city-store"
 
 /**
  * Scene lighting with adaptive shadow coverage and dynamic selection spotlight.
  */
-export function Lighting({ snapshot }: { snapshot?: CitySnapshot }) {
+export function Lighting({ snapshot, cityBounds }: { snapshot?: CitySnapshot; cityBounds?: CityBounds }) {
   const selectedFile = useCityStore((s) => s.selectedFile)
   const spotRef = useRef<THREE.PointLight>(null)
 
@@ -20,16 +22,11 @@ export function Lighting({ snapshot }: { snapshot?: CitySnapshot }) {
 
   // Adaptive shadow camera based on city size
   const shadowSize = useMemo(() => {
-    if (!snapshot || snapshot.files.length === 0) return 80
-    const xs = snapshot.files.map((f) => f.position.x)
-    const zs = snapshot.files.map((f) => f.position.z)
-    const spread = Math.max(
-      Math.max(...xs) - Math.min(...xs),
-      Math.max(...zs) - Math.min(...zs),
-      80
-    )
+    const bounds = cityBounds ?? (snapshot ? getCityBounds(snapshot.files) : null)
+    if (!bounds) return 80
+    const spread = Math.max(bounds.spread, 80)
     return Math.min(200, spread * 0.6)
-  }, [snapshot])
+  }, [cityBounds, snapshot])
 
   useFrame(({ clock }) => {
     if (!spotRef.current) return

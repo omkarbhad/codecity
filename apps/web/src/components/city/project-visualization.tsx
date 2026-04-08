@@ -6,12 +6,7 @@ import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
 import { recomputeSnapshot } from "@/lib/analysis/layout"
 import { getExtension } from "./extension-filter"
 import { useCityStore, isPathHidden } from "./use-city-store"
-import { TopBar } from "./top-bar"
-import { LeftPanel } from "./left-panel"
-import { SidePanel } from "./side-panel"
-import { BottomBar } from "./bottom-bar"
-import { CityTooltip } from "./city-tooltip"
-import { CommitTimeline } from "./commit-timeline"
+import { ProjectShell } from "./project-shell"
 import { Loader } from "@/components/ui/loader"
 
 const CitySceneCanvas = dynamic(
@@ -82,10 +77,11 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
   const layoutMode = useCityStore((s) => s.layoutMode)
-  const leftPanelCollapsed = useCityStore((s) => s.leftPanelCollapsed)
   const setRepoUrl = useCityStore((s) => s.setRepoUrl)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevLayoutRef = useRef<LayoutMode>(layoutMode)
+  const transitionStartRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const transitionEndRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
 
   // Update original ref if prop changes
@@ -130,18 +126,30 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [hiddenPaths, hiddenExtensions, recompute, layoutMode])
+  }, [hiddenPaths, hiddenExtensions, recompute])
 
   // Immediate re-layout on layout mode change with transition
   useEffect(() => {
     if (prevLayoutRef.current !== layoutMode) {
       prevLayoutRef.current = layoutMode
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+      if (transitionStartRef.current) clearTimeout(transitionStartRef.current)
+      if (transitionEndRef.current) clearTimeout(transitionEndRef.current)
       setIsTransitioning(true)
+
       // Small delay for visual feedback
-      setTimeout(() => {
+      transitionStartRef.current = setTimeout(() => {
         recompute(layoutMode)
-        setTimeout(() => setIsTransitioning(false), 300)
+        transitionEndRef.current = setTimeout(() => setIsTransitioning(false), 300)
       }, 50)
+    }
+
+    return () => {
+      if (transitionStartRef.current) clearTimeout(transitionStartRef.current)
+      if (transitionEndRef.current) clearTimeout(transitionEndRef.current)
     }
   }, [layoutMode, recompute])
 
@@ -177,35 +185,28 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   }, [setMode, toggleBuildingLabels])
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#040408]" role="application" aria-label={`CodeCity 3D visualization of ${projectName}`}>
+    <div role="application" aria-label={`CodeCity 3D visualization of ${projectName}`}>
       <div className="sr-only" role="status" aria-live="polite">
         Interactive 3D city visualization. Use the file tree on the left to browse files.
         Press Escape to deselect the current file. Press R to reset camera. WASD to pan.
       </div>
 
-      <TopBar projectName={projectName} />
-
-      <LeftPanel snapshot={currentSnapshot} collapsed={leftPanelCollapsed} />
-
-      <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
-        <SceneErrorBoundary>
-          <CitySceneCanvas snapshot={currentSnapshot} />
-        </SceneErrorBoundary>
-      </div>
-
-      <SidePanel snapshot={currentSnapshot} />
-      {repoUrl && <CommitTimeline repoUrl={repoUrl} />}
-      <BottomBar stats={currentSnapshot.stats} warnings={currentSnapshot.warnings} />
-      <CityTooltip snapshot={currentSnapshot} />
-
-      {/* Layout transition overlay */}
-      {isTransitioning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 px-5 py-3">
-            <Loader size="sm" text="Rebuilding layout..." />
-          </div>
+      <ProjectShell snapshot={currentSnapshot} projectName={projectName} repoUrl={repoUrl}>
+        <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
+          <SceneErrorBoundary>
+            <CitySceneCanvas snapshot={currentSnapshot} />
+          </SceneErrorBoundary>
         </div>
-      )}
+
+        {/* Layout transition overlay */}
+        {isTransitioning && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 px-5 py-3">
+              <Loader size="sm" text="Rebuilding layout..." />
+            </div>
+          </div>
+        )}
+      </ProjectShell>
     </div>
   )
 }

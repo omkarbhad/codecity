@@ -3,30 +3,29 @@
 import { useMemo } from "react"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
+import type { CityBounds } from "@/lib/visualization/city-bounds"
+import { getCityBounds } from "@/lib/visualization/city-bounds"
 
 interface GroundProps {
   snapshot?: CitySnapshot
+  cityBounds?: CityBounds
 }
 
 /**
  * Dynamic ground plane and grid that scales with city size.
  * Adaptive sizing ensures the ground always extends beyond the city.
  */
-export function Ground({ snapshot }: GroundProps) {
+export function Ground({ snapshot, cityBounds }: GroundProps) {
   const { groundSize, center } = useMemo(() => {
-    if (!snapshot || snapshot.files.length === 0) return { groundSize: 500, center: [0, 0] as const }
-    const xs = snapshot.files.map((f) => f.position.x)
-    const zs = snapshot.files.map((f) => f.position.z)
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    const minZ = Math.min(...zs)
-    const maxZ = Math.max(...zs)
-    const spread = Math.max(maxX - minX, maxZ - minZ, 100)
+    const bounds = cityBounds ?? (snapshot ? getCityBounds(snapshot.files) : null)
+    if (!bounds) return { groundSize: 500, center: [0, 0] as const }
+
+    const spread = Math.max(bounds.spread, 100)
     return {
       groundSize: Math.max(500, spread * 5),
-      center: [(minX + maxX) / 2, (minZ + maxZ) / 2] as const,
+      center: [bounds.centerX, bounds.centerZ] as const,
     }
-  }, [snapshot])
+  }, [cityBounds, snapshot])
 
   // PERF: Cap grid divisions to avoid excessive line segments on large cities
   const gridDivisions = Math.min(120, Math.max(40, Math.round(groundSize / 6)))

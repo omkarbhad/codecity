@@ -73,32 +73,25 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
   ).length
 
   return (
-    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
-        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
-          Extensions
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={showAllExtensions}
-            disabled={noneHidden}
-            className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
-            title="Show All"
-          >
-            All
-          </button>
-          <span className="text-white/10 text-[9px]">|</span>
-          <button
-            onClick={() => hideAllExtensions(allExts)}
-            disabled={allHidden}
-            className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
-            title="Hide All"
-          >
-            None
-          </button>
-        </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-3 py-1.5 flex items-center justify-end gap-1 shrink-0">
+        <button
+          onClick={showAllExtensions}
+          disabled={noneHidden}
+          className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
+        >
+          All
+        </button>
+        <span className="text-white/10 text-[9px]">|</span>
+        <button
+          onClick={() => hideAllExtensions(allExts)}
+          disabled={allHidden}
+          className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
+        >
+          None
+        </button>
       </div>
-      <div className="py-0.5 max-h-[200px] overflow-y-auto scroll-thin">
+      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {extensionData.map(({ ext, count }) => {
           const isHidden = hiddenExtensions.has(ext)
           const icon = EXT_ICONS[ext] ?? ext.replace(".", "").slice(0, 2).toUpperCase()

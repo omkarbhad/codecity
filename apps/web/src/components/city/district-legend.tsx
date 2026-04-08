@@ -39,14 +39,8 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
   }
 
   return (
-    <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center">
-        <span className="font-sans text-[10px] font-medium text-white/40 uppercase tracking-wider">
-          Districts
-          <span className="ml-1.5 text-white/20">{snapshot.districts.length}</span>
-        </span>
-      </div>
-      <div className="py-0.5">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-0.5">
         {snapshot.districts.map((district) => {
           const stats = districtStats.get(district.name)
           const isActive = selectedDistrict === district.name

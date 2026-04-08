@@ -10,7 +10,7 @@ const PROGRESS_STUCK_TIMEOUT_MS = 60_000
 const ANALYSIS_TIMEOUT_MS = 5 * 60 * 1000
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -30,27 +30,63 @@ export async function GET(
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder()
+      let interval: ReturnType<typeof setInterval> | null = null
+      let timeout: ReturnType<typeof setTimeout> | null = null
+      let isClosed = false
 
-      function send(data: object) {
+      function cleanup() {
+        if (interval) {
+          clearInterval(interval)
+          interval = null
+        }
+        if (timeout) {
+          clearTimeout(timeout)
+          timeout = null
+        }
+        request.signal.removeEventListener("abort", handleAbort)
+      }
+
+      function closeStream() {
+        if (isClosed) return
+        isClosed = true
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+          controller.close()
         } catch {
           // Stream already closed
         }
       }
 
+      function stop() {
+        cleanup()
+        closeStream()
+      }
+
+      function handleAbort() {
+        stop()
+      }
+
+      function send(data: object) {
+        if (isClosed) return
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        } catch {
+          stop()
+        }
+      }
+
+      request.signal.addEventListener("abort", handleAbort, { once: true })
+
       let lastUpdateTime = Date.now()
       let lastProgressValue = -1
 
-      const interval = setInterval(async () => {
+      interval = setInterval(async () => {
         try {
           const progress = await getAnalysisProgress(id)
 
           if (!progress) {
             if (Date.now() - lastUpdateTime > STUCK_TIMEOUT_MS) {
               send({ stage: "error", progress: 0, message: "Analysis appears to be stuck. Please retry." })
-              clearInterval(interval)
-              try { controller.close() } catch { /* already closed */ }
+              stop()
               return
             }
             send({ stage: "pending", progress: 0, message: "Waiting for analysis to start..." })
@@ -62,8 +98,7 @@ export async function GET(
             lastProgressValue = progress.progress
           } else if (Date.now() - lastUpdateTime > PROGRESS_STUCK_TIMEOUT_MS) {
             send({ stage: "error", progress: 0, message: "Analysis appears to be stuck. Please retry." })
-            clearInterval(interval)
-            try { controller.close() } catch { /* already closed */ }
+            stop()
             return
           }
 
@@ -75,14 +110,12 @@ export async function GET(
 
           if (progress.completed) {
             send({ stage: "complete", progress: 100, message: "Analysis complete!" })
-            clearInterval(interval)
-            try { controller.close() } catch { /* already closed */ }
+            stop()
           }
 
           if (progress.error) {
             send({ stage: "error", progress: 0, message: progress.error })
-            clearInterval(interval)
-            try { controller.close() } catch { /* already closed */ }
+            stop()
           }
         } catch {
           // Redis error — keep polling
@@ -90,10 +123,9 @@ export async function GET(
       }, POLL_INTERVAL_MS)
 
       // Timeout after 5 minutes
-      setTimeout(() => {
-        clearInterval(interval)
+      timeout = setTimeout(() => {
         send({ stage: "error", progress: 0, message: "Analysis timed out" })
-        try { controller.close() } catch { /* already closed */ }
+        stop()
       }, ANALYSIS_TIMEOUT_MS)
     },
   })

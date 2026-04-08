@@ -39,7 +39,6 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [collapsed, setCollapsed] = useState(true)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingFiles, setLoadingFiles] = useState<string | null>(null)
@@ -115,25 +114,8 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
   if (loading || commits.length === 0) return null
 
   return (
-    <div className="fixed left-[258px] top-10 z-30 m-1.5">
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-1.5 bg-black/40 backdrop-blur-2xl border border-white/[0.07] shadow-2xl shadow-black/50 rounded-md px-2.5 py-1 text-[11px] text-white/65 hover:text-white/85 hover:border-white/[0.10] transition-all"
-      >
-        <GitCommit className="w-3 h-3" />
-        <span className="font-medium">Commits</span>
-        <span className="text-white/40 tabular-nums">{commits.length}{hasMore ? "+" : ""}</span>
-        {collapsed ? <ChevronRight className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
-      </button>
-
-      {!collapsed && (
-        <div className="mt-1 bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 w-[300px] max-h-[65vh] overflow-hidden">
-          <div className="px-3 py-1.5 border-b border-white/[0.04]">
-            <p className="text-[10px] text-white/65 uppercase tracking-widest font-medium">
-              Recent Commits
-            </p>
-          </div>
-          <div className="overflow-y-auto overscroll-contain scroll-thin max-h-[58vh]">
+    <div className="flex flex-col h-full overflow-hidden">
+          <div className="overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent flex-1">
             {commits.map((commit, i) => {
               const isExpanded = expanded === commit.sha
               const isLast = i === commits.length - 1 && !hasMore
@@ -218,8 +200,6 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
               </button>
             )}
           </div>
-        </div>
-      )}
     </div>
   )
 }

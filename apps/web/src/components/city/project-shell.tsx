@@ -1,0 +1,495 @@
+"use client"
+
+import { useRef, useEffect, useState, useCallback, type ReactNode } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import {
+  ArrowLeft,
+  FolderTree,
+  FileCode,
+  Brain,
+  Search,
+  X,
+  Filter,
+  Map,
+  Palette,
+  Info,
+  GitCommit,
+  Keyboard,
+  MessageSquare,
+} from "lucide-react"
+import { cn } from "@codecity/ui/lib/utils"
+import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
+import { useCityStore, type VisualizationMode } from "./use-city-store"
+import { FileTree } from "./file-tree"
+import { ExtensionFilter } from "./extension-filter"
+import { DistrictLegend } from "./district-legend"
+import { Minimap } from "./minimap"
+import { SidePanel } from "./side-panel"
+import { BottomBar } from "./bottom-bar"
+import { CityTooltip } from "./city-tooltip"
+import { CommitTimeline } from "./commit-timeline"
+import { CodeViewer } from "./code-viewer"
+import { ChatPanel } from "./chat-panel"
+
+// ── Resize Handle ───────────────────────────────────────────────────────────
+
+function ResizeHandle({
+  side,
+  onResize,
+}: {
+  side: "left" | "right"
+  onResize: (delta: number) => void
+}) {
+  const handleRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = handleRef.current
+    if (!el) return
+
+    let startX = 0
+    let dragging = false
+
+    function onMouseDown(e: MouseEvent) {
+      e.preventDefault()
+      startX = e.clientX
+      dragging = true
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+      window.addEventListener("mousemove", onMouseMove)
+      window.addEventListener("mouseup", onMouseUp)
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging) return
+      const delta = e.clientX - startX
+      startX = e.clientX
+      onResize(side === "left" ? delta : -delta)
+    }
+
+    function onMouseUp() {
+      dragging = false
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+
+    el.addEventListener("mousedown", onMouseDown)
+    return () => {
+      el.removeEventListener("mousedown", onMouseDown)
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+  }, [side, onResize])
+
+  return (
+    <div
+      ref={handleRef}
+      className={cn(
+        "w-[3px] shrink-0 cursor-col-resize transition-colors hover:bg-primary/40 active:bg-primary/60",
+        side === "left" ? "border-r border-white/[0.04]" : "border-l border-white/[0.04]"
+      )}
+    />
+  )
+}
+
+// ── Types ───────────────────────────────────────────────────────────────────
+
+type PrimaryView = "explorer" | "search" | "filters" | "minimap" | "legend" | "commits" | "chat"
+
+const MODES: { key: VisualizationMode; label: string; shortcut: string }[] = [
+  { key: "dependencies", label: "Deps", shortcut: "1" },
+  { key: "complexity", label: "Cplx", shortcut: "2" },
+  { key: "unused", label: "Unused", shortcut: "3" },
+  { key: "filesize", label: "Size", shortcut: "4" },
+  { key: "types", label: "Types", shortcut: "5" },
+]
+
+const LAYOUTS: { key: LayoutMode; label: string; icon: typeof FolderTree }[] = [
+  { key: "folder", label: "Folder", icon: FolderTree },
+  { key: "extension", label: "Ext", icon: FileCode },
+  { key: "semantic", label: "Cluster", icon: Brain },
+]
+
+interface ProjectShellProps {
+  snapshot: CitySnapshot
+  projectName: string
+  repoUrl?: string
+  children: ReactNode
+}
+
+// ── Activity Bar (VS Code-style icon strip) ────────────────────────────────
+
+interface ActivityBarProps {
+  activeView: PrimaryView | null
+  onViewChange: (view: PrimaryView) => void
+  position: "left" | "right"
+}
+
+interface ActivityItem {
+  id: PrimaryView
+  icon: typeof FolderTree
+  label: string
+  shortcut?: string
+}
+
+const PRIMARY_ACTIVITIES: ActivityItem[] = [
+  { id: "explorer", icon: FolderTree, label: "Explorer", shortcut: "E" },
+  { id: "search", icon: Search, label: "Search", shortcut: "/" },
+  { id: "filters", icon: Filter, label: "Filters" },
+  { id: "legend", icon: Palette, label: "Legend" },
+  { id: "minimap", icon: Map, label: "Minimap" },
+  { id: "commits", icon: GitCommit, label: "Commits" },
+  { id: "chat", icon: MessageSquare, label: "AI Chat" },
+]
+
+function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
+  const items = PRIMARY_ACTIVITIES
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center w-12 shrink-0 bg-[#09090b] py-2 gap-0.5",
+        position === "left" ? "border-r border-white/[0.06]" : "border-l border-white/[0.06]"
+      )}
+    >
+      {items.map((item) => {
+        const Icon = item.icon
+        const active = activeView === item.id
+        return (
+          <button
+            key={item.id}
+            onClick={() => onViewChange(item.id)}
+            title={`${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`}
+            className={cn(
+              "relative flex items-center justify-center w-10 h-10 rounded-md transition-all",
+              active
+                ? "text-white bg-white/[0.08]"
+                : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+            )}
+          >
+            {/* Active indicator bar */}
+            {active && (
+              <div
+                className={cn(
+                  "absolute top-1.5 bottom-1.5 w-[2px] rounded-full bg-primary",
+                  position === "left" ? "left-0" : "right-0"
+                )}
+              />
+            )}
+            <Icon className="w-[18px] h-[18px]" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Primary Sidebar Panel Content ───────────────────────────────────────────
+
+function PrimaryPanelContent({
+  view,
+  snapshot,
+  repoUrl,
+  projectName,
+}: {
+  view: PrimaryView
+  snapshot: CitySnapshot
+  repoUrl?: string
+  projectName: string
+}) {
+  const searchQuery = useCityStore((s) => s.searchQuery)
+  const setSearch = useCityStore((s) => s.setSearch)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (view === "search") {
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }, [view])
+
+  switch (view) {
+    case "explorer":
+      return (
+        <>
+          <PanelHeader title="Explorer" subtitle={`${snapshot.files.length} files`} />
+          <FileTree snapshot={snapshot} />
+        </>
+      )
+    case "search":
+      return (
+        <>
+          <PanelHeader title="Search" />
+          <div className="px-3 py-2 border-b border-white/[0.04]">
+            <div className="relative group">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/45 pointer-events-none group-focus-within:text-white/65 transition-colors" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search files..."
+                aria-label="Search files"
+                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-md pl-7 pr-7 py-1.5 text-[11px] text-white/80 placeholder:text-white/45 outline-none focus:border-white/15 focus:bg-white/[0.06] transition-all"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/65 hover:text-white/75 transition-colors">
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            <FileTree snapshot={snapshot} />
+          </div>
+        </>
+      )
+    case "filters":
+      return (
+        <>
+          <PanelHeader title="Filters" subtitle={`${snapshot.files.length} files`} />
+          <ExtensionFilter snapshot={snapshot} />
+        </>
+      )
+    case "legend":
+      return (
+        <>
+          <PanelHeader title="Districts" subtitle={`${snapshot.districts.length}`} />
+          <DistrictLegend snapshot={snapshot} />
+        </>
+      )
+    case "minimap":
+      return (
+        <>
+          <PanelHeader title="Minimap" />
+          <Minimap snapshot={snapshot} />
+        </>
+      )
+    case "commits":
+      return (
+        <>
+          <PanelHeader title="Commits" />
+          {repoUrl ? (
+            <CommitTimeline repoUrl={repoUrl} />
+          ) : (
+            <div className="flex items-center justify-center p-6">
+              <p className="text-xs text-white/40 text-center">No repository URL available</p>
+            </div>
+          )}
+        </>
+      )
+    case "chat":
+      return (
+        <>
+          <PanelHeader title="AI Chat" />
+          <ChatPanel snapshot={snapshot} projectName={projectName} />
+        </>
+      )
+  }
+}
+
+function PanelHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="h-9 flex items-center justify-between px-3 border-b border-white/[0.06] shrink-0">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/50">
+        {title}
+      </span>
+      {subtitle && (
+        <span className="text-[9px] text-white/25 tabular-nums">{subtitle}</span>
+      )}
+    </div>
+  )
+}
+
+// ── Secondary Panel (right) ─────────────────────────────────────────────────
+
+function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot; width: number; onResize: (delta: number) => void }) {
+  const selectedFile = useCityStore((s) => s.selectedFile)
+
+  if (!selectedFile) return null
+
+  return (
+    <>
+      <ResizeHandle side="right" onResize={onResize} />
+      <div style={{ width }} className="shrink-0 bg-[#09090b] flex flex-col overflow-hidden hidden md:flex">
+        <SidePanel snapshot={snapshot} />
+      </div>
+    </>
+  )
+}
+
+// ── Project Navbar ──────────────────────────────────────────────────────────
+
+function ProjectNavbar({ projectName }: { projectName: string }) {
+  const router = useRouter()
+  const visualizationMode = useCityStore((s) => s.visualizationMode)
+  const setMode = useCityStore((s) => s.setMode)
+  const layoutMode = useCityStore((s) => s.layoutMode)
+  const setLayoutMode = useCityStore((s) => s.setLayoutMode)
+
+  return (
+    <header className="h-10 shrink-0 flex items-center justify-between gap-2 border-b border-white/[0.07] bg-[#09090b] px-3 z-50">
+      {/* Left */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] text-white/65 hover:text-white hover:bg-white/[0.08] transition-all"
+        >
+          <ArrowLeft className="w-3 h-3" />
+        </button>
+        <Link href="/dashboard" className="flex items-center gap-1.5 text-white/85 hover:text-white transition-colors">
+          <img src="/logo.png" alt="CodeCity" className="w-4 h-4 rounded-sm" />
+          <span className="text-[13px] font-semibold hidden sm:inline">CodeCity</span>
+        </Link>
+        <span className="text-white/65 hidden sm:inline">/</span>
+        <span className="font-sans text-[11px] text-white/65 truncate max-w-[80px] sm:max-w-[160px]">{projectName}</span>
+      </div>
+
+      {/* Center — layout + viz modes */}
+      <div className="hidden sm:flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none">
+        <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px shrink-0">
+          {LAYOUTS.map((l) => {
+            const Icon = l.icon
+            const active = layoutMode === l.key
+            return (
+              <button
+                key={l.key}
+                onClick={() => setLayoutMode(l.key)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-[5px] text-[11px] font-medium transition-all ${
+                  active ? "bg-primary/15 text-primary" : "text-white/75 hover:text-white/85 hover:bg-white/[0.04]"
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                <span className="hidden md:inline">{l.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.06] shrink-0" />
+
+        <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px shrink-0">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              className={`px-2 py-1 rounded-[5px] text-[11px] font-medium transition-all ${
+                visualizationMode === m.key ? "bg-primary/15 text-primary" : "text-white/75 hover:text-white/85 hover:bg-white/[0.04]"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mobile center — tap to cycle */}
+      <div className="flex sm:hidden items-center gap-1 shrink-0">
+        <button
+          onClick={() => {
+            const idx = LAYOUTS.findIndex((l) => l.key === layoutMode)
+            setLayoutMode(LAYOUTS[(idx + 1) % LAYOUTS.length].key)
+          }}
+          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] text-[11px] font-medium text-primary"
+        >
+          {(() => {
+            const ActiveIcon = LAYOUTS.find((l) => l.key === layoutMode)!.icon
+            return <ActiveIcon className="w-3 h-3" />
+          })()}
+        </button>
+        <button
+          onClick={() => {
+            const idx = MODES.findIndex((m) => m.key === visualizationMode)
+            setMode(MODES[(idx + 1) % MODES.length].key)
+          }}
+          className="px-2 py-1 rounded-md bg-primary/15 border border-primary/20 text-[11px] font-medium text-primary"
+        >
+          {MODES.find((m) => m.key === visualizationMode)?.label}
+        </button>
+      </div>
+    </header>
+  )
+}
+
+// ── Project Shell ───────────────────────────────────────────────────────────
+
+const MIN_PANEL = 180
+const MAX_PANEL = 480
+
+export function ProjectShell({ snapshot, projectName, repoUrl, children }: ProjectShellProps) {
+  const [activeView, setActiveView] = useState<PrimaryView | null>("explorer")
+  const [primaryWidth, setPrimaryWidth] = useState(240)
+  const [secondaryWidth, setSecondaryWidth] = useState(280)
+
+  const handleViewChange = useCallback((view: PrimaryView) => {
+    setActiveView((prev) => (prev === view ? null : view))
+  }, [])
+
+  const handlePrimaryResize = useCallback((delta: number) => {
+    setPrimaryWidth((w) => Math.min(MAX_PANEL, Math.max(MIN_PANEL, w + delta)))
+  }, [])
+
+  const handleSecondaryResize = useCallback((delta: number) => {
+    setSecondaryWidth((w) => Math.min(MAX_PANEL, Math.max(MIN_PANEL, w + delta)))
+  }, [])
+
+  // Keyboard shortcuts for activity bar
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.target as HTMLElement).tagName === "INPUT") return
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === "e" || e.key === "E") { e.preventDefault(); handleViewChange("explorer") }
+        if (e.key === "f" || e.key === "F") { e.preventDefault(); handleViewChange("search") }
+      }
+      if (e.key === "l" || e.key === "L") {
+        if (!e.metaKey && !e.ctrlKey) {
+          e.preventDefault()
+          setActiveView((prev) => prev ? null : "explorer")
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleViewChange])
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden bg-[#040408]">
+      {/* Top navbar — full width */}
+      <ProjectNavbar projectName={projectName} />
+
+      {/* Main area: activity bar + panel + canvas + secondary */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Activity bar (icon strip) */}
+        <ActivityBar
+          activeView={activeView}
+          onViewChange={handleViewChange}
+          position="left"
+        />
+
+        {/* Primary sidebar panel — slides in/out */}
+        {activeView && (
+          <>
+            <div style={{ width: primaryWidth }} className="shrink-0 bg-[#09090b] flex flex-col overflow-hidden hidden md:flex">
+              <PrimaryPanelContent view={activeView} snapshot={snapshot} repoUrl={repoUrl} projectName={projectName} />
+            </div>
+            <ResizeHandle side="left" onResize={handlePrimaryResize} />
+          </>
+        )}
+
+        {/* Canvas area */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="relative flex-1 overflow-hidden">
+            {children}
+            <CityTooltip snapshot={snapshot} />
+            <CodeViewer />
+          </div>
+          <BottomBar stats={snapshot.stats} warnings={snapshot.warnings} />
+        </div>
+
+        {/* Secondary panel (file details) */}
+        <SecondaryPanel snapshot={snapshot} width={secondaryWidth} onResize={handleSecondaryResize} />
+      </div>
+    </div>
+  )
+}

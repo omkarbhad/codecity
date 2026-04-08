@@ -198,9 +198,10 @@ function ProjectCard({
   queryClient: ReturnType<typeof useQueryClient>
 }) {
   const [hovered, setHovered] = useState(false)
+  const [previewRequested, setPreviewRequested] = useState(false)
   const { snapshot, loading: snapshotLoading } = useSnapshot(
     project.id,
-    project.status === "COMPLETED"
+    project.status === "COMPLETED" && previewRequested
   )
   const isProcessing = project.status === "PROCESSING" || project.status === "PENDING"
   const isCompleted = project.status === "COMPLETED"
@@ -225,10 +226,18 @@ function ProjectCard({
       ? "Queued — waiting for active job to finish"
       : null
 
+  function requestPreview() {
+    if (isCompleted) setPreviewRequested(true)
+  }
+
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        setHovered(true)
+        requestPreview()
+      }}
       onMouseLeave={() => setHovered(false)}
+      onTouchStart={requestPreview}
       className={`group relative flex flex-col rounded-2xl border bg-[#09090e] transition-all duration-200 overflow-hidden
         ${isCompleted ? "border-white/[0.07] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]" : ""}
         ${isActive ? "border-primary/25 shadow-[0_0_0_1px_rgba(255,61,61,0.06),0_0_24px_rgba(255,61,61,0.06)]" : ""}
@@ -263,18 +272,27 @@ function ProjectCard({
       {/* 3D city preview pane */}
       {isCompleted && (
         <div className="relative h-[120px] overflow-hidden">
-          {/* shimmer while loading */}
-          {snapshotLoading && (
+          {!previewRequested && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#06060b]">
+              <span className="text-[10px] font-mono text-zinc-700">hover to preview</span>
+            </div>
+          )}
+          {previewRequested && snapshotLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#06060b] overflow-hidden">
               <div className="absolute inset-0 -translate-x-full animate-[shimmer-slide_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
               <span className="text-[10px] font-mono text-zinc-700 relative z-10">loading city…</span>
             </div>
           )}
-          {snapshot && (
+          {hovered && snapshot && (
             <div className="absolute inset-0 pointer-events-none">
               <MiniCityPreview snapshot={snapshot} speed={0.4} className="w-full h-full" />
               {/* bottom fade to card body */}
               <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#09090e] to-transparent pointer-events-none" />
+            </div>
+          )}
+          {previewRequested && snapshot && !hovered && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#06060b]">
+              <span className="text-[10px] font-mono text-zinc-700">hover to animate</span>
             </div>
           )}
           {/* top border separator */}
