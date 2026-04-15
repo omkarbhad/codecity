@@ -27,6 +27,7 @@
 </p>
 
 <img src="https://raw.githubusercontent.com/omkarbhad/codecity/main/apps/web/public/demo.png" alt="CodeCity preview" width="820" />
+<img src="https://raw.githubusercontent.com/omkarbhad/codecity/main/apps/web/public/demo2.png" alt="CodeCity city view" width="820" />
 
 </div>
 
