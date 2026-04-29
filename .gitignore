@@ -36,3 +36,9 @@ Thumbs.db
 .playwright-mcp/
 .env*.local
 .grepai/
+
+# Rust / Tauri
+target/
+src-tauri/target/
+*.dSYM/
+Cargo.lock
