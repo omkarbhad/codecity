@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 
 use super::db::Database;
@@ -25,43 +27,121 @@ pub struct AnalyzeResult {
 }
 
 const SKIP_DIRS: &[&str] = &[
-    "node_modules", ".git", "dist", ".next", "build", "target",
-    "__pycache__", ".cache", "vendor", ".venv", "venv",
-    "coverage", ".tox", ".mypy_cache", ".idea", ".vscode",
+    "node_modules",
+    ".git",
+    "dist",
+    ".next",
+    "build",
+    "target",
+    "__pycache__",
+    ".cache",
+    "vendor",
+    ".venv",
+    "venv",
+    "coverage",
+    ".tox",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
 ];
 
 const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "ts", "tsx", "js", "jsx", "mjs", "cjs",
-    "py", "css", "scss", "less", "sass",
-    "html", "htm", "md", "mdx",
-    "json", "yaml", "yml", "toml",
-    "go", "rs", "java", "kt", "kts", "rb", "php", "swift",
-    "c", "h", "cpp", "cxx", "cc", "hpp", "hxx", "hh",
-    "sh", "bash", "zsh", "fish",
-    "zig",
-    "lua",
-    "hs", "lhs",
-    "dart",
-    "ex", "exs",
-    "scala",
-    "r", "R",
-    "jl",
-    "pl", "pm", "t",
-    "cs",
-    "erl", "hrl",
-    "nix",
-    "glsl", "frag", "vert", "comp",
-    "ml", "mli",
-    "groovy", "gradle",
-    "el",
+    "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "css", "scss", "less", "sass", "html", "htm",
+    "md", "mdx", "json", "yaml", "yml", "toml", "go", "rs", "java", "kt", "kts", "rb", "php",
+    "swift", "c", "h", "cpp", "cxx", "cc", "hpp", "hxx", "hh", "sh", "bash", "zsh", "fish", "zig",
+    "lua", "hs", "lhs", "dart", "ex", "exs", "scala", "r", "R", "jl", "pl", "pm", "t", "cs", "erl",
+    "hrl", "nix", "glsl", "frag", "vert", "comp", "ml", "mli", "groovy", "gradle", "el",
+];
+
+const MAX_FILE_BYTES: u64 = 1_000_000;
+
+const SKIP_FILES: &[&str] = &[
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb",
+    "Cargo.lock",
+    "poetry.lock",
+    "Pipfile.lock",
+    "composer.lock",
+    "go.sum",
 ];
 
 fn should_skip_dir(dir_name: &str) -> bool {
     SKIP_DIRS.contains(&dir_name)
 }
 
+fn should_skip_file(path: &Path) -> bool {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("");
+    if SKIP_FILES.contains(&file_name) {
+        return true;
+    }
+
+    let lower = file_name.to_lowercase();
+    lower.ends_with(".min.js")
+        || lower.ends_with(".min.css")
+        || lower.ends_with(".map")
+        || lower.ends_with(".snap")
+        || lower.ends_with(".generated.ts")
+        || lower.ends_with(".generated.js")
+}
+
 fn is_supported_extension(ext: &str) -> bool {
     SUPPORTED_EXTENSIONS.contains(&ext)
+}
+
+fn report_progress(
+    db: &Database,
+    project_id: &str,
+    progress: f64,
+    stage: &str,
+    message: &str,
+    files_discovered: i64,
+    files_parsed: i64,
+) {
+    if let Err(error) = db.update_project_progress(
+        project_id,
+        progress,
+        stage,
+        message,
+        files_discovered,
+        files_parsed,
+    ) {
+        log::warn!("Failed to store analysis progress: {}", error);
+    }
+}
+
+fn fail_project(
+    db: &Database,
+    project_id: &str,
+    message: impl Into<String>,
+    files_discovered: i64,
+    files_parsed: i64,
+) -> AnalyzeResult {
+    let message = message.into();
+    if let Err(error) = db.update_project_status(project_id, "FAILED", 0, 0, Some(&message)) {
+        log::error!("Failed to store analysis failure: {}", error);
+    }
+    report_progress(
+        db,
+        project_id,
+        100.0,
+        "error",
+        &message,
+        files_discovered,
+        files_parsed,
+    );
+
+    AnalyzeResult {
+        success: false,
+        project_id: Some(project_id.to_string()),
+        snapshot: None,
+        error: Some(message),
+    }
 }
 
 /// Recursively collect supported source files from a local directory
@@ -79,7 +159,7 @@ fn collect_source_files(dir: &Path) -> Vec<PathBuf> {
                 }
             } else if path.is_file() {
                 let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                if is_supported_extension(ext) {
+                if is_supported_extension(ext) && !should_skip_file(&path) {
                     result.push(path);
                 }
             }
@@ -95,7 +175,19 @@ fn read_local_files(base_dir: &Path) -> Vec<(String, String)> {
     let mut result = Vec::new();
 
     for path in files {
-        let relative = path.strip_prefix(base_dir)
+        if let Ok(metadata) = std::fs::metadata(&path) {
+            if metadata.len() > MAX_FILE_BYTES {
+                log::warn!(
+                    "Skipping large file {} ({} bytes)",
+                    path.display(),
+                    metadata.len()
+                );
+                continue;
+            }
+        }
+
+        let relative = path
+            .strip_prefix(base_dir)
             .unwrap_or(&path)
             .to_string_lossy()
             .to_string();
@@ -109,26 +201,167 @@ fn read_local_files(base_dir: &Path) -> Vec<(String, String)> {
     result
 }
 
+fn top_level_folder(path: &str) -> String {
+    let mut parts = path.split('/');
+    match (parts.next(), parts.next()) {
+        (Some(first), Some(_)) if !first.is_empty() => first.to_string(),
+        _ => ".".to_string(),
+    }
+}
+
+fn group_files_by_folder(files: Vec<(String, String)>) -> Vec<(String, Vec<(String, String)>)> {
+    let mut groups = BTreeMap::<String, Vec<(String, String)>>::new();
+
+    for file in files {
+        groups
+            .entry(top_level_folder(&file.0))
+            .or_default()
+            .push(file);
+    }
+
+    groups.into_iter().collect()
+}
+
 /// Get the repos cache directory
 fn repos_dir() -> Result<PathBuf, String> {
-    let data_dir = dirs::data_dir()
-        .ok_or_else(|| "Could not find data directory".to_string())?;
+    let data_dir = dirs::data_dir().ok_or_else(|| "Could not find data directory".to_string())?;
     let dir = data_dir.join("codecity").join("repos");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }
 
+fn safe_archive_path(name: &str) -> Option<PathBuf> {
+    let path = PathBuf::from(name);
+    let mut components = path.components();
+    components.next()?;
+
+    let mut relative = PathBuf::new();
+    for component in components {
+        match component {
+            std::path::Component::Normal(part) => relative.push(part),
+            _ => return None,
+        }
+    }
+
+    if relative.as_os_str().is_empty() {
+        None
+    } else {
+        Some(relative)
+    }
+}
+
+fn extract_zip_archive(bytes: &[u8], destination: &Path) -> Result<(), String> {
+    let cursor = Cursor::new(bytes);
+    let mut archive = zip::ZipArchive::new(cursor)
+        .map_err(|e| format!("Failed to read downloaded archive: {}", e))?;
+
+    if destination.exists() {
+        std::fs::remove_dir_all(destination).map_err(|e| {
+            format!(
+                "Failed to clear cached repo {}: {}",
+                destination.display(),
+                e
+            )
+        })?;
+    }
+    std::fs::create_dir_all(destination).map_err(|e| {
+        format!(
+            "Failed to create repo cache {}: {}",
+            destination.display(),
+            e
+        )
+    })?;
+
+    for index in 0..archive.len() {
+        let mut file = archive
+            .by_index(index)
+            .map_err(|e| format!("Failed to read archive entry: {}", e))?;
+
+        let Some(relative_path) = safe_archive_path(file.name()) else {
+            continue;
+        };
+
+        let output_path = destination.join(relative_path);
+        if file.is_dir() {
+            std::fs::create_dir_all(&output_path)
+                .map_err(|e| format!("Failed to create {}: {}", output_path.display(), e))?;
+            continue;
+        }
+
+        if let Some(parent) = output_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create {}: {}", parent.display(), e))?;
+        }
+
+        let mut contents = Vec::with_capacity(file.size() as usize);
+        file.read_to_end(&mut contents)
+            .map_err(|e| format!("Failed to extract {}: {}", file.name(), e))?;
+        std::fs::write(&output_path, contents)
+            .map_err(|e| format!("Failed to write {}: {}", output_path.display(), e))?;
+    }
+
+    Ok(())
+}
+
+async fn download_repo_archive(
+    repo_url: &str,
+    github_token: Option<&str>,
+) -> Result<PathBuf, String> {
+    let (owner, repo) = github::parse_github_url(repo_url).map_err(|e| e.to_string())?;
+
+    let repos = repos_dir()?;
+    let archive_dir = repos.join(format!("{}-{}", owner, repo));
+    let archive_url = format!(
+        "https://api.github.com/repos/{}/{}/zipball/HEAD",
+        owner, repo
+    );
+
+    log::info!("Downloading repo archive: {}", repo_url);
+
+    let client = reqwest::Client::new();
+    let mut request = client
+        .get(&archive_url)
+        .header("User-Agent", "codecity")
+        .header("Accept", "application/vnd.github+json");
+
+    if let Some(token) = github_token {
+        request = request.bearer_auth(token);
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download repo archive: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "GitHub archive download failed: {}",
+            response.status()
+        ));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read repo archive: {}", e))?;
+
+    extract_zip_archive(&bytes, &archive_dir)?;
+    Ok(archive_dir)
+}
+
 /// Clone a GitHub repo to local cache, or use existing clone
 async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBuf, String> {
-    let (owner, repo) = github::parse_github_url(repo_url)
-        .map_err(|e| e.to_string())?;
+    let (owner, repo) = github::parse_github_url(repo_url).map_err(|e| e.to_string())?;
 
     let repos = repos_dir()?;
     let clone_dir = repos.join(format!("{}-{}", owner, repo));
 
     // If already cloned, pull latest
     if clone_dir.exists() {
-        log::info!("Repo already cloned, pulling latest: {}", clone_dir.display());
+        log::info!(
+            "Repo already cloned, pulling latest: {}",
+            clone_dir.display()
+        );
         let output = tokio::process::Command::new("git")
             .args(["pull", "--ff-only"])
             .current_dir(&clone_dir)
@@ -145,7 +378,10 @@ async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBu
 
     // Clone the repo
     let mut clone_url = if let Some(token) = github_token {
-        format!("https://x-access-token:{}@github.com/{}/{}.git", token, owner, repo)
+        format!(
+            "https://x-access-token:{}@github.com/{}/{}.git",
+            token, owner, repo
+        )
     } else {
         format!("https://github.com/{}/{}.git", owner, repo)
     };
@@ -172,7 +408,10 @@ async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBu
                 .map_err(|e| format!("Failed to run git clone: {}", e))?;
 
             if !retry.status.success() {
-                return Err(format!("git clone failed: {}", String::from_utf8_lossy(&retry.stderr)));
+                return Err(format!(
+                    "git clone failed: {}",
+                    String::from_utf8_lossy(&retry.stderr)
+                ));
             }
         } else {
             return Err(format!("git clone failed: {}", stderr));
@@ -182,10 +421,30 @@ async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBu
     Ok(clone_dir)
 }
 
+async fn download_or_clone_repo(
+    repo_url: &str,
+    github_token: Option<&str>,
+) -> Result<PathBuf, String> {
+    match download_repo_archive(repo_url, github_token).await {
+        Ok(dir) => Ok(dir),
+        Err(download_error) => {
+            log::warn!(
+                "Repo archive download failed, falling back to git clone: {}",
+                download_error
+            );
+            clone_repo(repo_url, github_token).await
+        }
+    }
+}
+
 /// Detect if input is a GitHub URL or a local path
 fn is_github_url(input: &str) -> bool {
     let trimmed = input.trim();
-    trimmed.contains("github.com") || trimmed.matches('/').count() == 1 && !trimmed.starts_with('/') && !trimmed.starts_with('.') && !PathBuf::from(trimmed).exists()
+    trimmed.contains("github.com")
+        || trimmed.matches('/').count() == 1
+            && !trimmed.starts_with('/')
+            && !trimmed.starts_with('.')
+            && !PathBuf::from(trimmed).exists()
 }
 
 /// Unified analyze entry point — auto-detects GitHub URL vs local path
@@ -241,7 +500,7 @@ fn normalize_visibility(visibility: Option<&str>) -> &str {
     }
 }
 
-/// Analyze a GitHub repo: clone (or reuse) → read local files → parse → layout → save
+/// Analyze a GitHub repo: download archive (or clone fallback) → read local files → parse → layout → save
 async fn analyze_github(
     db: &Database,
     repo_url: &str,
@@ -290,22 +549,36 @@ async fn analyze_github(
         }
     };
 
-    // Clone the repo locally
-    let clone_dir = match clone_repo(repo_url, github_token).await {
+    report_progress(
+        db,
+        &project.id,
+        8.0,
+        "download",
+        "Downloading repository archive",
+        0,
+        0,
+    );
+
+    // Download the repo locally first so analysis runs against the filesystem.
+    let repo_dir = match download_or_clone_repo(repo_url, github_token).await {
         Ok(dir) => dir,
         Err(e) => {
-            let _ = db.update_project_status(&project.id, "FAILED", 0, 0, Some(&e.to_string()));
-            return AnalyzeResult {
-                success: false,
-                project_id: Some(project.id),
-                snapshot: None,
-                error: Some(e.to_string()),
-            }
+            return fail_project(db, &project.id, e.to_string(), 0, 0);
         }
     };
 
-    // Parse from the cloned directory
-    parse_and_save(db, &project, &clone_dir).await
+    report_progress(
+        db,
+        &project.id,
+        35.0,
+        "downloaded",
+        "Repository downloaded and extracted",
+        0,
+        0,
+    );
+
+    // Parse from the downloaded directory
+    parse_and_save(db, &project, &repo_dir).await
 }
 
 /// Analyze a local directory directly — no cloning needed
@@ -315,7 +588,8 @@ async fn analyze_from_dir(
     dir_str: &str,
     visibility: &str,
 ) -> AnalyzeResult {
-    let name = dir.file_name()
+    let name = dir
+        .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("local")
         .to_string();
@@ -348,6 +622,8 @@ async fn analyze_from_dir(
         }
     };
 
+    report_progress(db, &project.id, 12.0, "scan", "Scanning local folder", 0, 0);
+
     parse_and_save(db, &project, dir).await
 }
 
@@ -357,30 +633,135 @@ async fn parse_and_save(
     project: &super::db::ProjectRecord,
     dir: &Path,
 ) -> AnalyzeResult {
+    report_progress(
+        db,
+        &project.id,
+        42.0,
+        "scan",
+        "Collecting source files",
+        0,
+        0,
+    );
+
     let files = read_local_files(dir);
+    let files_discovered = files.len() as i64;
 
     if files.is_empty() {
         let msg = "No supported source files found";
-        let _ = db.update_project_status(&project.id, "FAILED", 0, 0, Some(msg));
-        return AnalyzeResult {
-            success: false,
-            project_id: Some(project.id.clone()),
-            snapshot: None,
-            error: Some(msg.to_string()),
-        };
+        return fail_project(db, &project.id, msg, 0, 0);
     }
 
-    let parsed = parser::parse_files(&files, None);
+    let folder_batches = group_files_by_folder(files);
+    let folder_count = folder_batches.len().max(1);
+    let mut parsed = Vec::with_capacity(files_discovered as usize);
+    let mut files_parsed = 0_i64;
+
+    for (index, (folder, batch)) in folder_batches.into_iter().enumerate() {
+        report_progress(
+            db,
+            &project.id,
+            55.0 + (index as f64 / folder_count as f64) * 20.0,
+            "parse",
+            &format!("Parsing {} ({}/{})", folder, index + 1, folder_count),
+            files_discovered,
+            files_parsed,
+        );
+
+        let mut folder_parsed = parser::parse_file_batch(&batch);
+        files_parsed += folder_parsed.len() as i64;
+        parsed.append(&mut folder_parsed);
+    }
+
+    report_progress(
+        db,
+        &project.id,
+        76.0,
+        "resolve",
+        "Resolving imports across folders",
+        files_discovered,
+        files_parsed,
+    );
+
+    parser::resolve_internal_imports(&mut parsed);
+    let files_parsed = parsed.len() as i64;
+
+    report_progress(
+        db,
+        &project.id,
+        77.0,
+        "persist",
+        "Saving parsed file data",
+        files_discovered,
+        files_parsed,
+    );
+
+    if let Err(error) = db.save_parsed_files(&project.id, &parsed) {
+        return fail_project(
+            db,
+            &project.id,
+            format!("Failed to save parsed file data: {}", error),
+            files_discovered,
+            files_parsed,
+        );
+    }
+
+    report_progress(
+        db,
+        &project.id,
+        78.0,
+        "layout",
+        &format!("Building city layout from {} parsed files", files_parsed),
+        files_discovered,
+        files_parsed,
+    );
+
     let snapshot = super::layout::create_snapshot(parsed, vec![]);
 
-    let _ = db.update_project_status(
+    report_progress(
+        db,
+        &project.id,
+        92.0,
+        "save",
+        "Saving analysis snapshot",
+        files_discovered,
+        files_parsed,
+    );
+
+    if let Err(error) = db.save_snapshot(&project.id, &snapshot) {
+        return fail_project(
+            db,
+            &project.id,
+            format!("Failed to save analysis snapshot: {}", error),
+            files_discovered,
+            files_parsed,
+        );
+    }
+
+    if let Err(error) = db.update_project_status(
         &project.id,
         "COMPLETED",
         snapshot.stats.total_files as i64,
         snapshot.stats.total_lines as i64,
         None,
+    ) {
+        return fail_project(
+            db,
+            &project.id,
+            format!("Failed to mark analysis complete: {}", error),
+            files_discovered,
+            files_parsed,
+        );
+    }
+
+    report_progress(
+        db,
+        &project.id,
+        100.0,
+        "complete",
+        "Analysis complete",
+        files_discovered,
+        files_parsed,
     );
-    let _ = db.save_snapshot(&project.id, &snapshot);
 
     AnalyzeResult {
         success: true,

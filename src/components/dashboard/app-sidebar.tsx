@@ -9,7 +9,6 @@ import {
   Compass,
   User,
   Plus,
-  Building2,
   Globe,
   Lock,
   LogOut,
@@ -28,6 +27,7 @@ import {
   SidebarGroup,
   SidebarRail,
 } from "@codecity/ui/components/sidebar"
+import { IconButton } from "@codecity/ui/components/icon-button"
 import {
   getProjects,
   githubGetUser,
@@ -36,6 +36,8 @@ import {
   logoutGithub,
   setGithubSession,
 } from "@/lib/tauri"
+import { LogoIcon } from "@/components/logo"
+import { UpdateButton } from "@/components/dashboard/update-button"
 
 interface Project {
   id: string
@@ -132,30 +134,18 @@ export function AppSidebar({
       <SidebarHeader className="border-b border-white/[0.07] bg-[#0b0b0c]">
         <div className="flex items-center justify-between px-2 py-2.5">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <img
-              src="/logo.png"
-              alt="CodeCity"
-              className="size-6 rounded-md object-cover shrink-0"
-              onError={(e) => {
-                const t = e.currentTarget
-                t.style.display = "none"
-                const fallback = t.nextElementSibling as HTMLElement | null
-                if (fallback) fallback.style.display = "flex"
-              }}
-            />
-            <div className="hidden items-center justify-center size-6 rounded-md bg-white/[0.04] border border-white/[0.08] shrink-0">
-              <Building2 className="size-3 text-primary" />
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-primary">
+              <LogoIcon className="size-4" />
             </div>
             <span className="text-[13px] font-semibold text-zinc-100 tracking-tight truncate">CodeCity</span>
           </Link>
           {onNewCity && (
-            <button
+            <IconButton
               onClick={onNewCity}
-              className="flex items-center justify-center size-7 rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-100 hover:bg-white/[0.06] transition-colors shrink-0"
               title="New City"
             >
-              <Plus className="size-3" />
-            </button>
+              <Plus />
+            </IconButton>
           )}
         </div>
       </SidebarHeader>
@@ -200,7 +190,7 @@ export function AppSidebar({
             <span className="text-[11px] font-medium text-zinc-500">Recent</span>
             {activeCount > 0 && (
               <span className="flex items-center gap-1 text-[10px] text-zinc-500">
-                <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
+                <Loader2 className="size-3 animate-spin text-primary" />
                 {activeCount} running
               </span>
             )}
@@ -242,6 +232,7 @@ export function AppSidebar({
 
       {/* Footer */}
       <SidebarFooter className="border-t border-white/[0.07] bg-[#0b0b0c] p-2">
+        <UpdateButton />
         {authCode && (
           <div className="mb-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-2">
             <p className="text-[10px] text-zinc-600">GitHub code</p>
@@ -268,22 +259,22 @@ export function AppSidebar({
             </span>
           </div>
           {user?.name ? (
-            <button
+            <IconButton
               onClick={handleLogout}
               title="Sign out"
-              className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.05] transition-all shrink-0"
+              className="size-6 border-transparent bg-transparent text-zinc-700 hover:border-white/[0.08]"
             >
-              <LogOut className="h-3 w-3" />
-            </button>
+              <LogOut />
+            </IconButton>
           ) : (
-            <button
+            <IconButton
               onClick={handleGithubLogin}
               disabled={isSigningIn}
               title="Connect GitHub"
-              className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-60 transition-all shrink-0"
+              className="size-6 border-transparent bg-transparent text-zinc-600 hover:border-white/[0.08]"
             >
-              {isSigningIn ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
-            </button>
+              {isSigningIn ? <Loader2 className="animate-spin" /> : <Github />}
+            </IconButton>
           )}
         </div>
       </SidebarFooter>

@@ -80,6 +80,11 @@ export interface ProjectRecord {
   status: string
   file_count: number
   line_count: number
+  progress: number
+  progress_stage: string
+  progress_message: string
+  files_discovered: number
+  files_parsed: number
   user_id: string
   error: string | null
   created_at: string
@@ -109,12 +114,42 @@ export interface GitHubUser {
   avatar_url: string | null
 }
 
+export interface GitHubRepoSummary {
+  id: number
+  full_name: string
+  html_url: string
+  private: boolean
+  owner_login: string
+  owner_type: string
+  updated_at: string
+  default_branch: string
+}
+
 export interface CommitSummary {
   sha: string
   message: string
   author: string
   date: string
   files: string[]
+}
+
+export interface ParsedFileRecord {
+  path: string
+  lines: number
+  sizeBytes: number
+  extension: string
+  language: string
+  functions: unknown[]
+  types: unknown[]
+  classes: unknown[]
+  symbols: unknown[]
+  imports: string[]
+  externalImports: string[]
+  decorators: string[]
+  complexity: number
+  isReactComponent: boolean
+  hasUnusedExports: boolean
+  fileType: string
 }
 
 // ── Analysis ──
@@ -171,6 +206,10 @@ export async function getProjectSnapshot(projectId: string): Promise<Record<stri
   return rpc<Record<string, unknown> | null>("projects.getSnapshot", { projectId }).catch(emptyWhenBackendUnavailable(null))
 }
 
+export async function getProjectParsedFiles(projectId: string): Promise<ParsedFileRecord[] | null> {
+  return rpc<ParsedFileRecord[] | null>("projects.getParsedFiles", { projectId }).catch(emptyWhenBackendUnavailable(null))
+}
+
 export async function deleteProject(id: string): Promise<void> {
   await rpc<null>("projects.delete", { id })
 }
@@ -205,6 +244,28 @@ export async function githubGetUser(token: string): Promise<GitHubUser> {
 
 export async function getGithubToken(): Promise<string | null> {
   return rpc<string | null>("github.getToken").catch(emptyWhenBackendUnavailable(null))
+}
+
+export async function listGithubRepos(
+  visibility: "all" | "private" | "public" = "all",
+  page?: number
+): Promise<GitHubRepoSummary[]> {
+  if (page) {
+    return rpc<GitHubRepoSummary[]>("github.listRepos", { visibility, page }).catch(emptyWhenBackendUnavailable([]))
+  }
+
+  const repos: GitHubRepoSummary[] = []
+  for (let nextPage = 1; nextPage <= 10; nextPage += 1) {
+    const batch = await rpc<GitHubRepoSummary[]>("github.listRepos", {
+      visibility,
+      page: nextPage,
+    }).catch(emptyWhenBackendUnavailable([]))
+
+    repos.push(...batch)
+    if (batch.length < 100) break
+  }
+
+  return repos
 }
 
 export async function setGithubToken(token: string): Promise<void> {

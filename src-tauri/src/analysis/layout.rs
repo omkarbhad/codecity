@@ -124,8 +124,8 @@ pub enum LayoutMode {
 }
 
 const DISTRICT_COLORS: [&str; 12] = [
-    "#00e5ff", "#00e676", "#448aff", "#ffea00", "#b388ff", "#ff9100",
-    "#ff4081", "#1de9b6", "#aeea00", "#ff1744", "#8c9eff", "#ffc400",
+    "#00e5ff", "#00e676", "#448aff", "#ffea00", "#b388ff", "#ff9100", "#ff4081", "#1de9b6",
+    "#aeea00", "#ff1744", "#8c9eff", "#ffc400",
 ];
 
 const EXTENSION_COLORS: &[(&str, &str)] = &[
@@ -185,7 +185,11 @@ fn hex_to_hsl(hex: &str) -> (f32, f32, f32) {
     }
 
     let d = max - min;
-    let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) };
+    let s = if l > 0.5 {
+        d / (2.0 - max - min)
+    } else {
+        d / (max + min)
+    };
     let h = if (max - r).abs() < f32::EPSILON {
         ((g - b) / d + if g < b { 6.0 } else { 0.0 }) / 6.0
     } else if (max - g).abs() < f32::EPSILON {
@@ -222,7 +226,11 @@ fn hsl_to_hex(h: f32, s: f32, l: f32) -> String {
         return format!("#{value:02x}{value:02x}{value:02x}");
     }
 
-    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
     let p = 2.0 * l - q;
     let r = (hue_to_rgb(p, q, h + 1.0 / 3.0) * 255.0).round() as u8;
     let g = (hue_to_rgb(p, q, h) * 255.0).round() as u8;
@@ -309,7 +317,10 @@ fn compute_folder_districts(files: &[ParsedFile]) -> Vec<DistrictData> {
 fn compute_extension_districts(files: &[ParsedFile]) -> Vec<DistrictData> {
     let mut groups: HashMap<String, Vec<String>> = HashMap::new();
     for file in files {
-        groups.entry(extension(&file.path)).or_default().push(file.path.clone());
+        groups
+            .entry(extension(&file.path))
+            .or_default()
+            .push(file.path.clone());
     }
     grouped_districts(groups, LayoutMode::Extension)
 }
@@ -322,8 +333,14 @@ fn compute_semantic_districts(files: &[ParsedFile]) -> Vec<DistrictData> {
         graph.entry(file.path.as_str()).or_default();
         for import in &file.imports {
             if path_set.contains(import.as_str()) {
-                graph.entry(file.path.as_str()).or_default().insert(import.as_str());
-                graph.entry(import.as_str()).or_default().insert(file.path.as_str());
+                graph
+                    .entry(file.path.as_str())
+                    .or_default()
+                    .insert(import.as_str());
+                graph
+                    .entry(import.as_str())
+                    .or_default()
+                    .insert(file.path.as_str());
             }
         }
     }
@@ -373,7 +390,11 @@ fn compute_semantic_districts(files: &[ParsedFile]) -> Vec<DistrictData> {
         final_clusters.extend(sub_groups.into_values());
     }
 
-    final_clusters.sort_by(|a, b| b.len().cmp(&a.len()).then_with(|| common_prefix(a).cmp(&common_prefix(b))));
+    final_clusters.sort_by(|a, b| {
+        b.len()
+            .cmp(&a.len())
+            .then_with(|| common_prefix(a).cmp(&common_prefix(b)))
+    });
     let mut used_names: HashMap<String, usize> = HashMap::new();
     final_clusters
         .into_iter()
@@ -434,7 +455,11 @@ fn empty_block<'a>() -> BlockLayout<'a> {
     }
 }
 
-fn layout_files_in_grid<'a>(files: &[&'a ParsedFile], gap: f32, sub_folder: &str) -> BlockLayout<'a> {
+fn layout_files_in_grid<'a>(
+    files: &[&'a ParsedFile],
+    gap: f32,
+    sub_folder: &str,
+) -> BlockLayout<'a> {
     if files.is_empty() {
         return empty_block();
     }
@@ -522,7 +547,11 @@ fn offset_block<'a>(block: &BlockLayout<'a>, ox: f32, oz: f32) -> BlockLayout<'a
             .collect(),
         half_w: block.half_w,
         half_d: block.half_d,
-        children: block.children.iter().map(|child| offset_block(child, ox, oz)).collect(),
+        children: block
+            .children
+            .iter()
+            .map(|child| offset_block(child, ox, oz))
+            .collect(),
     }
 }
 
@@ -540,7 +569,10 @@ fn pack_blocks_in_grid<'a>(blocks: Vec<BlockLayout<'a>>, gap: f32) -> BlockLayou
             .partial_cmp(&(a.half_w * a.half_d))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    let total_area: f32 = sorted.iter().map(|block| (block.half_w * 2.0 + gap) * (block.half_d * 2.0 + gap)).sum();
+    let total_area: f32 = sorted
+        .iter()
+        .map(|block| (block.half_w * 2.0 + gap) * (block.half_d * 2.0 + gap))
+        .sum();
     let target_width = total_area.sqrt() * 1.05;
 
     let mut shelves: Vec<(Vec<(BlockLayout<'a>, f32)>, f32, f32)> = Vec::new();
@@ -548,7 +580,8 @@ fn pack_blocks_in_grid<'a>(blocks: Vec<BlockLayout<'a>>, gap: f32) -> BlockLayou
     let mut current_width = 0.0_f32;
     let mut current_half_d = 0.0_f32;
     for block in sorted {
-        let new_width = current_width + if current.is_empty() { 0.0 } else { gap } + block.half_w * 2.0;
+        let new_width =
+            current_width + if current.is_empty() { 0.0 } else { gap } + block.half_w * 2.0;
         if !current.is_empty() && new_width > target_width {
             shelves.push((current, current_width, current_half_d));
             current = Vec::new();
@@ -564,7 +597,10 @@ fn pack_blocks_in_grid<'a>(blocks: Vec<BlockLayout<'a>>, gap: f32) -> BlockLayou
         shelves.push((current, current_width, current_half_d));
     }
 
-    let total_depth: f32 = shelves.iter().map(|(_, _, half_d)| half_d * 2.0).sum::<f32>()
+    let total_depth: f32 = shelves
+        .iter()
+        .map(|(_, _, half_d)| half_d * 2.0)
+        .sum::<f32>()
         + shelves.len().saturating_sub(1) as f32 * gap;
     let mut positions = Vec::new();
     let mut children = Vec::new();
@@ -603,8 +639,16 @@ fn pack_blocks_in_grid<'a>(blocks: Vec<BlockLayout<'a>>, gap: f32) -> BlockLayou
     BlockLayout {
         name: String::new(),
         positions,
-        half_w: if min_x == f32::MAX { 1.0 } else { (max_x - min_x) / 2.0 + 0.1 },
-        half_d: if min_z == f32::MAX { 1.0 } else { (max_z - min_z) / 2.0 + 0.1 },
+        half_w: if min_x == f32::MAX {
+            1.0
+        } else {
+            (max_x - min_x) / 2.0 + 0.1
+        },
+        half_d: if min_z == f32::MAX {
+            1.0
+        } else {
+            (max_z - min_z) / 2.0 + 0.1
+        },
         children,
     }
 }
@@ -628,7 +672,10 @@ fn layout_recursive_bottom_up<'a>(
         if segments.len() <= path_depth + 1 {
             direct_files.push(*file);
         } else {
-            subdir_groups.entry(segments[path_depth].to_string()).or_default().push(*file);
+            subdir_groups
+                .entry(segments[path_depth].to_string())
+                .or_default()
+                .push(*file);
         }
     }
 
@@ -638,8 +685,19 @@ fn layout_recursive_bottom_up<'a>(
 
     if subdir_groups.len() == 1 && direct_files.is_empty() && max_depth > 0 {
         let (subdir_name, subdir_files) = subdir_groups.into_iter().next().unwrap();
-        let next_sub_folder = if sub_folder.is_empty() { subdir_name.as_str() } else { sub_folder };
-        let mut child = layout_recursive_bottom_up(&subdir_files, path_depth + 1, file_gap, block_gap, next_sub_folder, max_depth - 1);
+        let next_sub_folder = if sub_folder.is_empty() {
+            subdir_name.as_str()
+        } else {
+            sub_folder
+        };
+        let mut child = layout_recursive_bottom_up(
+            &subdir_files,
+            path_depth + 1,
+            file_gap,
+            block_gap,
+            next_sub_folder,
+            max_depth - 1,
+        );
         child.name = subdir_name;
         return child;
     }
@@ -649,7 +707,11 @@ fn layout_recursive_bottom_up<'a>(
     let mut child_blocks = Vec::new();
 
     for (subdir_name, subdir_files) in entries {
-        let next_sub_folder = if sub_folder.is_empty() { subdir_name.as_str() } else { sub_folder };
+        let next_sub_folder = if sub_folder.is_empty() {
+            subdir_name.as_str()
+        } else {
+            sub_folder
+        };
         let mut block = if max_depth == 0 {
             layout_files_in_grid(&subdir_files, file_gap, next_sub_folder)
         } else {
@@ -667,7 +729,11 @@ fn layout_recursive_bottom_up<'a>(
     }
 
     if !direct_files.is_empty() {
-        let next_sub_folder = if sub_folder.is_empty() { "_files" } else { sub_folder };
+        let next_sub_folder = if sub_folder.is_empty() {
+            "_files"
+        } else {
+            sub_folder
+        };
         let mut direct_block = layout_files_in_grid(&direct_files, file_gap, next_sub_folder);
         direct_block.name = "_files".to_string();
         child_blocks.push(direct_block);
@@ -682,7 +748,11 @@ fn layout_semantic<'a>(files: &[&'a ParsedFile], gap: f32) -> BlockLayout<'a> {
     }
 
     let n = files.len();
-    let path_to_index: HashMap<&str, usize> = files.iter().enumerate().map(|(index, file)| (file.path.as_str(), index)).collect();
+    let path_to_index: HashMap<&str, usize> = files
+        .iter()
+        .enumerate()
+        .map(|(index, file)| (file.path.as_str(), index))
+        .collect();
     let radius = (n as f32).sqrt() * 3.0;
     let mut pos_x = vec![0.0_f32; n];
     let mut pos_z = vec![0.0_f32; n];
@@ -701,7 +771,11 @@ fn layout_semantic<'a>(files: &[&'a ParsedFile], gap: f32) -> BlockLayout<'a> {
         let mut force_z = vec![0.0_f32; n];
 
         for i in 0..n {
-            let (start, end) = if n < 300 { (i + 1, n) } else { (i.saturating_sub(20), (i + 20).min(n)) };
+            let (start, end) = if n < 300 {
+                (i + 1, n)
+            } else {
+                (i.saturating_sub(20), (i + 20).min(n))
+            };
             for j in start..end {
                 if i == j {
                     continue;
@@ -794,8 +868,16 @@ fn layout_semantic<'a>(files: &[&'a ParsedFile], gap: f32) -> BlockLayout<'a> {
     BlockLayout {
         name: String::new(),
         positions,
-        half_w: if min_x == f32::MAX { 1.0 } else { (max_x - min_x) / 2.0 + 1.0 },
-        half_d: if min_z == f32::MAX { 1.0 } else { (max_z - min_z) / 2.0 + 1.0 },
+        half_w: if min_x == f32::MAX {
+            1.0
+        } else {
+            (max_x - min_x) / 2.0 + 1.0
+        },
+        half_d: if min_z == f32::MAX {
+            1.0
+        } else {
+            (max_z - min_z) / 2.0 + 1.0
+        },
         children: Vec::new(),
     }
 }
@@ -841,7 +923,12 @@ fn subdistrict_color(index: usize, total: usize, base_color: &str) -> String {
     )
 }
 
-fn compute_subdistrict_bounds(block: &BlockLayout<'_>, base_color: &str, depth: usize, max_depth: usize) -> Vec<SubDistrictData> {
+fn compute_subdistrict_bounds(
+    block: &BlockLayout<'_>,
+    base_color: &str,
+    depth: usize,
+    max_depth: usize,
+) -> Vec<SubDistrictData> {
     if block.children.is_empty() || depth >= max_depth {
         return Vec::new();
     }
@@ -862,7 +949,11 @@ fn compute_subdistrict_bounds(block: &BlockLayout<'_>, base_color: &str, depth: 
                 name: child.name.clone(),
                 color,
                 bounds,
-                sub_districts: if children.is_empty() { None } else { Some(children) },
+                sub_districts: if children.is_empty() {
+                    None
+                } else {
+                    Some(children)
+                },
             })
         })
         .collect()
@@ -892,7 +983,10 @@ fn pack_districts_square(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
             .partial_cmp(&(sizes[*a].0 * sizes[*a].1))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    let total_area: f32 = indices.iter().map(|idx| (sizes[*idx].0 * 2.0 + gap) * (sizes[*idx].1 * 2.0 + gap)).sum();
+    let total_area: f32 = indices
+        .iter()
+        .map(|idx| (sizes[*idx].0 * 2.0 + gap) * (sizes[*idx].1 * 2.0 + gap))
+        .sum();
     let target_width = total_area.sqrt() * 1.05;
 
     let mut shelves: Vec<(Vec<(usize, f32)>, f32, f32)> = Vec::new();
@@ -900,7 +994,8 @@ fn pack_districts_square(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
     let mut current_width = 0.0_f32;
     let mut current_half_d = 0.0_f32;
     for index in indices {
-        let new_width = current_width + if current.is_empty() { 0.0 } else { gap } + sizes[index].0 * 2.0;
+        let new_width =
+            current_width + if current.is_empty() { 0.0 } else { gap } + sizes[index].0 * 2.0;
         if !current.is_empty() && new_width > target_width {
             shelves.push((current, current_width, current_half_d));
             current = Vec::new();
@@ -916,7 +1011,10 @@ fn pack_districts_square(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
         shelves.push((current, current_width, current_half_d));
     }
 
-    let total_depth: f32 = shelves.iter().map(|(_, _, half_d)| half_d * 2.0).sum::<f32>()
+    let total_depth: f32 = shelves
+        .iter()
+        .map(|(_, _, half_d)| half_d * 2.0)
+        .sum::<f32>()
         + shelves.len().saturating_sub(1) as f32 * gap;
     let mut positions = vec![(0.0, 0.0); sizes.len()];
     let mut offset_z = -total_depth / 2.0;
@@ -931,18 +1029,28 @@ fn pack_districts_square(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
     positions
 }
 
-pub fn layout_city(files: &[ParsedFile], districts: &mut [DistrictData], mode: LayoutMode) -> Vec<FileData> {
+pub fn layout_city(
+    files: &[ParsedFile],
+    districts: &mut [DistrictData],
+    mode: LayoutMode,
+) -> Vec<FileData> {
     const FILE_GAP: f32 = 0.15;
     const BLOCK_GAP: f32 = 0.3;
     const DISTRICT_GAP: f32 = 0.8;
 
-    let files_by_path: HashMap<&str, &ParsedFile> = files.iter().map(|file| (file.path.as_str(), file)).collect();
+    let files_by_path: HashMap<&str, &ParsedFile> = files
+        .iter()
+        .map(|file| (file.path.as_str(), file))
+        .collect();
     let visible_paths: HashSet<&str> = files.iter().map(|file| file.path.as_str()).collect();
     let mut imported_by: HashMap<&str, Vec<String>> = HashMap::new();
     for file in files {
         for import in &file.imports {
             if visible_paths.contains(import.as_str()) {
-                imported_by.entry(import.as_str()).or_default().push(file.path.clone());
+                imported_by
+                    .entry(import.as_str())
+                    .or_default()
+                    .push(file.path.clone());
             }
         }
     }
@@ -957,13 +1065,18 @@ pub fn layout_city(files: &[ParsedFile], districts: &mut [DistrictData], mode: L
         let mut block = match mode {
             LayoutMode::Extension => layout_files_in_grid(&district_files, FILE_GAP, ""),
             LayoutMode::Semantic => layout_semantic(&district_files, FILE_GAP),
-            LayoutMode::Folder => layout_recursive_bottom_up(&district_files, 1, FILE_GAP, BLOCK_GAP, "", 6),
+            LayoutMode::Folder => {
+                layout_recursive_bottom_up(&district_files, 1, FILE_GAP, BLOCK_GAP, "", 6)
+            }
         };
         block.name = district.name.clone();
         district_layouts.push(block);
     }
 
-    let district_sizes: Vec<(f32, f32)> = district_layouts.iter().map(|layout| (layout.half_w, layout.half_d)).collect();
+    let district_sizes: Vec<(f32, f32)> = district_layouts
+        .iter()
+        .map(|layout| (layout.half_w, layout.half_d))
+        .collect();
     let district_positions = pack_districts_square(&district_sizes, DISTRICT_GAP);
     let mut result = Vec::new();
 
@@ -995,7 +1108,9 @@ pub fn layout_city(files: &[ParsedFile], districts: &mut [DistrictData], mode: L
                 classes: position.file.classes.clone(),
                 symbols: position.file.symbols.clone(),
                 imports,
-                imported_by: imported_by.remove(position.file.path.as_str()).unwrap_or_default(),
+                imported_by: imported_by
+                    .remove(position.file.path.as_str())
+                    .unwrap_or_default(),
                 external_imports: position.file.external_imports.clone(),
                 decorators: position.file.decorators.clone(),
                 complexity: position.file.complexity,
@@ -1059,7 +1174,11 @@ pub fn compute_stats(files: &[FileData]) -> CityStats {
     }
 
     let mut languages: Vec<LanguageStats> = languages_by_name.into_values().collect();
-    languages.sort_by(|a, b| b.lines.cmp(&a.lines).then_with(|| a.language.cmp(&b.language)));
+    languages.sort_by(|a, b| {
+        b.lines
+            .cmp(&a.lines)
+            .then_with(|| a.language.cmp(&b.language))
+    });
 
     CityStats {
         total_files: files.len(),
@@ -1091,7 +1210,11 @@ pub fn create_snapshot_with_mode(
         files,
         districts,
         stats,
-        warnings: if warnings.is_empty() { None } else { Some(warnings) },
+        warnings: if warnings.is_empty() {
+            None
+        } else {
+            Some(warnings)
+        },
     }
 }
 
@@ -1105,7 +1228,10 @@ fn is_path_hidden(path: &str, hidden_paths: &HashSet<String>) -> bool {
     }
 
     let mut current = String::new();
-    for segment in path.split('/').take(path.split('/').count().saturating_sub(1)) {
+    for segment in path
+        .split('/')
+        .take(path.split('/').count().saturating_sub(1))
+    {
         if !current.is_empty() {
             current.push('/');
         }
@@ -1170,7 +1296,8 @@ pub fn recompute_snapshot(
         };
     }
 
-    let visible_paths: HashSet<String> = visible_files.iter().map(|file| file.path.clone()).collect();
+    let visible_paths: HashSet<String> =
+        visible_files.iter().map(|file| file.path.clone()).collect();
     let parsed = visible_files
         .iter()
         .map(|file| file_to_parsed(file, &visible_paths))

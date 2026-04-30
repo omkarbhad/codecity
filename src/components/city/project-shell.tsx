@@ -5,6 +5,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
+  Code2,
+  ExternalLink,
   FolderTree,
   FileCode,
   Brain,
@@ -18,7 +20,9 @@ import {
   Keyboard,
 } from "lucide-react"
 import { cn } from "@codecity/ui/lib/utils"
+import { IconButton } from "@codecity/ui/components/icon-button"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
+import { LogoIcon } from "@/components/logo"
 import { useCityStore, type VisualizationMode } from "./use-city-store"
 import { FileTree } from "./file-tree"
 import { ExtensionFilter } from "./extension-filter"
@@ -175,7 +179,7 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
                 )}
               />
             )}
-            <Icon className="w-[18px] h-[18px]" />
+            <Icon className="size-[18px]" />
           </button>
         )
       })}
@@ -309,7 +313,21 @@ function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot;
 
 // ── Project Navbar ──────────────────────────────────────────────────────────
 
-function ProjectNavbar({ projectName }: { projectName: string }) {
+function formatStat(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return n.toString()
+}
+
+function ProjectNavbar({
+  projectName,
+  repoUrl,
+  snapshot,
+}: {
+  projectName: string
+  repoUrl?: string
+  snapshot: CitySnapshot
+}) {
   const router = useRouter()
   const visualizationMode = useCityStore((s) => s.visualizationMode)
   const setMode = useCityStore((s) => s.setMode)
@@ -317,25 +335,39 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
   const setLayoutMode = useCityStore((s) => s.setLayoutMode)
 
   return (
-    <header className="z-50 flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0b0b0c] px-3">
+    <header className="z-50 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-white/[0.08] bg-[#0b0b0c] px-3">
       {/* Left */}
       <div className="flex items-center gap-2 min-w-0">
-        <button
+        <IconButton
           onClick={() => router.back()}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white"
+          className="text-white/60 hover:text-white"
+          aria-label="Go back"
         >
-          <ArrowLeft className="w-3 h-3" />
-        </button>
+          <ArrowLeft />
+        </IconButton>
         <Link href="/dashboard" className="flex items-center gap-1.5 text-white/80 transition-colors hover:text-white">
-          <img src="/logo.png" alt="CodeCity" className="w-4 h-4 rounded-sm" />
+          <span className="flex size-5 items-center justify-center rounded border border-white/[0.08] bg-white/[0.04] text-primary">
+            <LogoIcon className="size-3.5" />
+          </span>
           <span className="text-[13px] font-semibold hidden sm:inline">CodeCity</span>
         </Link>
         <span className="hidden text-white/35 sm:inline">/</span>
-        <span className="truncate font-sans text-xs text-white/60 max-w-[90px] sm:max-w-[200px]">{projectName}</span>
+        <span className="truncate font-sans text-xs text-white/65 max-w-[90px] sm:max-w-[220px]">{projectName}</span>
+        {repoUrl?.startsWith("http") && (
+          <a
+            href={repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden size-7 shrink-0 items-center justify-center rounded-md text-white/35 transition-colors hover:bg-white/[0.04] hover:text-white/70 sm:flex"
+            title="Open repository"
+          >
+            <ExternalLink className="size-3.5" />
+          </a>
+        )}
       </div>
 
       {/* Center — layout + viz modes */}
-      <div className="hidden sm:flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none">
+      <div className="col-start-2 hidden min-w-0 items-center gap-1 overflow-x-auto scrollbar-none sm:flex">
         <div className="flex shrink-0 items-center rounded-md border border-white/[0.08] bg-white/[0.03] p-px">
           {LAYOUTS.map((l) => {
             const Icon = l.icon
@@ -344,11 +376,11 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
               <button
                 key={l.key}
                 onClick={() => setLayoutMode(l.key)}
-                className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                className={`flex h-7 items-center gap-1.5 rounded px-2 text-[11px] font-medium transition-colors ${
                   active ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
                 }`}
               >
-                <Icon className="w-3 h-3" />
+                <Icon className="size-3.5" />
                 <span className="hidden md:inline">{l.label}</span>
               </button>
             )
@@ -362,7 +394,7 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+              className={`h-7 rounded px-2 text-[11px] font-medium transition-colors ${
                 visualizationMode === m.key ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
               }`}
             >
@@ -372,8 +404,21 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
         </div>
       </div>
 
+      <div className="col-start-3 hidden min-w-0 justify-end gap-3 font-mono text-[10px] text-white/45 lg:flex">
+        <span className="flex items-center gap-1">
+          <FileCode className="size-3 text-white/30" />
+          <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalFiles)}</strong>
+          files
+        </span>
+        <span className="flex items-center gap-1">
+          <Code2 className="size-3 text-white/30" />
+          <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalLines)}</strong>
+          lines
+        </span>
+      </div>
+
       {/* Mobile center — tap to cycle */}
-      <div className="flex sm:hidden items-center gap-1 shrink-0">
+      <div className="col-start-2 row-start-1 flex items-center justify-center gap-1 sm:hidden">
         <button
           onClick={() => {
             const idx = LAYOUTS.findIndex((l) => l.key === layoutMode)
@@ -444,7 +489,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, children }: Proje
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#050506]">
       {/* Top navbar — full width */}
-      <ProjectNavbar projectName={projectName} />
+      <ProjectNavbar projectName={projectName} repoUrl={repoUrl} snapshot={snapshot} />
 
       {/* Main area: activity bar + panel + canvas + secondary */}
       <div className="flex flex-1 overflow-hidden">
@@ -458,7 +503,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, children }: Proje
         {/* Primary sidebar panel — slides in/out */}
         {activeView && (
           <>
-            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden bg-[#0b0b0c] md:flex">
+            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-[#0b0b0c] md:flex">
               <PrimaryPanelContent view={activeView} snapshot={snapshot} repoUrl={repoUrl} />
             </div>
             <ResizeHandle side="left" onResize={handlePrimaryResize} />
@@ -466,7 +511,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, children }: Proje
         )}
 
         {/* Canvas area */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden bg-[#070708]">
           <div className="relative flex-1 overflow-hidden">
             {children}
             <CityTooltip snapshot={snapshot} />

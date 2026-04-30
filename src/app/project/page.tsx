@@ -69,6 +69,7 @@ function ProjectContent() {
   }, [id, router])
 
   async function handleReanalyze() {
+    if (!repoUrl) return
     setReanalyzing(true)
     try {
       const result = await analyze(repoUrl)
@@ -153,6 +154,15 @@ function ProjectContent() {
   return (
     <div className="relative">
       <ProjectVisualization snapshot={snapshot} projectName={projectName} repoUrl={repoUrl} />
+      <button
+        onClick={handleReanalyze}
+        disabled={reanalyzing || !repoUrl}
+        className="absolute right-3 top-14 z-[80] flex h-8 items-center gap-1.5 rounded-md border border-white/[0.10] bg-[#0b0b0c]/95 px-3 text-[11px] font-medium text-zinc-400 shadow-sm transition-colors hover:border-white/[0.16] hover:bg-[#121214] hover:text-zinc-100 disabled:pointer-events-none disabled:opacity-60"
+        title="Refresh analysis"
+      >
+        <RefreshCw className={`size-3.5 ${reanalyzing ? "animate-spin" : ""}`} />
+        {reanalyzing ? "Reparsing" : "Refresh"}
+      </button>
     </div>
   )
 }

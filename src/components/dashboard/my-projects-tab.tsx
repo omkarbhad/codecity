@@ -16,9 +16,12 @@ import {
   AlertCircle,
   X,
   Check,
+  Loader2,
+  BarChart3,
 } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
+import { IconButton } from "@codecity/ui/components/icon-button"
 import { MiniCityPreview } from "@/components/city/mini-city-preview"
 import type { CitySnapshot } from "@/lib/types/city"
 import { getProjects, getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject } from "@/lib/tauri"
@@ -31,6 +34,11 @@ interface Project {
   status: string
   fileCount?: number
   lineCount?: number
+  progress?: number
+  progressStage?: string
+  progressMessage?: string
+  filesDiscovered?: number
+  filesParsed?: number
   error?: string | null
   createdAt: string
 }
@@ -44,6 +52,11 @@ function normalizeProjectRecord(record: Record<string, unknown>): Project {
     status: String(record.status ?? "FAILED"),
     fileCount: Number(record.file_count ?? record.fileCount ?? 0),
     lineCount: Number(record.line_count ?? record.lineCount ?? 0),
+    progress: Number(record.progress ?? 0),
+    progressStage: String(record.progress_stage ?? record.progressStage ?? "queued"),
+    progressMessage: String(record.progress_message ?? record.progressMessage ?? "Queued"),
+    filesDiscovered: Number(record.files_discovered ?? record.filesDiscovered ?? 0),
+    filesParsed: Number(record.files_parsed ?? record.filesParsed ?? 0),
     error: typeof record.error === "string" ? record.error : null,
     createdAt: String(record.created_at ?? record.createdAt ?? new Date().toISOString()),
   }
@@ -105,7 +118,11 @@ function useProjectProgress(projectId: string, enabled: boolean) {
           } else if (project.status === "FAILED") {
             setProgress({ stage: "error", progress: 0, message: project.error ?? "Failed" })
           } else {
-            setProgress({ stage: "processing", progress: 50, message: "Analyzing..." })
+            setProgress({
+              stage: project.progress_stage ?? "processing",
+              progress: Math.max(0, Math.min(100, project.progress ?? 0)),
+              message: project.progress_message ?? "Analyzing...",
+            })
           }
         }
       } catch {
@@ -183,50 +200,46 @@ function DeleteButton({
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[10px] font-medium text-red-400 px-2 py-1 leading-none">Delete?</span>
-        <button
+        <IconButton
           onClick={confirm}
-        className="flex items-center justify-center px-1.5 py-1 text-red-400 transition-colors hover:bg-red-500/20"
+          className="size-6 border-transparent bg-transparent text-red-400 hover:border-red-500/20 hover:bg-red-500/10"
           aria-label="Confirm delete"
         >
-          <Check className="h-3 w-3" />
-        </button>
-        <button
+          <Check />
+        </IconButton>
+        <IconButton
           onClick={cancel}
-        className="flex items-center justify-center px-1.5 py-1 text-zinc-500 transition-colors hover:bg-white/[0.06]"
+          className="size-6 border-transparent bg-transparent text-zinc-500"
           aria-label="Cancel delete"
         >
-          <X className="h-3 w-3" />
-        </button>
+          <X />
+        </IconButton>
       </div>
     )
   }
 
   return (
-    <button
+    <IconButton
       onClick={openConfirm}
-      className="rounded-md p-1.5 text-zinc-700 opacity-0 transition-colors hover:bg-red-500/[0.08] hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
+      className="size-7 border-transparent bg-transparent text-zinc-700 opacity-0 hover:border-red-500/15 hover:bg-red-500/[0.08] hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
       aria-label="Delete project"
     >
-      <Trash2 className="h-3 w-3" />
-    </button>
+      <Trash2 />
+    </IconButton>
   )
 }
 
-/** Fetch snapshot on mount for completed projects */
 function useSnapshot(projectId: string, enabled: boolean) {
-  const [snapshot, setSnapshot] = useState<CitySnapshot | null>(null)
-  const [loading, setLoading] = useState(false)
-  const fetched = useRef(false)
-
-  useEffect(() => {
-    if (!enabled || fetched.current) return
-    fetched.current = true
-    setLoading(true)
-    getProjectSnapshot(projectId)
-      .then((data) => { if (data) setSnapshot(data as unknown as CitySnapshot) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [enabled, projectId])
+  const { data: snapshot = null, isLoading: loading } = useQuery<CitySnapshot | null>({
+    queryKey: ["project-snapshot", projectId],
+    enabled,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const data = await getProjectSnapshot(projectId)
+      return data ? (data as unknown as CitySnapshot) : null
+    },
+  })
 
   return { snapshot, loading }
 }
@@ -246,11 +259,9 @@ function ProjectCard({
   onRetry: (project: Project) => void
   queryClient: ReturnType<typeof useQueryClient>
 }) {
-  const [hovered, setHovered] = useState(false)
-  const [previewRequested, setPreviewRequested] = useState(false)
   const { snapshot, loading: snapshotLoading } = useSnapshot(
     project.id,
-    project.status === "COMPLETED" && previewRequested
+    project.status === "COMPLETED"
   )
   const isProcessing = project.status === "PROCESSING" || project.status === "PENDING"
   const isCompleted = project.status === "COMPLETED"
@@ -274,20 +285,10 @@ function ProjectCard({
       ? "Queued — waiting for active job to finish"
       : null
 
-  function requestPreview() {
-    if (isCompleted) setPreviewRequested(true)
-  }
-
   return (
     <div
-      onMouseEnter={() => {
-        setHovered(true)
-        requestPreview()
-      }}
-      onMouseLeave={() => setHovered(false)}
-      onTouchStart={requestPreview}
       className={`group relative flex min-h-[176px] flex-col overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
-        ${isCompleted ? "border-white/[0.08] hover:border-white/[0.16]" : ""}
+        ${isCompleted ? "border-white/[0.08] hover:border-white/[0.13]" : ""}
         ${isActive ? "border-primary/35" : ""}
         ${isQueued ? "border-white/[0.04] opacity-60" : ""}
         ${isFailed ? "border-red-500/25" : ""}
@@ -303,24 +304,22 @@ function ProjectCard({
       {/* 3D city preview pane */}
       {isCompleted && (
         <div className="relative h-[112px] overflow-hidden border-b border-white/[0.06] bg-[#080809]">
-          {!previewRequested && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#080809]">
-              <span className="text-[10px] font-mono text-zinc-700">hover to preview</span>
-            </div>
-          )}
-          {previewRequested && snapshotLoading && (
+          {snapshotLoading && (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#080809]">
-              <span className="text-[10px] font-mono text-zinc-700 relative z-10">loading city…</span>
+              <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono text-zinc-700">
+                <Loader2 className="size-3 animate-spin" />
+                loading city…
+              </span>
             </div>
           )}
-          {hovered && snapshot && (
+          {snapshot && (
             <div className="absolute inset-0 pointer-events-none">
               <MiniCityPreview snapshot={snapshot} speed={0.4} className="w-full h-full" />
             </div>
           )}
-          {previewRequested && snapshot && !hovered && (
+          {!snapshotLoading && !snapshot && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#080809]">
-              <span className="text-[10px] font-mono text-zinc-700">hover to animate</span>
+              <span className="text-[10px] font-mono text-zinc-700">preview unavailable</span>
             </div>
           )}
         </div>
@@ -345,14 +344,14 @@ function ProjectCard({
 
           {/* Status pill */}
           {isCompleted && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-1 text-[10px] font-medium text-emerald-400">
-              <span className="h-1 w-1 rounded-full bg-emerald-400" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/[0.07] px-2 py-1 text-[10px] font-medium text-emerald-400">
+              <Check className="size-3" />
               done
             </span>
           )}
           {isActive && (
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/20 bg-primary/[0.08] px-2 py-1 text-[10px] font-medium text-primary">
-              <span className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+              <Loader2 className="size-3 animate-spin" />
               analyzing
             </span>
           )}
@@ -399,6 +398,12 @@ function ProjectCard({
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
+            {(project.filesDiscovered ?? 0) > 0 && (
+              <div className="flex items-center gap-2 font-mono text-[9px] text-zinc-700">
+                <span>{formatNumber(project.filesDiscovered ?? 0)} found</span>
+                <span>{formatNumber(project.filesParsed ?? 0)} parsed</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -424,10 +429,10 @@ function ProjectCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-zinc-700 hover:text-zinc-400 transition-colors"
+                className="inline-flex size-6 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-white/[0.04] hover:text-zinc-400"
                 title="Open on GitHub"
               >
-                <GitBranch className="h-3 w-3" />
+                <GitBranch className="size-3.5" />
               </a>
             )}
           </div>
@@ -457,13 +462,13 @@ function ProjectCard({
             )}
 
             {/* Visibility toggle */}
-            <button
+            <IconButton
               onClick={(e) => onToggleVisibility(e, project)}
-              className="p-1.5 rounded-md text-zinc-700 hover:text-zinc-400 hover:bg-white/[0.04] transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+              className="size-7 border-transparent bg-transparent text-zinc-700 opacity-0 hover:border-white/[0.08] focus:opacity-100 group-hover:opacity-100"
               aria-label={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
             >
-              {project.visibility === "PUBLIC" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-            </button>
+              {project.visibility === "PUBLIC" ? <Lock /> : <Globe />}
+            </IconButton>
 
             {/* Delete — inline confirm */}
             <DeleteButton projectId={project.id} onDelete={onDelete} />
@@ -499,6 +504,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       queryClient.setQueryData<Project[]>(["projects"], (old) =>
         old ? old.filter((p) => p.id !== id) : []
       )
+      queryClient.removeQueries({ queryKey: ["project-snapshot", id] })
     } catch {
       // ignore
     }
@@ -568,8 +574,13 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     )
   }
 
-  const privateProjects = projects.filter((p) => p.visibility === "PRIVATE")
-  const publicProjects = projects.filter((p) => p.visibility === "PUBLIC")
+  const settledProjects = projects.filter((p) => p.status !== "PROCESSING" && p.status !== "PENDING")
+  const privateProjects = settledProjects.filter((p) => p.visibility === "PRIVATE")
+  const publicProjects = settledProjects.filter((p) => p.visibility === "PUBLIC")
+  const completedProjects = projects.filter((p) => p.status === "COMPLETED")
+  const failedProjects = projects.filter((p) => p.status === "FAILED")
+  const totalFiles = completedProjects.reduce((sum, p) => sum + (p.fileCount ?? 0), 0)
+  const totalLines = completedProjects.reduce((sum, p) => sum + (p.lineCount ?? 0), 0)
 
   function renderGroup(label: string, icon: React.ReactNode, items: Project[]) {
     if (items.length === 0) return null
@@ -602,9 +613,65 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <DashboardStat icon={<Building2 className="size-3.5" />} label="cities" value={projects.length} />
+        <DashboardStat icon={<Loader2 className="size-3.5" />} label="active" value={processingProjects.length} />
+        <DashboardStat icon={<FileCode className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
+        <DashboardStat icon={<Code2 className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
+      </div>
+
+      {processingProjects.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 px-0.5">
+            <BarChart3 className="h-3 w-3 text-primary" />
+            <span className="text-xs font-medium text-zinc-400">Running</span>
+            <div className="h-px flex-1 bg-white/[0.06]" />
+            <span className="text-[10px] font-mono text-zinc-700">{processingProjects.length}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {processingProjects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                isQueued={project.id !== activeProjectId}
+                onDelete={handleDelete}
+                onToggleVisibility={handleToggleVisibility}
+                onRetry={handleRetry}
+                queryClient={queryClient}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {renderGroup("Private", <Lock className="h-3 w-3 text-zinc-700" />, privateProjects)}
       {renderGroup("Public", <Globe className="h-3 w-3 text-zinc-700" />, publicProjects)}
+      {failedProjects.length > 0 && (
+        <div className="rounded-lg border border-red-500/10 bg-red-500/[0.03] px-3 py-2 font-mono text-[10px] text-red-400/70">
+          {failedProjects.length} failed analysis {failedProjects.length === 1 ? "needs" : "need"} attention.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DashboardStat({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-white/[0.07] bg-[#101012] px-3 py-2.5">
+      <div className="flex items-center gap-2 text-zinc-600">
+        {icon}
+        <span className="text-[11px] font-medium text-zinc-500">{label}</span>
+      </div>
+      <span className="font-mono text-[13px] text-zinc-200">{value}</span>
     </div>
   )
 }

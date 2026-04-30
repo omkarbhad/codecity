@@ -86,7 +86,7 @@ export function ExploreTab() {
 
   if (isError) {
     return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] px-6 py-12 text-center">
+      <div className="rounded-lg border border-red-500/20 bg-red-500/[0.04] px-6 py-12 text-center">
         <p className="text-[13px] font-mono text-red-400">failed to load community projects</p>
         <p className="text-[11px] text-zinc-600 mt-1">Check your connection and try again</p>
       </div>
@@ -99,11 +99,11 @@ export function ExploreTab() {
         {/* Header skeleton */}
         <div className="flex items-center justify-between">
           <div className="h-3 w-32 rounded bg-white/[0.04] animate-pulse" />
-          <div className="h-8 w-48 rounded-lg bg-white/[0.03] animate-pulse" />
+          <div className="h-8 w-48 rounded-md bg-white/[0.03] animate-pulse" />
         </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-4 h-28 animate-pulse" />
+            <div key={i} className="h-28 rounded-lg border border-white/[0.05] bg-white/[0.02] p-4 animate-pulse" />
           ))}
         </div>
       </div>
@@ -115,7 +115,7 @@ export function ExploreTab() {
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-700">
+          <span className="text-[11px] font-medium text-zinc-500">
             {filtered.length} cities
           </span>
           {search && (
@@ -127,18 +127,18 @@ export function ExploreTab() {
 
         <div className="flex items-center gap-2">
           {/* Sort pills */}
-          <div className="flex items-center rounded-lg border border-white/[0.07] bg-white/[0.02] p-0.5 gap-0.5">
+          <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setSort(opt.value)}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-mono transition-all duration-150 ${
+                className={`flex h-7 items-center gap-1.5 rounded px-2 text-[11px] font-medium transition-colors ${
                   sort === opt.value
                     ? "text-zinc-100 bg-white/[0.08]"
                     : "text-zinc-600 hover:text-zinc-300"
                 }`}
               >
-                <opt.icon className="h-2.5 w-2.5" />
+                <opt.icon className="size-3" />
                 {opt.label}
               </button>
             ))}
@@ -152,7 +152,7 @@ export function ExploreTab() {
               placeholder="search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-44 rounded-lg bg-white/[0.03] border-white/[0.07] pl-7 text-[12px] font-mono text-zinc-300 placeholder:text-zinc-700 focus-visible:border-primary/35 focus-visible:ring-0 transition-colors"
+              className="h-8 w-44 rounded-md border-white/[0.07] bg-white/[0.03] pl-7 text-[12px] font-mono text-zinc-300 transition-colors placeholder:text-zinc-700 focus-visible:border-primary/35 focus-visible:ring-0"
             />
           </div>
         </div>
@@ -160,7 +160,7 @@ export function ExploreTab() {
 
       {/* Empty state */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] flex flex-col items-center py-16">
+        <div className="flex flex-col items-center rounded-lg border border-white/[0.05] bg-white/[0.01] py-16">
           <Globe className="h-8 w-8 text-zinc-700 mb-3" />
           <p className="text-[13px] font-mono text-zinc-500">
             {search ? `no results for "${search}"` : "no public cities yet"}
@@ -189,16 +189,11 @@ function ProjectCard({ project, rank }: { project: PublicProject; rank: number }
 
   return (
     <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
-      <div className={`group relative rounded-xl border bg-[#0a0a0f] overflow-hidden hover:translate-y-[-1px] transition-all duration-200 ${
+      <div className={`group relative overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150 ${
         isTop3
-          ? "border-white/[0.08] hover:border-primary/25"
-          : "border-white/[0.05] hover:border-white/[0.10]"
+          ? "border-white/[0.10] hover:border-white/[0.16]"
+          : "border-white/[0.07] hover:border-white/[0.12]"
       }`}>
-        {/* Top accent */}
-        {isTop3 && (
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-        )}
-
         <div className="p-4">
           {/* Repo header */}
           <div className="flex items-start justify-between mb-3">
@@ -208,19 +203,21 @@ function ProjectCard({ project, rank }: { project: PublicProject; rank: number }
                 {repo}
               </h3>
             </div>
-            <ArrowUpRight className="h-3.5 w-3.5 text-zinc-700 transition-all duration-200 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 ml-2 mt-0.5" />
+            <span className="ml-2 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-transparent text-zinc-700 transition-colors group-hover:border-white/[0.08] group-hover:bg-white/[0.04] group-hover:text-zinc-300">
+              <ArrowUpRight className="size-3.5" />
+            </span>
           </div>
 
           {/* Stats */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
-              <FileCode className="h-2.5 w-2.5 text-zinc-600" />
+              <FileCode className="size-3 text-zinc-600" />
               <span className="text-[10px] font-mono text-zinc-500 tabular-nums">
                 {formatNumber(project.fileCount ?? 0)}f
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <Code2 className="h-2.5 w-2.5 text-zinc-600" />
+              <Code2 className="size-3 text-zinc-600" />
               <span className="text-[10px] font-mono text-zinc-500 tabular-nums">
                 {formatNumber(project.lineCount ?? 0)}l
               </span>

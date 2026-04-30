@@ -79,6 +79,36 @@ pub struct CommitSummary {
     pub files: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubRepoSummary {
+    pub id: i64,
+    pub full_name: String,
+    pub html_url: String,
+    pub private: bool,
+    pub owner_login: String,
+    pub owner_type: String,
+    pub updated_at: String,
+    pub default_branch: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepoOwner {
+    login: String,
+    #[serde(rename = "type")]
+    owner_type: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepoListItem {
+    id: i64,
+    full_name: String,
+    html_url: String,
+    private: bool,
+    owner: RepoOwner,
+    updated_at: String,
+    default_branch: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct CommitListItem {
     sha: String,
@@ -164,6 +194,51 @@ pub async fn fetch_commits(
             author: commit.commit.author.name,
             date: commit.commit.author.date,
             files: Vec::new(),
+        })
+        .collect())
+}
+
+pub async fn fetch_repositories(
+    visibility: &str,
+    page: usize,
+    github_token: &str,
+) -> Result<Vec<GitHubRepoSummary>, GitHubError> {
+    let visibility = match visibility {
+        "private" => "private",
+        "public" => "public",
+        _ => "all",
+    };
+    let url = format!(
+        "https://api.github.com/user/repos?visibility={}&affiliation=owner,collaborator,organization_member&sort=updated&direction=desc&per_page=100&page={}",
+        visibility, page
+    );
+
+    let client = reqwest::Client::new();
+    let response = github_request(&client, url, Some(github_token))
+        .send()
+        .await
+        .map_err(|e| GitHubError::HttpError(e.to_string()))?;
+
+    if !response.status().is_success() {
+        return Err(GitHubError::ApiError(response.status().to_string()));
+    }
+
+    let repos: Vec<RepoListItem> = response
+        .json()
+        .await
+        .map_err(|e| GitHubError::ApiError(e.to_string()))?;
+
+    Ok(repos
+        .into_iter()
+        .map(|repo| GitHubRepoSummary {
+            id: repo.id,
+            full_name: repo.full_name,
+            html_url: repo.html_url,
+            private: repo.private,
+            owner_login: repo.owner.login,
+            owner_type: repo.owner.owner_type,
+            updated_at: repo.updated_at,
+            default_branch: repo.default_branch,
         })
         .collect())
 }

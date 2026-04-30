@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -225,100 +226,160 @@ pub struct AnalysisParser {
 impl AnalysisParser {
     pub fn new() -> Self {
         let mut ts_parser = Parser::new();
-        ts_parser.set_language(&tree_sitter_typescript::LANGUAGE_TSX.into()).ok();
+        ts_parser
+            .set_language(&tree_sitter_typescript::LANGUAGE_TSX.into())
+            .ok();
 
         let mut js_parser = Parser::new();
-        js_parser.set_language(&tree_sitter_javascript::LANGUAGE.into()).ok();
+        js_parser
+            .set_language(&tree_sitter_javascript::LANGUAGE.into())
+            .ok();
 
         let mut py_parser = Parser::new();
-        py_parser.set_language(&tree_sitter_python::LANGUAGE.into()).ok();
+        py_parser
+            .set_language(&tree_sitter_python::LANGUAGE.into())
+            .ok();
 
         let mut rust_parser = Parser::new();
-        rust_parser.set_language(&tree_sitter_rust::LANGUAGE.into()).ok();
+        rust_parser
+            .set_language(&tree_sitter_rust::LANGUAGE.into())
+            .ok();
 
         let mut go_parser = Parser::new();
-        go_parser.set_language(&tree_sitter_go::LANGUAGE.into()).ok();
+        go_parser
+            .set_language(&tree_sitter_go::LANGUAGE.into())
+            .ok();
 
         let mut java_parser = Parser::new();
-        java_parser.set_language(&tree_sitter_java::LANGUAGE.into()).ok();
+        java_parser
+            .set_language(&tree_sitter_java::LANGUAGE.into())
+            .ok();
 
         let mut css_parser = Parser::new();
-        css_parser.set_language(&tree_sitter_css::LANGUAGE.into()).ok();
+        css_parser
+            .set_language(&tree_sitter_css::LANGUAGE.into())
+            .ok();
 
         let mut html_parser = Parser::new();
-        html_parser.set_language(&tree_sitter_html::LANGUAGE.into()).ok();
+        html_parser
+            .set_language(&tree_sitter_html::LANGUAGE.into())
+            .ok();
 
         let mut yaml_parser = Parser::new();
-        yaml_parser.set_language(&tree_sitter_yaml::LANGUAGE.into()).ok();
+        yaml_parser
+            .set_language(&tree_sitter_yaml::LANGUAGE.into())
+            .ok();
 
         let mut c_parser = Parser::new();
         c_parser.set_language(&tree_sitter_c::LANGUAGE.into()).ok();
 
         let mut cpp_parser = Parser::new();
-        cpp_parser.set_language(&tree_sitter_cpp::LANGUAGE.into()).ok();
+        cpp_parser
+            .set_language(&tree_sitter_cpp::LANGUAGE.into())
+            .ok();
 
         let mut ruby_parser = Parser::new();
-        ruby_parser.set_language(&tree_sitter_ruby::LANGUAGE.into()).ok();
+        ruby_parser
+            .set_language(&tree_sitter_ruby::LANGUAGE.into())
+            .ok();
 
         let mut php_parser = Parser::new();
-        php_parser.set_language(&tree_sitter_php::LANGUAGE_PHP.into()).ok();
+        php_parser
+            .set_language(&tree_sitter_php::LANGUAGE_PHP.into())
+            .ok();
 
         let mut swift_parser = Parser::new();
-        swift_parser.set_language(&tree_sitter_swift::LANGUAGE.into()).ok();
+        swift_parser
+            .set_language(&tree_sitter_swift::LANGUAGE.into())
+            .ok();
 
         let mut kotlin_parser = Parser::new();
-        kotlin_parser.set_language(&tree_sitter_kotlin_ng::LANGUAGE.into()).ok();
+        kotlin_parser
+            .set_language(&tree_sitter_kotlin_ng::LANGUAGE.into())
+            .ok();
 
         let mut bash_parser = Parser::new();
-        bash_parser.set_language(&tree_sitter_bash::LANGUAGE.into()).ok();
+        bash_parser
+            .set_language(&tree_sitter_bash::LANGUAGE.into())
+            .ok();
 
         let mut zig_parser = Parser::new();
-        zig_parser.set_language(&tree_sitter_zig::LANGUAGE.into()).ok();
+        zig_parser
+            .set_language(&tree_sitter_zig::LANGUAGE.into())
+            .ok();
 
         let mut lua_parser = Parser::new();
-        lua_parser.set_language(&tree_sitter_lua::LANGUAGE.into()).ok();
+        lua_parser
+            .set_language(&tree_sitter_lua::LANGUAGE.into())
+            .ok();
 
         let mut haskell_parser = Parser::new();
-        haskell_parser.set_language(&tree_sitter_haskell::LANGUAGE.into()).ok();
+        haskell_parser
+            .set_language(&tree_sitter_haskell::LANGUAGE.into())
+            .ok();
 
         let mut dart_parser = Parser::new();
-        dart_parser.set_language(&tree_sitter_dart::LANGUAGE.into()).ok();
+        dart_parser
+            .set_language(&tree_sitter_dart::LANGUAGE.into())
+            .ok();
 
         let mut elixir_parser = Parser::new();
-        elixir_parser.set_language(&tree_sitter_elixir::LANGUAGE.into()).ok();
+        elixir_parser
+            .set_language(&tree_sitter_elixir::LANGUAGE.into())
+            .ok();
 
         let mut scala_parser = Parser::new();
-        scala_parser.set_language(&tree_sitter_scala::LANGUAGE.into()).ok();
+        scala_parser
+            .set_language(&tree_sitter_scala::LANGUAGE.into())
+            .ok();
 
         let mut r_parser = Parser::new();
         r_parser.set_language(&tree_sitter_r::LANGUAGE.into()).ok();
 
         let mut julia_parser = Parser::new();
-        julia_parser.set_language(&tree_sitter_julia::LANGUAGE.into()).ok();
+        julia_parser
+            .set_language(&tree_sitter_julia::LANGUAGE.into())
+            .ok();
 
         let mut perl_parser = Parser::new();
-        perl_parser.set_language(&tree_sitter_perl::LANGUAGE.into()).ok();
+        perl_parser
+            .set_language(&tree_sitter_perl::LANGUAGE.into())
+            .ok();
 
         let mut csharp_parser = Parser::new();
-        csharp_parser.set_language(&tree_sitter_c_sharp::LANGUAGE.into()).ok();
+        csharp_parser
+            .set_language(&tree_sitter_c_sharp::LANGUAGE.into())
+            .ok();
 
         let mut erlang_parser = Parser::new();
-        erlang_parser.set_language(&tree_sitter_erlang::LANGUAGE.into()).ok();
+        erlang_parser
+            .set_language(&tree_sitter_erlang::LANGUAGE.into())
+            .ok();
 
         let mut nix_parser = Parser::new();
-        nix_parser.set_language(&tree_sitter_nix::LANGUAGE.into()).ok();
+        nix_parser
+            .set_language(&tree_sitter_nix::LANGUAGE.into())
+            .ok();
 
         let mut glsl_parser = Parser::new();
-        glsl_parser.set_language(&tree_sitter_glsl::LANGUAGE_GLSL.into()).ok();
+        glsl_parser
+            .set_language(&tree_sitter_glsl::LANGUAGE_GLSL.into())
+            .ok();
 
         let mut ocaml_parser = Parser::new();
-        ocaml_parser.set_language(&tree_sitter_ocaml::LANGUAGE_OCAML.into()).ok();
+        ocaml_parser
+            .set_language(&tree_sitter_ocaml::LANGUAGE_OCAML.into())
+            .ok();
 
         let mut groovy_parser = Parser::new();
-        groovy_parser.set_language(&tree_sitter_groovy::LANGUAGE.into()).ok();
+        groovy_parser
+            .set_language(&tree_sitter_groovy::LANGUAGE.into())
+            .ok();
 
         let mut elisp_parser = Parser::new();
-        elisp_parser.set_language(&tree_sitter_elisp::LANGUAGE.into()).ok();
+        elisp_parser
+            .set_language(&tree_sitter_elisp::LANGUAGE.into())
+            .ok();
 
         Self {
             ts_parser,
@@ -408,7 +469,16 @@ impl AnalysisParser {
 
         if let Some(parser) = self.get_parser_for_type(&file_type) {
             if let Some(tree) = parser.parse(content, None) {
-                return self.analyze_tree(path, content, &tree.root_node(), file_type, lines, size_bytes, extension, language);
+                return self.analyze_tree(
+                    path,
+                    content,
+                    &tree.root_node(),
+                    file_type,
+                    lines,
+                    size_bytes,
+                    extension,
+                    language,
+                );
             }
         }
 
@@ -579,7 +649,9 @@ impl AnalysisParser {
                 }
             }
             // Types — TS/JS/C# (share enum_declaration, interface_declaration)
-            "type_alias_declaration" | "interface_declaration" | "enum_declaration"
+            "type_alias_declaration"
+            | "interface_declaration"
+            | "enum_declaration"
             | "delegate_declaration" => {
                 if let Some(name) = self.get_type_name(node, content) {
                     let kind_str = match kind {
@@ -693,9 +765,8 @@ impl AnalysisParser {
                 }
             }
             // Imports
-            "import_statement" | "import_clause" | "import_declaration"
-            | "use_declaration" | "import_spec"
-            | "require_call" | "include_statement" | "load_statement"
+            "import_statement" | "import_clause" | "import_declaration" | "use_declaration"
+            | "import_spec" | "require_call" | "include_statement" | "load_statement"
             | "preproc_include" | "using_declaration" | "extern_declaration" => {
                 self.extract_imports(node, content, imports, external_imports);
             }
@@ -706,14 +777,29 @@ impl AnalysisParser {
                 }
             }
             // Complexity (all languages)
-            "if_statement" | "for_statement" | "for_in_statement" | "for_of_statement"
-            | "while_statement" | "do_statement" | "case_clause" | "switch_statement"
-            | "if_expression" | "for_expression" | "while_expr" | "if_expr"
-            | "match_expression" | "match_arm"
-            | "try_statement" | "catch_clause" | "elif_clause"
-            | "conditional_expression" | "ternary_expression"
-            | "unless_expression" | "until_statement"
-            | "guard_statement" | "defer_if" => {
+            "if_statement"
+            | "for_statement"
+            | "for_in_statement"
+            | "for_of_statement"
+            | "while_statement"
+            | "do_statement"
+            | "case_clause"
+            | "switch_statement"
+            | "if_expression"
+            | "for_expression"
+            | "while_expr"
+            | "if_expr"
+            | "match_expression"
+            | "match_arm"
+            | "try_statement"
+            | "catch_clause"
+            | "elif_clause"
+            | "conditional_expression"
+            | "ternary_expression"
+            | "unless_expression"
+            | "until_statement"
+            | "guard_statement"
+            | "defer_if" => {
                 *complexity += 1;
             }
             // React detection
@@ -744,7 +830,8 @@ impl AnalysisParser {
     fn get_function_name(&self, node: &Node, content: &str) -> Option<String> {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
-            if child.kind() == "identifier" || child.kind() == "name" || child.kind() == "variable" {
+            if child.kind() == "identifier" || child.kind() == "name" || child.kind() == "variable"
+            {
                 return Some(self.get_node_text(&child, content));
             }
         }
@@ -791,7 +878,10 @@ impl AnalysisParser {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
             if child.kind() == "string" {
-                let module = self.get_node_text(&child, content).trim_matches('"').to_string();
+                let module = self
+                    .get_node_text(&child, content)
+                    .trim_matches('"')
+                    .to_string();
                 if module.starts_with('.') {
                     imports.push(module);
                 } else {
@@ -824,7 +914,11 @@ impl AnalysisParser {
     fn line_span(&self, node: &Node) -> (usize, usize, usize) {
         let start_line = node.start_position().row + 1;
         let end_line = node.end_position().row + 1;
-        (start_line, end_line, end_line.saturating_sub(start_line) + 1)
+        (
+            start_line,
+            end_line,
+            end_line.saturating_sub(start_line) + 1,
+        )
     }
 
     fn push_function(
@@ -911,22 +1005,23 @@ impl Default for AnalysisParser {
     }
 }
 
-pub fn parse_files(
-    files: &[(String, String)],
-    _on_progress: Option<fn(f64)>,
-) -> Vec<ParsedFile> {
-    let mut parser = AnalysisParser::new();
-
-    let mut parsed: Vec<ParsedFile> = files
-        .iter()
-        .map(|(path, content)| parser.parse_file(path, content))
-        .collect();
+pub fn parse_files(files: &[(String, String)], _on_progress: Option<fn(f64)>) -> Vec<ParsedFile> {
+    let mut parsed = parse_file_batch(files);
 
     resolve_internal_imports(&mut parsed);
     parsed
 }
 
-fn resolve_internal_imports(files: &mut [ParsedFile]) {
+pub fn parse_file_batch(files: &[(String, String)]) -> Vec<ParsedFile> {
+    files
+        .par_iter()
+        .map_init(AnalysisParser::new, |parser, (path, content)| {
+            parser.parse_file(path, content)
+        })
+        .collect()
+}
+
+pub fn resolve_internal_imports(files: &mut [ParsedFile]) {
     let paths: HashSet<String> = files.iter().map(|file| file.path.clone()).collect();
 
     for file in files {
@@ -955,12 +1050,14 @@ fn resolve_import_path(from_path: &str, import: &str, paths: &HashSet<String>) -
         return paths.get(import).cloned();
     }
 
-    let base = Path::new(from_path).parent().unwrap_or_else(|| Path::new(""));
+    let base = Path::new(from_path)
+        .parent()
+        .unwrap_or_else(|| Path::new(""));
     let candidate = normalize_path(base.join(import));
     let extensions = [
-        "", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".rs", ".go", ".java",
-        ".css", ".scss", ".json", ".yaml", ".yml", ".toml", ".rb", ".php", ".swift",
-        ".kt", ".kts", ".c", ".h", ".cpp", ".hpp", ".zig", ".lua", ".dart",
+        "", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".rs", ".go", ".java", ".css",
+        ".scss", ".json", ".yaml", ".yml", ".toml", ".rb", ".php", ".swift", ".kt", ".kts", ".c",
+        ".h", ".cpp", ".hpp", ".zig", ".lua", ".dart",
     ];
 
     for ext in extensions {
