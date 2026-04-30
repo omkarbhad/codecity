@@ -272,6 +272,11 @@ async fn get_source_file_impl(
     repo_url: &str,
     file_path: &str,
 ) -> Result<String, JsonRpcError> {
+    let requested_path = std::path::Path::new(file_path);
+    if requested_path.is_absolute() || file_path.split('/').any(|part| part == "..") {
+        return Err(invalid_params(format!("Invalid source path: {file_path}")));
+    }
+
     let expanded = if repo_url.starts_with('~') {
         dirs::home_dir()
             .map(|home| repo_url.replacen('~', &home.to_string_lossy(), 1))
@@ -289,6 +294,20 @@ async fn get_source_file_impl(
 
     let (owner, repo) = analysis::parse_github_url(repo_url)
         .map_err(|error| invalid_params(error.to_string()))?;
+
+    if let Some(data_dir) = dirs::data_dir() {
+        let cached_file = data_dir
+            .join("codecity")
+            .join("repos")
+            .join(format!("{owner}-{repo}"))
+            .join(file_path);
+
+        if cached_file.is_file() {
+            return std::fs::read_to_string(&cached_file)
+                .map_err(|error| internal_error(format!("Failed to read {}: {error}", cached_file.display())));
+        }
+    }
+
     let token = db.get_setting("github_token").ok().flatten();
     analysis::fetch_file_content(&owner, &repo, file_path, token.as_deref())
         .await
