@@ -1,22 +1,37 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowDownAZ, Building2, Check, Clock, Github, Globe2, Loader2, Lock, Plus, Search, UserRound } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Loader2 } from "lucide-react"
+import {
+  Add01Icon,
+  ArrowDown01Icon,
+  Building03Icon,
+  CheckmarkCircle02Icon,
+  Clock03Icon,
+  GithubIcon,
+  GridViewIcon,
+  LayoutTable01Icon,
+  LockIcon,
+  Search01Icon,
+  UserIcon,
+  GlobeIcon,
+} from "@hugeicons/core-free-icons"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
 import { enqueueAnalysis, getGithubToken, isTauri, listGithubRepos, type GitHubRepoSummary } from "@/lib/tauri"
+import { HugeIcon } from "@/components/ui/huge-icon"
 
 type SortMode = "updated" | "name" | "owner"
 type OwnerFilter = "all" | "user" | "org"
 type VisibilityFilter = "all" | "public" | "private"
 type QueueState = Record<number, "queued" | "queueing" | "failed">
 
-const SORT_OPTIONS: { value: SortMode; label: string; icon: typeof Clock }[] = [
-  { value: "updated", label: "Updated", icon: Clock },
-  { value: "name", label: "A-Z", icon: ArrowDownAZ },
-  { value: "owner", label: "Owner", icon: UserRound },
+const SORT_OPTIONS = [
+  { value: "updated" as const, label: "Updated", icon: Clock03Icon },
+  { value: "name" as const, label: "A-Z", icon: ArrowDown01Icon },
+  { value: "owner" as const, label: "Owner", icon: UserIcon },
 ]
 
 const VISIBILITY_FILTERS: { value: VisibilityFilter; label: string }[] = [
@@ -61,11 +76,13 @@ function matchesSearch(repo: GitHubRepoSummary, search: string): boolean {
 
 export function GitHubReposTab() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "")
   const [sort, setSort] = useState<SortMode>("updated")
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all")
   const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
+  const [view, setView] = useState<"grid" | "list">("grid")
   const [queueState, setQueueState] = useState<QueueState>({})
   const [error, setError] = useState<string | null>(null)
 
@@ -112,7 +129,7 @@ export function GitHubReposTab() {
   if (!isTauri()) {
     return (
       <div className="flex flex-col items-center rounded-lg border border-white/[0.06] bg-white/[0.015] py-16 text-center">
-        <Github className="mb-3 size-8 text-zinc-700" />
+        <HugeIcon icon={GithubIcon} className="mb-3 size-8 text-zinc-700" />
         <p className="text-[13px] font-mono text-zinc-500">open the desktop app to load GitHub repos</p>
       </div>
     )
@@ -121,7 +138,7 @@ export function GitHubReposTab() {
   if (isError) {
     return (
       <div className="rounded-lg border border-white/[0.07] bg-white/[0.015] px-6 py-12 text-center">
-        <Github className="mx-auto mb-3 size-8 text-zinc-700" />
+        <HugeIcon icon={GithubIcon} className="mx-auto mb-3 size-8 text-zinc-700" />
         <p className="text-[13px] font-mono text-zinc-400">GitHub repositories are not available</p>
         <p className="mt-1 text-[11px] text-zinc-600">Connect GitHub from the sidebar, then refresh this list.</p>
         <Button
@@ -182,14 +199,14 @@ export function GitHubReposTab() {
                   sort === opt.value ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"
                 }`}
               >
-                <opt.icon className="size-3" />
+                <HugeIcon icon={opt.icon} className="size-3" />
                 {opt.label}
               </button>
             ))}
           </div>
 
           <div className="relative sm:w-56">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-zinc-600" />
+            <HugeIcon icon={Search01Icon} className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-zinc-600" />
             <Input
               type="text"
               placeholder="search repos, orgs..."
@@ -198,21 +215,55 @@ export function GitHubReposTab() {
               className="h-8 rounded-md border-white/[0.07] bg-white/[0.03] pl-7 text-[12px] font-mono text-zinc-300 placeholder:text-zinc-700 focus-visible:border-primary/35 focus-visible:ring-0"
             />
           </div>
+
+          <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("grid")}
+              className={`flex size-7 items-center justify-center rounded ${view === "grid" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+              title="Grid view"
+            >
+              <HugeIcon icon={GridViewIcon} className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={`flex size-7 items-center justify-center rounded ${view === "list" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+              title="List view"
+            >
+              <HugeIcon icon={LayoutTable01Icon} className="size-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
       {filteredRepos.length === 0 ? (
         <div className="flex flex-col items-center rounded-lg border border-white/[0.05] bg-white/[0.01] py-16">
-          <Building2 className="mb-3 size-8 text-zinc-700" />
+          <HugeIcon icon={Building03Icon} className="mb-3 size-8 text-zinc-700" />
           <p className="text-[13px] font-mono text-zinc-500">no repositories match this view</p>
           <p className="mt-1 text-[11px] text-zinc-700">Try another search, owner, or visibility filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredRepos.map((repo) => (
-            <RepoCard key={repo.id} repo={repo} queueState={queueState[repo.id]} onQueue={() => queueRepo(repo)} />
-          ))}
-        </div>
+        view === "grid" ? (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredRepos.map((repo) => (
+              <RepoCard key={repo.id} repo={repo} queueState={queueState[repo.id]} view={view} onQueue={() => queueRepo(repo)} />
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-white/[0.07] bg-[#101012]">
+            <div className="grid grid-cols-[minmax(0,1.6fr)_110px_90px_92px_40px] gap-3 border-b border-white/[0.07] px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
+              <span>Repository</span>
+              <span>Owner</span>
+              <span>Access</span>
+              <span>Updated</span>
+              <span />
+            </div>
+            {filteredRepos.map((repo) => (
+              <RepoCard key={repo.id} repo={repo} queueState={queueState[repo.id]} view={view} onQueue={() => queueRepo(repo)} />
+            ))}
+          </div>
+        )
       )}
     </div>
   )
@@ -252,9 +303,9 @@ function OwnerIconSwitcher({
   value: OwnerFilter
   onChange: (value: OwnerFilter) => void
 }) {
-  const options: { value: Exclude<OwnerFilter, "all">; label: string; icon: typeof UserRound }[] = [
-    { value: "user", label: "User repos", icon: UserRound },
-    { value: "org", label: "Organization repos", icon: Building2 },
+  const options = [
+    { value: "user" as const, label: "User repos", icon: UserIcon },
+    { value: "org" as const, label: "Organization repos", icon: Building03Icon },
   ]
 
   return (
@@ -271,7 +322,7 @@ function OwnerIconSwitcher({
             value === option.value ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"
           }`}
         >
-          <option.icon className="size-3.5" />
+          <HugeIcon icon={option.icon} className="size-3.5" />
         </button>
       ))}
     </div>
@@ -281,16 +332,45 @@ function OwnerIconSwitcher({
 function RepoCard({
   repo,
   queueState,
+  view,
   onQueue,
 }: {
   repo: GitHubRepoSummary
   queueState?: "queued" | "queueing" | "failed"
+  view: "grid" | "list"
   onQueue: () => void
 }) {
   const ownerKind = repo.owner_type === "Organization" ? "org" : "user"
   const repoName = repo.full_name.split("/")[1] ?? repo.full_name
   const isQueued = queueState === "queued"
   const isQueueing = queueState === "queueing"
+
+  if (view === "list") {
+    return (
+      <div className="grid min-h-11 grid-cols-[minmax(0,1.6fr)_110px_90px_92px_40px] items-center gap-3 border-b border-white/[0.05] px-3 py-2.5 transition-colors hover:bg-white/[0.025]">
+        <div className="min-w-0">
+          <p className="truncate text-[10px] font-mono text-zinc-700">{repo.owner_login}/</p>
+          <h3 className="truncate text-[12px] font-medium leading-tight text-zinc-200">{repoName}</h3>
+        </div>
+        <span className="font-mono text-[10px] text-zinc-600">{ownerKind}</span>
+        <span className="inline-flex w-fit items-center gap-1.5 rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5 font-mono text-[10px] text-zinc-600">
+          {repo.private ? <HugeIcon icon={LockIcon} className="size-3" /> : <HugeIcon icon={GlobeIcon} className="size-3" />}
+          {repo.private ? "private" : "public"}
+        </span>
+        <span className="truncate font-mono text-[10px] text-zinc-700">{timeAgo(repo.updated_at)}</span>
+        <Button
+          type="button"
+          onClick={onQueue}
+          disabled={isQueueing || isQueued}
+          title={isQueued ? "Queued" : "Queue new city"}
+          aria-label={isQueued ? "Queued" : "Queue new city"}
+          className="size-7 rounded-md border border-white/[0.08] bg-white/[0.035] p-0 text-zinc-300 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-70"
+        >
+          {isQueueing ? <Loader2 className="size-3.5 animate-spin" /> : isQueued ? <HugeIcon icon={CheckmarkCircle02Icon} className="size-3.5" /> : <HugeIcon icon={Add01Icon} className="size-3.5" />}
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="group rounded-lg border border-white/[0.07] bg-[#101012] p-4 transition-colors hover:border-white/[0.13] hover:bg-white/[0.025]">
@@ -300,7 +380,7 @@ function RepoCard({
           <h3 className="truncate text-[13px] font-semibold leading-tight text-zinc-100">{repoName}</h3>
         </div>
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-white/[0.07] bg-white/[0.025] text-zinc-600">
-          {repo.private ? <Lock className="size-3.5" /> : <Globe2 className="size-3.5" />}
+          {repo.private ? <HugeIcon icon={LockIcon} className="size-3.5" /> : <HugeIcon icon={GlobeIcon} className="size-3.5" />}
         </span>
       </div>
 
@@ -310,7 +390,7 @@ function RepoCard({
         <span className="truncate rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5">{repo.default_branch}</span>
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/[0.04] pt-3">
+      <div className="flex items-center justify-between gap-3 border-t border-white/[0.04] pt-3">
         <span className="text-[10px] font-mono text-zinc-700">updated {timeAgo(repo.updated_at)}</span>
         <Button
           type="button"
@@ -323,9 +403,9 @@ function RepoCard({
           {isQueueing ? (
             <Loader2 className="size-3.5 animate-spin" />
           ) : isQueued ? (
-            <Check className="size-3.5" />
+            <HugeIcon icon={CheckmarkCircle02Icon} className="size-3.5" />
           ) : (
-            <Plus className="size-3.5" />
+            <HugeIcon icon={Add01Icon} className="size-3.5" />
           )}
         </Button>
       </div>

@@ -3,26 +3,33 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
-  Plus,
   Trash2,
-  Building2,
-  FileCode,
-  Code2,
   ExternalLink,
   RefreshCw,
-  GitBranch,
   AlertCircle,
   X,
   Check,
   Loader2,
-  BarChart3,
 } from "lucide-react"
+import {
+  Activity01Icon,
+  Add01Icon,
+  Building03Icon,
+  CodeIcon,
+  DocumentCodeIcon,
+  GitBranchIcon,
+  GridViewIcon,
+  LayoutTable01Icon,
+  SquareIcon,
+  WorkflowSquare01Icon,
+} from "@hugeicons/core-free-icons"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
 import { IconButton } from "@codecity/ui/components/icon-button"
 import { MiniCityPreview } from "@/components/city/mini-city-preview"
 import type { CitySnapshot } from "@/lib/types/city"
-import { getProjects, getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject } from "@/lib/tauri"
+import { getProjects, getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject, cancelProject } from "@/lib/tauri"
+import { HugeIcon } from "@/components/ui/huge-icon"
 
 interface Project {
   id: string
@@ -244,14 +251,18 @@ function ProjectCard({
   project,
   isQueued,
   onDelete,
+  onCancel,
   onRetry,
   queryClient,
+  view,
 }: {
   project: Project
   isQueued: boolean
   onDelete: (id: string) => void
+  onCancel: (id: string) => void
   onRetry: (project: Project) => void
   queryClient: ReturnType<typeof useQueryClient>
+  view: "grid" | "list"
 }) {
   const { snapshot, loading: snapshotLoading } = useSnapshot(
     project.id,
@@ -279,9 +290,60 @@ function ProjectCard({
       ? "Queued — waiting for active job to finish"
       : null
 
+  if (view === "list") {
+    return (
+      <div
+        className={`grid min-h-12 grid-cols-[minmax(0,1.5fr)_92px_90px_90px_92px_132px] items-center gap-3 border-b border-white/[0.05] px-3 py-2.5 transition-colors hover:bg-white/[0.025]
+          ${isActive ? "bg-primary/[0.025]" : ""}
+          ${isQueued ? "opacity-70" : ""}
+        `}
+      >
+        <div className="min-w-0">
+          <p className="truncate font-mono text-[10px] text-zinc-700">{owner}/</p>
+          <h3 className="truncate text-[12px] font-medium leading-tight text-zinc-200">{repo}</h3>
+        </div>
+        <span className="font-mono text-[10px] text-zinc-600">
+          {isCompleted ? "done" : isActive ? "analyzing" : isQueued ? "queued" : "failed"}
+        </span>
+        <span className="font-mono text-[10px] text-zinc-600">{isCompleted ? formatNumber(project.fileCount ?? 0) : "-"}</span>
+        <span className="font-mono text-[10px] text-zinc-600">{isCompleted ? formatNumber(project.lineCount ?? 0) : "-"}</span>
+        <span className="font-mono text-[10px] text-zinc-700">{timeAgo(project.createdAt)}</span>
+        <div className="flex justify-end gap-1.5">
+          {isProcessing && (
+            <button
+              onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
+              className="flex size-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-zinc-200"
+              title="Stop parsing"
+              aria-label="Stop parsing"
+            >
+              <HugeIcon icon={SquareIcon} className="size-3" />
+            </button>
+          )}
+          {isCompleted && (
+            <Link
+              href={`/project?id=${encodeURIComponent(project.id)}`}
+              className="flex h-7 items-center rounded-md border border-white/[0.10] bg-white/[0.05] px-2.5 text-[10px] font-medium text-zinc-200 transition-colors hover:border-white/[0.16] hover:bg-white/[0.08]"
+            >
+              Open
+            </Link>
+          )}
+          {isFailed && (
+            <button
+              onClick={(e) => { e.preventDefault(); onRetry(project) }}
+              className="flex h-7 items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-zinc-200"
+            >
+              Retry
+            </button>
+          )}
+          <DeleteButton projectId={project.id} onDelete={onDelete} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
-      className={`relative flex min-h-[232px] flex-col overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
+      className={`relative flex ${view === "grid" ? "min-h-[232px] flex-col" : "min-h-[92px] flex-row"} overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
         ${isCompleted ? "border-white/[0.08] hover:border-white/[0.12]" : ""}
         ${isActive ? "border-primary/35 bg-primary/[0.025]" : ""}
         ${isQueued ? "border-white/[0.06] opacity-70" : ""}
@@ -296,7 +358,7 @@ function ProjectCard({
       )}
 
       {/* 3D city preview pane */}
-      {isCompleted && (
+      {isCompleted && view === "grid" && (
         <div className="relative h-[124px] overflow-hidden border-b border-white/[0.06] bg-[#080809]">
           {snapshotLoading && (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#080809]">
@@ -324,7 +386,7 @@ function ProjectCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-1.5">
-              <GitBranch className="h-3 w-3 text-zinc-700 shrink-0" />
+              <HugeIcon icon={GitBranchIcon} className="h-3 w-3 shrink-0 text-zinc-700" />
               <span className="truncate font-mono text-[11px] text-zinc-600">{owner}/</span>
             </div>
             <h3 className="truncate text-sm font-semibold leading-tight text-zinc-100">
@@ -362,13 +424,13 @@ function ProjectCard({
         {isCompleted && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <FileCode className="h-3 w-3 text-zinc-700" />
+              <HugeIcon icon={DocumentCodeIcon} className="h-3 w-3 text-zinc-700" />
               <span className="text-xs font-mono text-zinc-400">{formatNumber(project.fileCount ?? 0)}</span>
               <span className="text-[10px] text-zinc-700">files</span>
             </div>
             <div className="h-3 w-px bg-white/[0.06]" />
             <div className="flex items-center gap-1.5">
-              <Code2 className="h-3 w-3 text-zinc-700" />
+              <HugeIcon icon={CodeIcon} className="h-3 w-3 text-zinc-700" />
               <span className="text-xs font-mono text-zinc-400">{formatNumber(project.lineCount ?? 0)}</span>
               <span className="text-[10px] text-zinc-700">lines</span>
             </div>
@@ -422,7 +484,7 @@ function ProjectCard({
                 className="inline-flex size-6 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-white/[0.04] hover:text-zinc-400"
                 title="Open on GitHub"
               >
-                <GitBranch className="size-3.5" />
+                <HugeIcon icon={GitBranchIcon} className="size-3.5" />
               </a>
             )}
           </div>
@@ -436,6 +498,17 @@ function ProjectCard({
               >
                 <RefreshCw className="h-2.5 w-2.5" />
                 Retry
+              </button>
+            )}
+
+            {isProcessing && (
+              <button
+                onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
+                className="flex size-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-zinc-200"
+                title="Stop parsing"
+                aria-label="Stop parsing"
+              >
+                <HugeIcon icon={SquareIcon} className="size-3" />
               </button>
             )}
 
@@ -462,6 +535,7 @@ function ProjectCard({
 
 export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   const queryClient = useQueryClient()
+  const [view, setView] = useState<"grid" | "list">("grid")
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects"],
@@ -482,6 +556,18 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   async function handleDelete(id: string) {
     try {
       await deleteProjectTauri(id).catch(() => {})
+      queryClient.setQueryData<Project[]>(["projects"], (old) =>
+        old ? old.filter((p) => p.id !== id) : []
+      )
+      queryClient.removeQueries({ queryKey: ["project-snapshot", id] })
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleCancel(id: string) {
+    try {
+      await cancelProject(id)
       queryClient.setQueryData<Project[]>(["projects"], (old) =>
         old ? old.filter((p) => p.id !== id) : []
       )
@@ -528,7 +614,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-[#101012]">
         <div className="flex flex-col items-center text-center py-10">
           <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
-            <Building2 className="h-6 w-6 text-primary/70" />
+            <HugeIcon icon={Building03Icon} className="h-6 w-6 text-primary/70" />
           </div>
           <p className="text-sm font-semibold text-zinc-300">No cities yet</p>
           <p className="text-xs text-zinc-600 mt-1.5 max-w-xs leading-relaxed">
@@ -539,7 +625,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
             size="sm"
             className="mt-5 h-8 gap-1.5 rounded-md bg-primary px-4 text-xs text-white hover:bg-primary/90"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <HugeIcon icon={Add01Icon} className="h-3.5 w-3.5" />
             New City
           </Button>
         </div>
@@ -559,69 +645,107 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       <div className="space-y-2.5">
         <div className="flex items-center gap-2 px-0.5">
           {icon}
-          <span className="text-xs font-medium text-zinc-500">{label}</span>
+          <span className="text-sm font-medium text-zinc-400">{label}</span>
           <div className="h-px flex-1 bg-white/[0.06]" />
           <span className="text-[10px] font-mono text-zinc-700">{items.length}</span>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              isQueued={
-                (project.status === "PROCESSING" || project.status === "PENDING") &&
-                project.id !== activeProjectId
-              }
-              onDelete={handleDelete}
-              onRetry={handleRetry}
-              queryClient={queryClient}
-            />
-          ))}
-        </div>
+        {renderProjectCollection(items)}
       </div>
+    )
+  }
+
+  function renderProjectCollection(items: Project[]) {
+    if (view === "grid") {
+      return (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((project) => renderProject(project))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="overflow-hidden rounded-lg border border-white/[0.07] bg-[#101012]">
+        <div className="grid grid-cols-[minmax(0,1.5fr)_92px_90px_90px_92px_132px] gap-3 border-b border-white/[0.07] px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
+          <span>City</span>
+          <span>Status</span>
+          <span>Files</span>
+          <span>Lines</span>
+          <span>Updated</span>
+          <span />
+        </div>
+        {items.map((project) => renderProject(project))}
+      </div>
+    )
+  }
+
+  function renderProject(project: Project) {
+    return (
+      <ProjectCard
+        key={project.id}
+        project={project}
+        isQueued={
+          (project.status === "PROCESSING" || project.status === "PENDING") &&
+          project.id !== activeProjectId
+        }
+        onDelete={handleDelete}
+        onCancel={handleCancel}
+        onRetry={handleRetry}
+        queryClient={queryClient}
+        view={view}
+      />
     )
   }
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
-        <DashboardStat icon={<Building2 className="size-3.5" />} label="cities" value={projects.length} />
-        <DashboardStat icon={<Loader2 className="size-3.5" />} label="active" value={processingProjects.length} />
-        <DashboardStat icon={<FileCode className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
-        <DashboardStat icon={<Code2 className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
+        <DashboardStat tone="blue" icon={<HugeIcon icon={Building03Icon} className="size-3.5" />} label="cities" value={projects.length} />
+        <DashboardStat tone="amber" icon={<HugeIcon icon={Activity01Icon} className="size-3.5" />} label="active" value={processingProjects.length} />
+        <DashboardStat tone="emerald" icon={<HugeIcon icon={DocumentCodeIcon} className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
+        <DashboardStat tone="violet" icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
         <Button
           onClick={() => onCreateCity?.()}
           className="col-span-2 h-full min-h-10 gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-xs font-semibold text-white hover:border-primary/45 hover:bg-primary/90 lg:col-span-1"
         >
-          <Plus className="size-3.5" />
+          <HugeIcon icon={Add01Icon} className="size-3.5" />
           New City
         </Button>
+      </div>
+
+      <div className="flex justify-end">
+        <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            className={`flex size-7 items-center justify-center rounded ${view === "grid" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+            title="Grid view"
+          >
+            <HugeIcon icon={GridViewIcon} className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            className={`flex size-7 items-center justify-center rounded ${view === "list" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+            title="List view"
+          >
+            <HugeIcon icon={LayoutTable01Icon} className="size-3.5" />
+          </button>
+        </div>
       </div>
 
       {processingProjects.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 px-0.5">
-            <BarChart3 className="h-3 w-3 text-primary" />
-            <span className="text-xs font-medium text-zinc-400">Running</span>
+            <HugeIcon icon={WorkflowSquare01Icon} className="h-3 w-3 text-primary" />
+            <span className="text-sm font-medium text-zinc-300">Running</span>
             <div className="h-px flex-1 bg-white/[0.06]" />
             <span className="text-[10px] font-mono text-zinc-700">{processingProjects.length}</span>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {processingProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                isQueued={project.id !== activeProjectId}
-                onDelete={handleDelete}
-                onRetry={handleRetry}
-                queryClient={queryClient}
-              />
-            ))}
-          </div>
+          {renderProjectCollection(processingProjects)}
         </div>
       )}
 
-      {renderGroup("Cities", <Building2 className="h-3 w-3 text-zinc-700" />, settledProjects)}
+      {renderGroup("Cities", <HugeIcon icon={Building03Icon} className="h-3 w-3 text-zinc-700" />, settledProjects)}
       {failedProjects.length > 0 && (
         <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 font-mono text-[10px] text-zinc-500">
           {failedProjects.length} failed analysis {failedProjects.length === 1 ? "needs" : "need"} attention.
@@ -635,16 +759,27 @@ function DashboardStat({
   icon,
   label,
   value,
+  tone,
 }: {
   icon: React.ReactNode
   label: string
   value: React.ReactNode
+  tone: "blue" | "amber" | "emerald" | "violet"
 }) {
+  const tones = {
+    blue: "border-sky-400/18 bg-sky-400/[0.055] text-sky-300",
+    amber: "border-amber-300/18 bg-amber-300/[0.055] text-amber-200",
+    emerald: "border-emerald-300/18 bg-emerald-300/[0.055] text-emerald-200",
+    violet: "border-violet-300/18 bg-violet-300/[0.055] text-violet-200",
+  }
+
   return (
     <div className="flex items-center justify-between rounded-lg border border-white/[0.07] bg-[#101012] px-3 py-2.5">
-      <div className="flex items-center gap-2 text-zinc-600">
-        {icon}
-        <span className="text-[11px] font-medium text-zinc-500">{label}</span>
+      <div className="flex items-center gap-2">
+        <span className={`flex size-6 items-center justify-center rounded-md border ${tones[tone]}`}>
+          {icon}
+        </span>
+        <span className="text-xs font-medium text-zinc-500">{label}</span>
       </div>
       <span className="font-mono text-[13px] text-zinc-200">{value}</span>
     </div>
