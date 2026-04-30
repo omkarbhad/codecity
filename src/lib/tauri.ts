@@ -261,6 +261,10 @@ export async function githubGetUser(token: string): Promise<GitHubUser> {
   return rpc<GitHubUser>("github.getUser", { token })
 }
 
+export async function githubImportCliSession(): Promise<GitHubUser> {
+  return rpc<GitHubUser>("github.importCliSession")
+}
+
 export async function getGithubToken(): Promise<string | null> {
   return rpc<string | null>("github.getToken").catch(emptyWhenBackendUnavailable(null))
 }

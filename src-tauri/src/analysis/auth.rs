@@ -1,5 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tokio::process::Command;
 
 const GITHUB_DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
 const GITHUB_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
@@ -37,21 +39,60 @@ pub struct GitHubUser {
     pub avatar_url: Option<String>,
 }
 
+fn github_error_from_body(context: &str, status: reqwest::StatusCode, body: &str) -> String {
+    if let Ok(value) = serde_json::from_str::<Value>(body) {
+        if let Some(error_description) = value.get("error_description").and_then(Value::as_str) {
+            return format!("{context}: {error_description}");
+        }
+        if let Some(message) = value.get("message").and_then(Value::as_str) {
+            return format!("{context}: {message}");
+        }
+        if let Some(error) = value.get("error").and_then(Value::as_str) {
+            return format!("{context}: {error}");
+        }
+    }
+
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        format!("{context}: GitHub returned HTTP {status}")
+    } else {
+        format!("{context}: GitHub returned HTTP {status}: {trimmed}")
+    }
+}
+
 /// Step 1: Request a device code from GitHub
 pub async fn request_device_code() -> Result<DeviceCodeResponse, String> {
     let client = Client::new();
     let resp = client
         .post(GITHUB_DEVICE_CODE_URL)
         .header("Accept", "application/json")
+        .header("User-Agent", "CodeCity-Desktop")
         .form(&[("client_id", GITHUB_CLIENT_ID), ("scope", "repo read:org")])
         .send()
         .await
         .map_err(|e| format!("Failed to request device code: {}", e))?;
 
-    let data: DeviceCodeResponse = resp
-        .json()
+    let status = resp.status();
+    let body = resp
+        .text()
         .await
-        .map_err(|e| format!("Failed to parse device code response: {}", e))?;
+        .map_err(|e| format!("Failed to read device code response: {}", e))?;
+
+    if !status.is_success() {
+        return Err(github_error_from_body(
+            "Failed to request device code",
+            status,
+            &body,
+        ));
+    }
+
+    let data: DeviceCodeResponse = serde_json::from_str(&body).map_err(|e| {
+        github_error_from_body(
+            &format!("Failed to parse device code response ({e})"),
+            status,
+            &body,
+        )
+    })?;
 
     Ok(data)
 }
@@ -62,6 +103,7 @@ pub async fn poll_for_token(device_code: &str) -> Result<TokenResponse, String> 
     let resp = client
         .post(GITHUB_TOKEN_URL)
         .header("Accept", "application/json")
+        .header("User-Agent", "CodeCity-Desktop")
         .form(&[
             ("client_id", GITHUB_CLIENT_ID),
             ("device_code", device_code),
@@ -71,10 +113,27 @@ pub async fn poll_for_token(device_code: &str) -> Result<TokenResponse, String> 
         .await
         .map_err(|e| format!("Failed to poll for token: {}", e))?;
 
-    let data: TokenResponse = resp
-        .json()
+    let status = resp.status();
+    let body = resp
+        .text()
         .await
-        .map_err(|e| format!("Failed to parse token response: {}", e))?;
+        .map_err(|e| format!("Failed to read token response: {}", e))?;
+
+    if !status.is_success() {
+        return Err(github_error_from_body(
+            "Failed to poll for token",
+            status,
+            &body,
+        ));
+    }
+
+    let data: TokenResponse = serde_json::from_str(&body).map_err(|e| {
+        github_error_from_body(
+            &format!("Failed to parse token response ({e})"),
+            status,
+            &body,
+        )
+    })?;
 
     Ok(data)
 }
@@ -100,4 +159,37 @@ pub async fn get_github_user(token: &str) -> Result<GitHubUser, String> {
         .map_err(|e| format!("Failed to parse GitHub user: {}", e))?;
 
     Ok(user)
+}
+
+pub async fn get_github_cli_token() -> Result<String, String> {
+    let output = Command::new("gh")
+        .args(["auth", "token"])
+        .output()
+        .await
+        .map_err(|error| {
+            format!(
+                "GitHub device login is unavailable and GitHub CLI fallback failed. Install GitHub CLI and run `gh auth login --web --scopes repo,read:org`, then try again. ({error})"
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if stderr.is_empty() {
+            "GitHub device login is unavailable and no GitHub CLI session was found. Run `gh auth login --web --scopes repo,read:org`, then try again.".to_string()
+        } else {
+            format!(
+                "GitHub device login is unavailable and GitHub CLI is not authenticated. Run `gh auth login --web --scopes repo,read:org`, then try again. ({stderr})"
+            )
+        });
+    }
+
+    let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if token.is_empty() {
+        return Err(
+            "GitHub CLI returned an empty token. Run `gh auth login --web --scopes repo,read:org`, then try again."
+                .to_string(),
+        );
+    }
+
+    Ok(token)
 }

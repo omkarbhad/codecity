@@ -276,6 +276,23 @@ async fn dispatch_rpc(
                     .map_err(internal_error)?,
             )
         }
+        "github.importCliSession" => {
+            let token = analysis::get_github_cli_token()
+                .await
+                .map_err(internal_error)?;
+            let user = analysis::get_github_user(&token)
+                .await
+                .map_err(internal_error)?;
+            state
+                .db
+                .set_setting("github_token", &token)
+                .map_err(internal_error)?;
+            state
+                .db
+                .set_setting("github_user_login", &user.login)
+                .map_err(internal_error)?;
+            to_value(user)
+        }
         "github.getToken" => to_value(state.db.get_setting("github_token").ok().flatten()),
         "github.listRepos" => {
             let params: RepoListParams = parse_params(params)?;

@@ -5,7 +5,7 @@ pub mod layout;
 pub mod parser;
 pub mod pipeline;
 
-pub use auth::{get_github_user, poll_for_token, request_device_code};
+pub use auth::{get_github_cli_token, get_github_user, poll_for_token, request_device_code};
 pub use db::Database;
 pub use github::{
     fetch_commit_files, fetch_commits, fetch_file_content, fetch_repositories, parse_github_url,
