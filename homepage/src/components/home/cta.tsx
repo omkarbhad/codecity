@@ -1,96 +1,40 @@
-"use client"
-
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { Button } from "@/ui/components/button"
 import { ArrowRight, Github } from "lucide-react"
-
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-}
+import { Button } from "@/ui/components/button"
 
 export function CTA() {
   return (
-    <section className="relative py-24 sm:py-32 overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 55% 45% at 50% -10%, rgba(255,61,61,0.16), transparent 60%)",
-        }}
-      />
+    <section className="border-b border-white/[0.08] px-4 py-16 sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 rounded-lg border border-white/[0.08] bg-[#0f0f10] p-6 sm:p-8 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold text-zinc-50">Map a repository in CodeCity.</h2>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Start with a GitHub repository, or download the desktop app for macOS, Windows, and Linux.
+          </p>
+        </div>
 
-      <div className="absolute top-0 left-0 right-0 h-px bg-white/[0.06]" />
-
-      <div className="relative z-10 mx-auto max-w-5xl px-5 text-center sm:px-8 md:px-10">
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-6 py-12 shadow-[0_0_0_1px_rgba(255,61,61,0.06),0_0_56px_rgba(220,38,38,0.1)] backdrop-blur-xl sm:px-8">
-          <motion.h2
-            {...fadeUp}
-            transition={{ type: "spring", stiffness: 340, damping: 30 }}
-            className="mb-3 bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl"
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button asChild className="h-10 rounded-md bg-primary px-5 text-sm font-medium text-white hover:bg-red-500">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              Visualize a repo
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-10 rounded-md border-white/[0.12] bg-transparent px-5 text-sm font-medium text-zinc-300 hover:border-white/[0.20] hover:bg-white/[0.04] hover:text-white"
           >
-            See Your Codebase in a New Dimension
-          </motion.h2>
-
-          <motion.div
-            {...fadeUp}
-            transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.04 }}
-            className="mx-auto mb-4 h-[3px] w-12 rounded-full bg-primary"
-          />
-
-          <motion.p
-            {...fadeUp}
-            transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.08 }}
-            className="mx-auto mb-10 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base"
-          >
-            Paste any GitHub URL. In under 60 seconds you&apos;ll be flying through
-            your codebase. Free, open source — no sign-up required for public repos.
-          </motion.p>
-
-          <motion.div
-            {...fadeUp}
-            transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.12 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3"
-          >
-            <Button asChild className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-[0_0_38px_rgba(255,61,61,0.3)] transition-all duration-200 hover:bg-red-500 hover:shadow-[0_0_48px_rgba(255,61,61,0.4)]">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                Visualize a Repo Now
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="rounded-lg border border-white/[0.09] bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-zinc-300 transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white"
+            <Link
+              href="https://github.com/omkarbhad/codecity"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2"
             >
-              <Link
-                href="https://github.com/omkarbhad/codecity"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                <Github className="h-4 w-4" />
-                Star on GitHub
-              </Link>
-            </Button>
-          </motion.div>
-
-          {/* Trust badges */}
-          <motion.div
-            {...fadeUp}
-            transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.16 }}
-            className="mt-10 flex flex-wrap items-center justify-center gap-3"
-          >
-            {["Free to use", "MIT Licensed", "No Account for Public Repos"].map((label) => (
-              <span
-                key={label}
-                className="rounded-full border border-white/[0.06] bg-white/[0.04] px-3 py-1 text-xs font-medium text-zinc-400"
-              >
-                {label}
-              </span>
-            ))}
-          </motion.div>
+              <Github className="size-4" />
+              GitHub
+            </Link>
+          </Button>
         </div>
       </div>
     </section>
