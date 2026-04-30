@@ -2,12 +2,12 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Codecity",
   "version": "0.0.0",
-  "identifier": "com.codecity.app",
+  "identifier": "com.codecity.desktop",
   "build": {
-    "beforeDevCommand": "pnpm --filter @codecity/web dev",
-    "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "pnpm --filter @codecity/web build",
-    "frontendDist": "../../apps/web/.next/server"
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:3000/dashboard",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../out"
   },
   "app": {
     "windows": [
