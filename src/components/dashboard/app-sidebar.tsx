@@ -42,7 +42,6 @@ import {
   logoutGithub,
   setGithubSession,
 } from "@/lib/tauri"
-import { LogoIcon } from "@/components/logo"
 import { UpdateButton } from "@/components/dashboard/update-button"
 import { HugeIcon } from "@/components/ui/huge-icon"
 
@@ -186,9 +185,7 @@ export function AppSidebar({
       <SidebarHeader className="border-b border-white/[0.07] bg-[#0b0b0c]">
         <div className="flex items-center justify-between px-2 py-2.5">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-primary">
-              <LogoIcon className="size-4" />
-            </div>
+            <img src="/logo.png" alt="CodeCity" className="size-6 shrink-0 rounded-sm" />
             <span className="text-[13px] font-semibold text-zinc-100 tracking-tight truncate">CodeCity</span>
           </Link>
           <UpdateButton />

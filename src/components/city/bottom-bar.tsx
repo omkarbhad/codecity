@@ -81,12 +81,12 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
 
   return (
     <div className="relative">
-      <div className="flex h-7 shrink-0 items-center gap-1 border-t border-white/[0.08] bg-[#0b0b0c] px-2 text-[10px]">
+      <div className="flex h-8 shrink-0 items-center gap-1 border-t border-white/[0.08] bg-[#0b0b0c]/95 px-2 text-[10px] shadow-[0_-10px_30px_rgba(0,0,0,0.18)]">
         {/* Left: mode indicators */}
-        <span className="rounded-sm border border-white/[0.08] bg-white/[0.04] px-1.5 py-px text-[10px] font-medium text-white/65">
+        <span className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-0.5 text-[10px] font-medium text-white/68">
           {layoutLabels[layoutMode]}
         </span>
-        <span className="flex items-center gap-1 ml-1">
+        <span className="ml-1 flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.025] px-2 py-0.5">
           <span className="w-1 h-1 rounded-full bg-primary motion-safe:animate-pulse" />
           <span className="text-[10px] font-medium text-white/60">
             {modeLabels[visualizationMode]}
@@ -97,7 +97,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
 
         {/* Stats */}
         {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-1 px-1.5">
+          <div key={i} className="flex items-center gap-1 rounded px-1.5 py-0.5">
             <span className={`text-[10px] font-bold tabular-nums ${item.color}`}>
               {item.value >= 1000 ? `${(item.value / 1000).toFixed(1)}k` : item.value}
             </span>
@@ -109,10 +109,10 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
           <>
             <div className="mx-1 h-3 w-px bg-white/[0.08]" />
             {hiddenExtensions.size > 0 && (
-              <span className="rounded-sm bg-amber-400/[0.08] px-1.5 py-px text-[9px] font-medium text-amber-400/80">{hiddenExtensions.size} ext</span>
+              <span className="rounded-md border border-amber-400/[0.10] bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-400/80">{hiddenExtensions.size} ext</span>
             )}
             {hiddenPaths.size > 0 && (
-              <span className="ml-0.5 rounded-sm bg-orange-400/[0.08] px-1.5 py-px text-[9px] font-medium text-orange-400/80">{hiddenPaths.size} path</span>
+              <span className="ml-0.5 rounded-md border border-orange-400/[0.10] bg-orange-400/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-orange-400/80">{hiddenPaths.size} path</span>
             )}
           </>
         )}
@@ -120,7 +120,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
         {warnings && warnings.length > 0 && (
           <>
             <div className="mx-1 h-3 w-px bg-white/[0.08]" />
-            <span className="cursor-help rounded-sm bg-amber-400/[0.08] px-1.5 py-px text-[9px] font-medium text-amber-400/80" title={`${warnings.length} parse errors`}>
+            <span className="cursor-help rounded-md border border-amber-400/[0.10] bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-400/80" title={`${warnings.length} parse errors`}>
               {warnings.length} warn
             </span>
           </>
@@ -133,8 +133,8 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
         <button
           ref={helpBtnRef}
           onClick={() => setHelpOpen((v) => !v)}
-          className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold transition-colors ${
-            helpOpen ? "bg-white/[0.08] text-white" : "text-white/50 hover:bg-white/[0.05] hover:text-white/75"
+          className={`flex h-6 w-6 items-center justify-center rounded-md border text-[10px] font-bold transition-colors ${
+            helpOpen ? "border-white/[0.10] bg-white/[0.09] text-white" : "border-transparent text-white/50 hover:border-white/[0.06] hover:bg-white/[0.05] hover:text-white/75"
           }`}
           aria-label="Help — keyboard shortcuts and visual guide"
           aria-expanded={helpOpen}
@@ -145,7 +145,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
       {helpOpen && (
         <div
           ref={helpRef}
-          className="absolute bottom-8 right-1 z-[70] max-h-[70vh] w-[min(320px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-white/[0.10] bg-[#101012] p-3 shadow-lg"
+          className="absolute bottom-9 right-1 z-[70] max-h-[70vh] w-[min(320px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-white/[0.10] bg-[#101012] p-3 shadow-2xl shadow-black/45"
         >
           <p className="mb-2 text-xs font-medium text-white/70">Visual guide</p>
           <div className="space-y-1 mb-3 pb-3 border-b border-white/[0.04]">

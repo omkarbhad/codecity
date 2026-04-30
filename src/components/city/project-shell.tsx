@@ -22,7 +22,6 @@ import {
 import { cn } from "@codecity/ui/lib/utils"
 import { IconButton } from "@codecity/ui/components/icon-button"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
-import { LogoIcon } from "@/components/logo"
 import { useCityStore, type VisualizationMode } from "./use-city-store"
 import { FileTree } from "./file-tree"
 import { ExtensionFilter } from "./extension-filter"
@@ -89,10 +88,12 @@ function ResizeHandle({
     <div
       ref={handleRef}
       className={cn(
-        "w-[3px] shrink-0 cursor-col-resize transition-colors hover:bg-white/[0.12] active:bg-primary/50",
+        "group flex w-[5px] shrink-0 cursor-col-resize items-stretch justify-center bg-[#080809] transition-colors hover:bg-white/[0.04] active:bg-primary/15",
         side === "left" ? "border-r border-white/[0.06]" : "border-l border-white/[0.06]"
       )}
-    />
+    >
+      <span className="my-3 w-px rounded-full bg-white/[0.05] transition-colors group-hover:bg-primary/45" />
+    </div>
   )
 }
 
@@ -152,7 +153,7 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
   return (
     <div
       className={cn(
-        "flex w-11 shrink-0 flex-col items-center gap-0.5 bg-[#0b0b0c] py-2",
+        "flex w-12 shrink-0 flex-col items-center gap-1 bg-[#09090a] px-1.5 py-2",
         position === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
       )}
     >
@@ -165,18 +166,18 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
             onClick={() => onViewChange(item.id)}
             title={`${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`}
             className={cn(
-              "relative flex h-9 w-9 items-center justify-center rounded-md transition-colors",
+              "relative flex h-9 w-9 items-center justify-center rounded-lg border transition-colors",
               active
-                ? "bg-white/[0.07] text-white"
-                : "text-white/40 hover:bg-white/[0.04] hover:text-white/70"
+                ? "border-white/[0.10] bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                : "border-transparent text-white/38 hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-white/72"
             )}
           >
             {/* Active indicator bar */}
             {active && (
               <div
                 className={cn(
-                  "absolute bottom-1.5 top-1.5 w-[2px] rounded-sm bg-primary",
-                  position === "left" ? "left-0" : "right-0"
+                  "absolute bottom-2 top-2 w-[2px] rounded-sm bg-primary",
+                  position === "left" ? "-left-1.5" : "-right-1.5"
                 )}
               />
             )}
@@ -213,7 +214,7 @@ function PrimaryPanelContent({
     case "explorer":
       return (
         <>
-          <PanelHeader title="Explorer" subtitle={`${snapshot.files.length} files`} />
+          <PanelHeader title="Explorer" subtitle={`${snapshot.files.length.toLocaleString()} files`} />
           <FileTree snapshot={snapshot} />
         </>
       )
@@ -221,7 +222,7 @@ function PrimaryPanelContent({
       return (
         <>
           <PanelHeader title="Search" />
-          <div className="px-3 py-2 border-b border-white/[0.04]">
+          <div className="border-b border-white/[0.06] px-3 py-2.5">
             <div className="relative group">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/45 pointer-events-none group-focus-within:text-white/65 transition-colors" />
               <input
@@ -231,7 +232,7 @@ function PrimaryPanelContent({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search files..."
                 aria-label="Search files"
-                className="w-full rounded-md border border-white/[0.08] bg-[#101012] py-1.5 pl-7 pr-7 text-[11px] text-white/80 outline-none transition-colors placeholder:text-white/35 focus:border-white/18 focus:bg-white/[0.05]"
+                className="h-8 w-full rounded-md border border-white/[0.08] bg-[#111113] pl-7 pr-7 text-[12px] text-white/80 outline-none transition-colors placeholder:text-white/35 focus:border-white/18 focus:bg-white/[0.05]"
               />
               {searchQuery && (
                 <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/65 hover:text-white/75 transition-colors">
@@ -248,7 +249,7 @@ function PrimaryPanelContent({
     case "filters":
       return (
         <>
-          <PanelHeader title="Filters" subtitle={`${snapshot.files.length} files`} />
+          <PanelHeader title="Filters" subtitle={`${snapshot.files.length.toLocaleString()} files`} />
           <ExtensionFilter snapshot={snapshot} />
         </>
       )
@@ -284,12 +285,12 @@ function PrimaryPanelContent({
 
 function PanelHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex h-9 shrink-0 items-center justify-between border-b border-white/[0.08] px-3">
-      <span className="text-xs font-medium text-white/55">
+    <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0d0d0f] px-3 shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
+      <span className="text-[13px] font-semibold text-white/72">
         {title}
       </span>
       {subtitle && (
-        <span className="text-[10px] tabular-nums text-white/30">{subtitle}</span>
+        <span className="rounded border border-white/[0.07] bg-white/[0.03] px-1.5 py-0.5 text-[10px] tabular-nums text-white/38">{subtitle}</span>
       )}
     </div>
   )
@@ -305,7 +306,7 @@ function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot;
   return (
     <>
       <ResizeHandle side="right" onResize={onResize} />
-      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden bg-[#0b0b0c] md:flex">
+      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#0b0b0c] shadow-[-20px_0_60px_rgba(0,0,0,0.20)] md:flex">
         <SidePanel snapshot={snapshot} />
       </div>
     </>
@@ -338,7 +339,7 @@ function ProjectNavbar({
   const setLayoutMode = useCityStore((s) => s.setLayoutMode)
 
   return (
-    <header className="z-50 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-white/[0.08] bg-[#0b0b0c] px-3">
+    <header className="z-50 grid h-[52px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-white/[0.08] bg-[#0b0b0c]/95 px-3 shadow-[0_1px_0_rgba(255,255,255,0.02),0_14px_40px_rgba(0,0,0,0.20)] backdrop-blur">
       {/* Left */}
       <div className="flex items-center gap-2 min-w-0">
         <IconButton
@@ -348,14 +349,12 @@ function ProjectNavbar({
         >
           <ArrowLeft />
         </IconButton>
-        <Link href="/dashboard" className="flex items-center gap-1.5 text-white/80 transition-colors hover:text-white">
-          <span className="flex size-5 items-center justify-center rounded border border-white/[0.08] bg-white/[0.04] text-primary">
-            <LogoIcon className="size-3.5" />
-          </span>
-          <span className="text-[13px] font-semibold hidden sm:inline">CodeCity</span>
+        <Link href="/dashboard" className="flex items-center gap-2 text-white/80 transition-colors hover:text-white">
+          <img src="/logo.png" alt="CodeCity" className="size-6 shrink-0 rounded-sm" />
+          <span className="hidden text-[13px] font-semibold sm:inline">CodeCity</span>
         </Link>
         <span className="hidden text-white/35 sm:inline">/</span>
-        <span className="truncate font-sans text-xs text-white/65 max-w-[90px] sm:max-w-[220px]">{projectName}</span>
+        <span className="max-w-[90px] truncate font-sans text-[13px] font-medium text-white/72 sm:max-w-[240px]">{projectName}</span>
         {repoUrl?.startsWith("http") && (
           <a
             href={repoUrl}
@@ -371,7 +370,7 @@ function ProjectNavbar({
 
       {/* Center — layout + viz modes */}
       <div className="col-start-2 hidden min-w-0 items-center gap-1 overflow-x-auto scrollbar-none sm:flex">
-        <div className="flex shrink-0 items-center rounded-md border border-white/[0.08] bg-white/[0.03] p-px">
+        <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
           {LAYOUTS.map((l) => {
             const Icon = l.icon
             const active = layoutMode === l.key
@@ -379,8 +378,8 @@ function ProjectNavbar({
               <button
                 key={l.key}
                 onClick={() => setLayoutMode(l.key)}
-                className={`flex h-7 items-center gap-1.5 rounded px-2 text-[11px] font-medium transition-colors ${
-                  active ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
+                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors ${
+                  active ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
                 }`}
               >
                 <Icon className="size-3.5" />
@@ -392,13 +391,13 @@ function ProjectNavbar({
 
         <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
 
-        <div className="flex shrink-0 items-center rounded-md border border-white/[0.08] bg-white/[0.03] p-px">
+        <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
           {MODES.map((m) => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`h-7 rounded px-2 text-[11px] font-medium transition-colors ${
-                visualizationMode === m.key ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
+              className={`h-7 rounded-md px-2 text-[11px] font-medium transition-colors ${
+                visualizationMode === m.key ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
               }`}
             >
               {m.label}
@@ -408,13 +407,13 @@ function ProjectNavbar({
       </div>
 
       <div className="col-start-3 flex min-w-0 justify-end gap-2 font-mono text-[10px] text-white/45">
-        <div className="hidden items-center gap-3 lg:flex">
-          <span className="flex items-center gap-1">
+        <div className="hidden items-center gap-2 lg:flex">
+          <span className="flex h-7 items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.025] px-2">
             <FileCode className="size-3 text-white/30" />
             <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalFiles)}</strong>
             files
           </span>
-          <span className="flex items-center gap-1">
+          <span className="flex h-7 items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.025] px-2">
             <Code2 className="size-3 text-white/30" />
             <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalLines)}</strong>
             lines
@@ -498,7 +497,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, navbarActions, ch
       <ProjectNavbar projectName={projectName} repoUrl={repoUrl} snapshot={snapshot} actions={navbarActions} />
 
       {/* Main area: activity bar + panel + canvas + secondary */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden border-t border-black/30">
         {/* Activity bar (icon strip) */}
         <ActivityBar
           activeView={activeView}
@@ -509,7 +508,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, navbarActions, ch
         {/* Primary sidebar panel — slides in/out */}
         {activeView && (
           <>
-            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-[#0b0b0c] md:flex">
+            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-r border-white/[0.08] bg-[#0b0b0c] shadow-[18px_0_60px_rgba(0,0,0,0.16)] md:flex">
               <PrimaryPanelContent view={activeView} snapshot={snapshot} repoUrl={repoUrl} />
             </div>
             <ResizeHandle side="left" onResize={handlePrimaryResize} />

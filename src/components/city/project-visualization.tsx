@@ -91,7 +91,7 @@ function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgre
             <span className="rounded-[1px] bg-white/[0.14]" />
             <span className="rounded-[1px] bg-primary/45" />
           </span>
-          <span className="truncate text-[11px] font-medium text-white/62">Building city geometry</span>
+          <span className="truncate text-[11px] font-medium text-white/62">Loading city geometry</span>
         </div>
         <span className="shrink-0 font-mono text-[10px] tabular-nums text-white/48">
           {percent}% · {progress.loadedFiles.toLocaleString()} / {progress.totalFiles.toLocaleString()}

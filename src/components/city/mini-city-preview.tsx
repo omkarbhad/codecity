@@ -1,45 +1,71 @@
 "use client"
 
-import { Suspense, useMemo, useRef } from "react"
+import { Suspense, useEffect, useMemo, useRef } from "react"
 import dynamic from "next/dynamic"
-import { Canvas, useFrame } from "@react-three/fiber"
+import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
 import { getCityBounds, type CityBounds } from "@/lib/visualization/city-bounds"
-import { Lighting } from "./lighting"
-import { Ground } from "./ground"
 import { DistrictGround } from "./district-ground"
 import { InstancedBuildings } from "./instanced-buildings"
 
 interface MiniCityPreviewProps {
   snapshot: CitySnapshot
-  /** Orbit speed multiplier. Default 0.5 */
+  /** Kept for compatibility with existing cards. Previews are intentionally static. */
   speed?: number
   className?: string
 }
 
-/** Auto-orbiting camera tuned for thumbnail-size canvases */
-function MiniCameraOrbit({ cityBounds, speed = 0.5 }: { cityBounds: CityBounds; speed?: number }) {
-  const angleRef = useRef(Math.random() * Math.PI * 2) // random start angle per card
-
+/** Static fitted camera tuned for thumbnail-size canvases. */
+function MiniCameraFit({ cityBounds, maxLines }: { cityBounds: CityBounds; maxLines: number }) {
+  const { camera } = useThree()
   const { center, radius, height } = useMemo(() => {
     const spread = Math.max(cityBounds.spread, 8)
+    const estimatedHeight = Math.max(8, Math.min(80, Math.sqrt(Math.max(maxLines, 1)) * 2.2))
     return {
       center: [cityBounds.centerX, cityBounds.centerZ] as const,
-      radius: spread * 0.75,
-      height: spread * 0.55,
+      radius: Math.max(22, spread * 1.2),
+      height: Math.max(18, spread * 0.58, estimatedHeight * 1.35),
     }
-  }, [cityBounds])
+  }, [cityBounds, maxLines])
 
-  useFrame(({ camera }, delta) => {
-    angleRef.current += delta * speed * 0.35
-    camera.position.x = Math.cos(angleRef.current) * radius + center[0]
-    camera.position.z = Math.sin(angleRef.current) * radius + center[1]
-    camera.position.y = height
-    camera.lookAt(center[0], 1, center[1])
-  })
+  useEffect(() => {
+    camera.position.set(center[0] + radius * 0.82, height, center[1] + radius)
+    camera.lookAt(center[0], Math.max(2, height * 0.18), center[1])
+    camera.updateProjectionMatrix()
+  }, [camera, center, height, radius])
 
   return null
+}
+
+function MiniPreviewLights() {
+  return (
+    <>
+      <hemisphereLight color="#f5f7ff" groundColor="#20243a" intensity={1.15} />
+      <ambientLight color="#c8d1ff" intensity={0.58} />
+      <directionalLight color="#fff7e8" intensity={2.8} position={[45, 70, 52]} />
+      <directionalLight color="#8fb1ff" intensity={1.1} position={[-55, 35, -34]} />
+      <directionalLight color="#ffd3a3" intensity={0.55} position={[-20, 28, 60]} />
+    </>
+  )
+}
+
+function MiniPreviewGround({ cityBounds }: { cityBounds: CityBounds }) {
+  const groundSize = Math.max(160, cityBounds.spread * 3.8)
+  const gridDivisions = Math.min(80, Math.max(24, Math.round(groundSize / 8)))
+
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cityBounds.centerX, -0.015, cityBounds.centerZ]}>
+        <planeGeometry args={[groundSize, groundSize]} />
+        <meshBasicMaterial color="#111216" />
+      </mesh>
+      <gridHelper
+        args={[groundSize, gridDivisions, new THREE.Color("#3b3f4a"), new THREE.Color("#232630")]}
+        position={[cityBounds.centerX, 0.01, cityBounds.centerZ]}
+      />
+    </group>
+  )
 }
 
 /** Lightweight floating particles for atmosphere */
@@ -80,37 +106,39 @@ function MiniParticles({ spread = 40 }: { spread?: number }) {
   )
 }
 
-function MiniCityPreviewInner({ snapshot, speed = 0.5 }: MiniCityPreviewProps) {
+function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
+  const maxLines = useMemo(() => Math.max(1, ...snapshot.files.map((file) => file.lines)), [snapshot.files])
 
   return (
-    <Canvas
-      gl={{
-        antialias: false, // off for perf in thumbnail
-        toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.4,
-        powerPreference: "low-power",
-      }}
-      shadows={false} // no shadows for thumbnails — big perf win
-      camera={{ position: [30, 20, 30], fov: 55, near: 0.5, far: 2000 }}
-      style={{ width: "100%", height: "100%" }}
-      onCreated={({ gl }) => {
-        gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-      }}
-    >
-      <color attach="background" args={["#040408"]} />
-      <Suspense fallback={null}>
-        <MiniCameraOrbit cityBounds={cityBounds} speed={speed} />
-        <Lighting snapshot={snapshot} cityBounds={cityBounds} />
-        <Ground snapshot={snapshot} cityBounds={cityBounds} />
-        {snapshot.districts.map((d) => (
-          <DistrictGround key={d.name} district={d} />
-        ))}
-        <InstancedBuildings snapshot={snapshot} />
-        <MiniParticles spread={40} />
-      </Suspense>
-      <fogExp2 attach="fog" args={["#040408", 0.006]} />
-    </Canvas>
+    <div className={className} style={{ width: "100%", height: "100%" }}>
+      <Canvas
+        gl={{
+          antialias: false, // off for perf in thumbnail
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.95,
+          powerPreference: "low-power",
+        }}
+        shadows={false} // no shadows for thumbnails — big perf win
+        camera={{ position: [30, 20, 30], fov: 48, near: 0.5, far: 5000 }}
+        style={{ width: "100%", height: "100%" }}
+        onCreated={({ gl }) => {
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+        }}
+      >
+        <color attach="background" args={["#0b0c10"]} />
+        <Suspense fallback={null}>
+          <MiniCameraFit cityBounds={cityBounds} maxLines={maxLines} />
+          <MiniPreviewLights />
+          <MiniPreviewGround cityBounds={cityBounds} />
+          {snapshot.districts.map((d) => (
+            <DistrictGround key={d.name} district={d} />
+          ))}
+          <InstancedBuildings snapshot={snapshot} />
+          <MiniParticles spread={40} />
+        </Suspense>
+      </Canvas>
+    </div>
   )
 }
 

@@ -1030,7 +1030,7 @@ async fn parse_and_save(
         &project.id,
         78.0,
         "layout",
-        &format!("Building city layout from {} parsed files", files_parsed),
+        &format!("Creating city layout from {} parsed files", files_parsed),
         files_discovered,
         files_parsed,
     );

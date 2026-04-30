@@ -15,7 +15,6 @@ import {
 import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
 import { enqueueAnalysis, isTauri } from "@/lib/tauri"
-import { LogoIcon } from "@/components/logo"
 import { HugeIcon } from "@/components/ui/huge-icon"
 
 const QUICK_REPOS = [
@@ -107,9 +106,7 @@ export function NewAnalysisDialog({
           {/* Header */}
           <DialogHeader className="mb-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-primary">
-                <LogoIcon className="size-5" />
-              </div>
+              <img src="/logo.png" alt="CodeCity" className="size-9 shrink-0 rounded-md" />
               <div>
                 <DialogTitle className="text-[15px] font-semibold text-zinc-100 leading-none">
                   New City
