@@ -118,6 +118,7 @@ interface ProjectShellProps {
   snapshot: CitySnapshot
   projectName: string
   repoUrl?: string
+  navbarActions?: ReactNode
   children: ReactNode
 }
 
@@ -323,10 +324,12 @@ function ProjectNavbar({
   projectName,
   repoUrl,
   snapshot,
+  actions,
 }: {
   projectName: string
   repoUrl?: string
   snapshot: CitySnapshot
+  actions?: ReactNode
 }) {
   const router = useRouter()
   const visualizationMode = useCityStore((s) => s.visualizationMode)
@@ -404,17 +407,20 @@ function ProjectNavbar({
         </div>
       </div>
 
-      <div className="col-start-3 hidden min-w-0 justify-end gap-3 font-mono text-[10px] text-white/45 lg:flex">
-        <span className="flex items-center gap-1">
-          <FileCode className="size-3 text-white/30" />
-          <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalFiles)}</strong>
-          files
-        </span>
-        <span className="flex items-center gap-1">
-          <Code2 className="size-3 text-white/30" />
-          <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalLines)}</strong>
-          lines
-        </span>
+      <div className="col-start-3 flex min-w-0 justify-end gap-2 font-mono text-[10px] text-white/45">
+        {actions}
+        <div className="hidden items-center gap-3 lg:flex">
+          <span className="flex items-center gap-1">
+            <FileCode className="size-3 text-white/30" />
+            <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalFiles)}</strong>
+            files
+          </span>
+          <span className="flex items-center gap-1">
+            <Code2 className="size-3 text-white/30" />
+            <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalLines)}</strong>
+            lines
+          </span>
+        </div>
       </div>
 
       {/* Mobile center — tap to cycle */}
@@ -450,7 +456,7 @@ function ProjectNavbar({
 const MIN_PANEL = 180
 const MAX_PANEL = 480
 
-export function ProjectShell({ snapshot, projectName, repoUrl, children }: ProjectShellProps) {
+export function ProjectShell({ snapshot, projectName, repoUrl, navbarActions, children }: ProjectShellProps) {
   const [activeView, setActiveView] = useState<PrimaryView | null>("explorer")
   const [primaryWidth, setPrimaryWidth] = useState(240)
   const [secondaryWidth, setSecondaryWidth] = useState(280)
@@ -489,7 +495,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, children }: Proje
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#050506]">
       {/* Top navbar — full width */}
-      <ProjectNavbar projectName={projectName} repoUrl={repoUrl} snapshot={snapshot} />
+      <ProjectNavbar projectName={projectName} repoUrl={repoUrl} snapshot={snapshot} actions={navbarActions} />
 
       {/* Main area: activity bar + panel + canvas + secondary */}
       <div className="flex flex-1 overflow-hidden">

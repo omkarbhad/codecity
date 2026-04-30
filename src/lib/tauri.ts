@@ -193,6 +193,20 @@ export async function enqueueAnalysis(
   }
 }
 
+export async function refreshAnalysis(projectId: string): Promise<{ projectId: string }> {
+  const result = await rpc<AnalyzeResult>("analysis.refresh", {
+    projectId,
+  })
+
+  if (!result.success) {
+    throw new Error(result.error ?? "Failed to queue refresh")
+  }
+
+  return {
+    projectId: result.project_id!,
+  }
+}
+
 export async function recomputeSnapshot(
   snapshot: CitySnapshot,
   hiddenPaths: string[],

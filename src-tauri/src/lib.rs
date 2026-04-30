@@ -59,6 +59,12 @@ struct ProjectIdParams {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RefreshAnalysisParams {
+    project_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RecomputeSnapshotParams {
     snapshot: analysis::CitySnapshot,
     hidden_paths: Vec<String>,
@@ -190,6 +196,15 @@ async fn dispatch_rpc(
                 &state.db,
                 &params.input,
                 params.visibility.as_deref(),
+                token,
+            ))
+        }
+        "analysis.refresh" => {
+            let params: RefreshAnalysisParams = parse_params(params)?;
+            let token = state.db.get_setting("github_token").ok().flatten();
+            to_value(analysis::enqueue_refresh(
+                &state.db,
+                &params.project_id,
                 token,
             ))
         }

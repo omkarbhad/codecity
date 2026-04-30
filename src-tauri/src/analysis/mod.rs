@@ -13,4 +13,4 @@ pub use github::{
 };
 pub use layout::{create_snapshot, recompute_snapshot, CitySnapshot, LayoutMode};
 pub use parser::{parse_files, AnalysisParser};
-pub use pipeline::{analyze, enqueue_analyze, AnalyzeResult};
+pub use pipeline::{analyze, enqueue_analyze, enqueue_refresh, AnalyzeResult};

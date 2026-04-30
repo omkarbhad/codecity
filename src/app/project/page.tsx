@@ -1,12 +1,18 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ProjectVisualization } from "@/components/city/project-visualization"
 import { RotateCcw, ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react"
 import { PageLoader } from "@/components/ui/loader"
 import type { CitySnapshot } from "@/lib/types/city"
-import { getProject, getProjectSnapshot, analyze } from "@/lib/tauri"
+import { getProject, getProjectSnapshot, refreshAnalysis, type ProjectRecord } from "@/lib/tauri"
+
+type RefreshState = {
+  status: "idle" | "running" | "failed"
+  progress: number
+  message: string
+}
 
 export default function ProjectPage() {
   return (
@@ -26,7 +32,18 @@ function ProjectContent() {
   const [repoUrl, setRepoUrl] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [reanalyzing, setReanalyzing] = useState(false)
+  const [refreshState, setRefreshState] = useState<RefreshState>({
+    status: "idle",
+    progress: 0,
+    message: "",
+  })
+  const refreshPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (refreshPollRef.current) clearInterval(refreshPollRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -68,20 +85,75 @@ function ProjectContent() {
     load()
   }, [id, router])
 
-  async function handleReanalyze() {
-    if (!repoUrl) return
-    setReanalyzing(true)
-    try {
-      const result = await analyze(repoUrl)
-      if (result.projectId) {
-        router.push(`/analyze?id=${encodeURIComponent(result.projectId)}`)
-      } else {
-        setError("Failed to start re-analysis")
-        setReanalyzing(false)
+  async function loadCompletedProject(project: ProjectRecord) {
+    const data = await getProjectSnapshot(project.id)
+    if (!data) {
+      throw new Error("Refresh finished but no snapshot was saved.")
+    }
+
+    setProjectName(project.name)
+    setRepoUrl(project.repo_url)
+    setSnapshot(data as unknown as CitySnapshot)
+    setRefreshState({ status: "idle", progress: 100, message: "" })
+    router.replace(`/project?id=${encodeURIComponent(project.id)}`)
+  }
+
+  function startRefreshPolling(projectId: string) {
+    if (refreshPollRef.current) clearInterval(refreshPollRef.current)
+
+    refreshPollRef.current = setInterval(async () => {
+      try {
+        const project = await getProject(projectId)
+        if (!project) {
+          throw new Error("Refresh project disappeared.")
+        }
+
+        setRefreshState({
+          status: "running",
+          progress: Math.round(project.progress ?? 0),
+          message: project.progress_message || "Refreshing city",
+        })
+
+        if (project.status === "COMPLETED") {
+          if (refreshPollRef.current) clearInterval(refreshPollRef.current)
+          refreshPollRef.current = null
+          await loadCompletedProject(project)
+          return
+        }
+
+        if (project.status === "FAILED") {
+          if (refreshPollRef.current) clearInterval(refreshPollRef.current)
+          refreshPollRef.current = null
+          setRefreshState({
+            status: "failed",
+            progress: Math.round(project.progress ?? 0),
+            message: project.error || "Refresh failed.",
+          })
+        }
+      } catch (err) {
+        if (refreshPollRef.current) clearInterval(refreshPollRef.current)
+        refreshPollRef.current = null
+        setRefreshState({
+          status: "failed",
+          progress: 0,
+          message: err instanceof Error ? err.message : "Refresh failed.",
+        })
       }
-    } catch {
-      setError("Analysis error. Try again.")
-      setReanalyzing(false)
+    }, 1200)
+  }
+
+  async function handleReanalyze() {
+    if (!id) return
+    setRefreshState({ status: "running", progress: 1, message: "Queued refresh" })
+    try {
+      const result = await refreshAnalysis(id)
+      startRefreshPolling(result.projectId)
+    } catch (err) {
+      setRefreshState({
+        status: "failed",
+        progress: 0,
+        message: err instanceof Error ? err.message : "Analysis error. Try again.",
+      })
     }
   }
 
@@ -103,11 +175,11 @@ function ProjectContent() {
               {repoUrl && (
                 <button
                   onClick={handleReanalyze}
-                  disabled={reanalyzing}
+                  disabled={refreshState.status === "running"}
                   className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
-                  {reanalyzing ? "Starting..." : "Re-analyze"}
+                  <RefreshCw className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
+                  {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
                 </button>
               )}
               <div className="flex gap-2">
@@ -140,11 +212,11 @@ function ProjectContent() {
           <p className="text-sm text-zinc-500 mb-3">No visualization data available.</p>
           <button
             onClick={handleReanalyze}
-            disabled={reanalyzing}
+            disabled={refreshState.status === "running"}
             className="mx-auto flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
-            {reanalyzing ? "Starting..." : "Re-analyze"}
+            <RefreshCw className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
+            {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
           </button>
         </div>
       </div>
@@ -153,15 +225,68 @@ function ProjectContent() {
 
   return (
     <div className="relative">
-      <ProjectVisualization snapshot={snapshot} projectName={projectName} repoUrl={repoUrl} />
+      <ProjectVisualization
+        snapshot={snapshot}
+        projectName={projectName}
+        repoUrl={repoUrl}
+        navbarActions={
+          <ProjectRefreshControl
+            state={refreshState}
+            disabled={!repoUrl}
+            onRefresh={handleReanalyze}
+          />
+        }
+      />
+    </div>
+  )
+}
+
+function ProjectRefreshControl({
+  state,
+  disabled,
+  onRefresh,
+}: {
+  state: RefreshState
+  disabled: boolean
+  onRefresh: () => void
+}) {
+  const isRunning = state.status === "running"
+  const isFailed = state.status === "failed"
+
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {isRunning && (
+        <div className="hidden min-w-[150px] max-w-[220px] items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.025] px-2 py-1 sm:flex">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[10px] font-medium text-white/55">{state.message || "Refreshing city"}</span>
+            <span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/[0.08]">
+              <span
+                className="block h-full rounded-full bg-primary/80 transition-[width] duration-300"
+                style={{ width: `${Math.max(4, Math.min(100, state.progress))}%` }}
+              />
+            </span>
+          </span>
+          <span className="font-mono text-[10px] tabular-nums text-white/45">{Math.round(state.progress)}%</span>
+        </div>
+      )}
+      {isFailed && (
+        <span className="hidden max-w-[240px] truncate rounded-md border border-primary/25 bg-primary/[0.07] px-2 py-1 text-[10px] font-medium text-primary/90 sm:block">
+          {state.message || "Refresh failed"}
+        </span>
+      )}
       <button
-        onClick={handleReanalyze}
-        disabled={reanalyzing || !repoUrl}
-        className="absolute right-3 top-14 z-[80] flex h-8 items-center gap-1.5 rounded-md border border-white/[0.10] bg-[#0b0b0c]/95 px-3 text-[11px] font-medium text-zinc-400 shadow-sm transition-colors hover:border-white/[0.16] hover:bg-[#121214] hover:text-zinc-100 disabled:pointer-events-none disabled:opacity-60"
-        title="Refresh analysis"
+        type="button"
+        onClick={onRefresh}
+        disabled={disabled || isRunning}
+        title={isFailed ? state.message || "Refresh failed" : "Refresh analysis"}
+        aria-label={isFailed ? state.message || "Refresh failed" : "Refresh analysis"}
+        className={`flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors disabled:pointer-events-none disabled:opacity-55 ${
+          isFailed
+            ? "border-primary/35 bg-primary/[0.08] text-primary/90 hover:bg-primary/[0.12]"
+            : "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white/85"
+        }`}
       >
-        <RefreshCw className={`size-3.5 ${reanalyzing ? "animate-spin" : ""}`} />
-        {reanalyzing ? "Reparsing" : "Refresh"}
+        <RefreshCw className={`size-3.5 ${isRunning ? "animate-spin" : ""}`} />
       </button>
     </div>
   )

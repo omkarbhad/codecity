@@ -591,6 +591,90 @@ pub fn enqueue_analyze(
     }
 }
 
+pub fn enqueue_refresh(
+    db: &Database,
+    project_id: &str,
+    github_token: Option<String>,
+) -> AnalyzeResult {
+    let existing = match db.get_project(project_id) {
+        Ok(Some(project)) => project,
+        Ok(None) => {
+            return AnalyzeResult {
+                success: false,
+                project_id: None,
+                snapshot: None,
+                error: Some("Project not found".to_string()),
+            };
+        }
+        Err(error) => {
+            return AnalyzeResult {
+                success: false,
+                project_id: None,
+                snapshot: None,
+                error: Some(format!("Failed to load project: {}", error)),
+            };
+        }
+    };
+
+    let expanded = expand_input_path(&existing.repo_url);
+    let local_path = PathBuf::from(&expanded);
+    let source = if local_path.is_dir() {
+        QueuedSource::Local(expanded)
+    } else if is_github_url(&existing.repo_url) {
+        QueuedSource::GitHub(existing.repo_url.clone())
+    } else {
+        return AnalyzeResult {
+            success: false,
+            project_id: None,
+            snapshot: None,
+            error: Some(format!(
+                "\"{}\" is not a valid local directory or GitHub URL",
+                existing.repo_url
+            )),
+        };
+    };
+
+    let project = match db.create_project(
+        &existing.name,
+        &existing.repo_url,
+        &existing.visibility,
+        "PENDING",
+        &existing.user_id,
+    ) {
+        Ok(project) => project,
+        Err(error) => {
+            return AnalyzeResult {
+                success: false,
+                project_id: None,
+                snapshot: None,
+                error: Some(format!("Failed to create refresh project: {}", error)),
+            };
+        }
+    };
+
+    report_progress(db, &project.id, 1.0, "queued", "Queued refresh", 0, 0);
+
+    let project_id = project.id.clone();
+    tokio::spawn(async move {
+        let worker_db = match Database::new() {
+            Ok(db) => db,
+            Err(error) => {
+                log::error!("Failed to open database for queued refresh: {}", error);
+                return;
+            }
+        };
+
+        run_queued_analysis(&worker_db, project, source, github_token.as_deref()).await;
+    });
+
+    AnalyzeResult {
+        success: true,
+        project_id: Some(project_id),
+        snapshot: None,
+        error: None,
+    }
+}
+
 enum QueuedSource {
     GitHub(String),
     Local(String),

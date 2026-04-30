@@ -69,6 +69,7 @@ interface Props {
   snapshot: CitySnapshot
   projectName: string
   repoUrl?: string
+  navbarActions?: ReactNode
 }
 
 function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgress; leaving: boolean }) {
@@ -110,7 +111,7 @@ function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgre
   )
 }
 
-function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, repoUrl }: Props) {
+function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, repoUrl, navbarActions }: Props) {
   const [currentSnapshot, setCurrentSnapshot] = useState(originalSnapshot)
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [isBuildingLoadLeaving, setIsBuildingLoadLeaving] = useState(false)
@@ -279,7 +280,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
         Press Escape to deselect the current file. Press R to reset camera. WASD to pan.
       </div>
 
-      <ProjectShell snapshot={currentSnapshot} projectName={projectName} repoUrl={repoUrl}>
+      <ProjectShell snapshot={currentSnapshot} projectName={projectName} repoUrl={repoUrl} navbarActions={navbarActions}>
         <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
           <SceneErrorBoundary>
             <CitySceneCanvas snapshot={currentSnapshot} onBuildingLoadProgress={handleBuildingLoadProgress} />
