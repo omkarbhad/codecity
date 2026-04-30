@@ -21,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
 import { MiniCityPreview } from "@/components/city/mini-city-preview"
 import type { CitySnapshot } from "@/lib/types/city"
+import { getProjects, getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject } from "@/lib/tauri"
 
 interface Project {
   id: string
@@ -32,6 +33,50 @@ interface Project {
   lineCount?: number
   error?: string | null
   createdAt: string
+}
+
+function normalizeProjectRecord(record: Record<string, unknown>): Project {
+  return {
+    id: String(record.id ?? ""),
+    name: String(record.name ?? "Untitled"),
+    repoUrl: String(record.repo_url ?? record.repoUrl ?? ""),
+    visibility: record.visibility === "PUBLIC" ? "PUBLIC" : "PRIVATE",
+    status: String(record.status ?? "FAILED"),
+    fileCount: Number(record.file_count ?? record.fileCount ?? 0),
+    lineCount: Number(record.line_count ?? record.lineCount ?? 0),
+    error: typeof record.error === "string" ? record.error : null,
+    createdAt: String(record.created_at ?? record.createdAt ?? new Date().toISOString()),
+  }
+}
+
+function getProjectLabel(project: Project) {
+  const source = project.repoUrl || project.name
+
+  if (source.includes("github.com/")) {
+    const repoPath = source.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")
+    const [owner, repo] = repoPath.split("/")
+    return {
+      owner: owner || "github",
+      repo: repo || project.name,
+      isExternal: true,
+    }
+  }
+
+  if (source.includes("/") || source.includes("\\")) {
+    const normalized = source.replace(/\\/g, "/").replace(/\/$/, "")
+    const parts = normalized.split("/").filter(Boolean)
+    return {
+      owner: parts.slice(-2, -1)[0] ?? "local",
+      repo: parts.at(-1) ?? project.name,
+      isExternal: false,
+    }
+  }
+
+  return {
+    owner: "local",
+    repo: project.name || source || "Untitled",
+    isExternal: false,
+  }
 }
 
 interface ProgressData {
@@ -53,10 +98,15 @@ function useProjectProgress(projectId: string, enabled: boolean) {
 
     async function fetchProgress() {
       try {
-        const res = await fetch(`/api/analyze/${projectId}/progress-poll`)
-        if (res.ok) {
-          const data = await res.json()
-          setProgress(data)
+        const project = await getProject(projectId)
+        if (project) {
+          if (project.status === "COMPLETED") {
+            setProgress({ stage: "complete", progress: 100, message: "Done" })
+          } else if (project.status === "FAILED") {
+            setProgress({ stage: "error", progress: 0, message: project.error ?? "Failed" })
+          } else {
+            setProgress({ stage: "processing", progress: 50, message: "Analyzing..." })
+          }
         }
       } catch {
         // ignore
@@ -129,20 +179,20 @@ function DeleteButton({
   if (confirmOpen) {
     return (
       <div
-        className="flex items-center gap-0.5 rounded-md overflow-hidden border border-red-500/30 bg-red-500/10"
+        className="flex items-center gap-0.5 overflow-hidden rounded-md border border-red-500/30 bg-red-500/10"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[10px] font-medium text-red-400 px-2 py-1 leading-none">Delete?</span>
         <button
           onClick={confirm}
-          className="flex items-center justify-center px-1.5 py-1 text-red-400 hover:bg-red-500/20 transition-colors"
+        className="flex items-center justify-center px-1.5 py-1 text-red-400 transition-colors hover:bg-red-500/20"
           aria-label="Confirm delete"
         >
           <Check className="h-3 w-3" />
         </button>
         <button
           onClick={cancel}
-          className="flex items-center justify-center px-1.5 py-1 text-zinc-500 hover:bg-white/[0.06] transition-colors"
+        className="flex items-center justify-center px-1.5 py-1 text-zinc-500 transition-colors hover:bg-white/[0.06]"
           aria-label="Cancel delete"
         >
           <X className="h-3 w-3" />
@@ -154,7 +204,7 @@ function DeleteButton({
   return (
     <button
       onClick={openConfirm}
-      className="p-1.5 rounded-md text-zinc-700 hover:text-red-400 hover:bg-red-500/[0.08] transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+      className="rounded-md p-1.5 text-zinc-700 opacity-0 transition-colors hover:bg-red-500/[0.08] hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
       aria-label="Delete project"
     >
       <Trash2 className="h-3 w-3" />
@@ -172,9 +222,8 @@ function useSnapshot(projectId: string, enabled: boolean) {
     if (!enabled || fetched.current) return
     fetched.current = true
     setLoading(true)
-    fetch(`/api/projects/${projectId}/snapshot`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setSnapshot(data as CitySnapshot) })
+    getProjectSnapshot(projectId)
+      .then((data) => { if (data) setSnapshot(data as unknown as CitySnapshot) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [enabled, projectId])
@@ -216,8 +265,7 @@ function ProjectCard({
     }
   }, [progress?.stage, queryClient])
 
-  const repoPath = project.repoUrl.replace("https://github.com/", "")
-  const [owner, repo] = repoPath.split("/")
+  const { owner, repo, isExternal } = getProjectLabel(project)
 
   const currentProgress = isActive && progress ? progress.progress : 0
   const currentMessage = isActive && progress
@@ -238,105 +286,83 @@ function ProjectCard({
       }}
       onMouseLeave={() => setHovered(false)}
       onTouchStart={requestPreview}
-      className={`group relative flex flex-col rounded-2xl border bg-[#09090e] transition-all duration-200 overflow-hidden
-        ${isCompleted ? "border-white/[0.07] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]" : ""}
-        ${isActive ? "border-primary/25 shadow-[0_0_0_1px_rgba(255,61,61,0.06),0_0_24px_rgba(255,61,61,0.06)]" : ""}
+      className={`group relative flex min-h-[176px] flex-col overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
+        ${isCompleted ? "border-white/[0.08] hover:border-white/[0.16]" : ""}
+        ${isActive ? "border-primary/35" : ""}
         ${isQueued ? "border-white/[0.04] opacity-60" : ""}
-        ${isFailed ? "border-red-500/15" : ""}
+        ${isFailed ? "border-red-500/25" : ""}
       `}
     >
       {/* Active — scanning line */}
       {isActive && (
         <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-transparent via-primary to-transparent animate-[scan_2s_ease-in-out_infinite]" />
+          <div className="h-full bg-primary animate-[scan_2s_ease-in-out_infinite]" />
         </div>
-      )}
-
-      {/* Progress fill background */}
-      {isActive && currentProgress > 0 && (
-        <div
-          className="absolute inset-0 pointer-events-none transition-all duration-1000 ease-out"
-          style={{
-            background: `linear-gradient(90deg, rgba(255,61,61,0.05) 0%, transparent ${currentProgress}%)`,
-          }}
-        />
-      )}
-
-      {/* Hover shimmer for completed cards */}
-      {isCompleted && (
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300"
-          style={{ background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,255,255,0.025), transparent 70%)" }}
-        />
       )}
 
       {/* 3D city preview pane */}
       {isCompleted && (
-        <div className="relative h-[120px] overflow-hidden">
+        <div className="relative h-[112px] overflow-hidden border-b border-white/[0.06] bg-[#080809]">
           {!previewRequested && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#06060b]">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#080809]">
               <span className="text-[10px] font-mono text-zinc-700">hover to preview</span>
             </div>
           )}
           {previewRequested && snapshotLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#06060b] overflow-hidden">
-              <div className="absolute inset-0 -translate-x-full animate-[shimmer-slide_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
+            <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#080809]">
               <span className="text-[10px] font-mono text-zinc-700 relative z-10">loading city…</span>
             </div>
           )}
           {hovered && snapshot && (
             <div className="absolute inset-0 pointer-events-none">
               <MiniCityPreview snapshot={snapshot} speed={0.4} className="w-full h-full" />
-              {/* bottom fade to card body */}
-              <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#09090e] to-transparent pointer-events-none" />
             </div>
           )}
           {previewRequested && snapshot && !hovered && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#06060b]">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#080809]">
               <span className="text-[10px] font-mono text-zinc-700">hover to animate</span>
             </div>
           )}
-          {/* top border separator */}
-          <div className="absolute inset-x-0 top-0 h-px bg-white/[0.05]" />
         </div>
       )}
 
-      <div className="relative p-4 flex flex-col gap-3">
+      <div className="relative flex flex-1 flex-col gap-3 p-3.5">
         {/* Top row */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="mb-1 flex items-center gap-1.5">
               {project.visibility === "PRIVATE" ? (
                 <Lock className="h-3 w-3 text-zinc-700 shrink-0" />
               ) : (
                 <Globe className="h-3 w-3 text-zinc-700 shrink-0" />
               )}
-              <span className="text-[11px] text-zinc-600 font-mono truncate">{owner}/</span>
+              <span className="truncate font-mono text-[11px] text-zinc-600">{owner}/</span>
             </div>
-            <h3 className="text-[15px] font-semibold text-zinc-100 truncate leading-tight">
+            <h3 className="truncate text-sm font-semibold leading-tight text-zinc-100">
               {repo}
             </h3>
           </div>
 
           {/* Status pill */}
           {isCompleted && (
-            <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-emerald-500/[0.08] text-emerald-400 border border-emerald-500/20">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-1 text-[10px] font-medium text-emerald-400">
               <span className="h-1 w-1 rounded-full bg-emerald-400" />
               done
             </span>
           )}
           {isActive && (
-            <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/[0.08] text-primary border border-primary/20">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/20 bg-primary/[0.08] px-2 py-1 text-[10px] font-medium text-primary">
               <span className="h-1 w-1 rounded-full bg-primary animate-pulse" />
               analyzing
             </span>
           )}
           {isQueued && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full bg-zinc-800/60 text-zinc-600 border border-zinc-700/60">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-zinc-700/60 bg-zinc-800/60 px-2 py-1 text-[10px] font-medium text-zinc-600">
               queued
             </span>
           )}
           {isFailed && (
-            <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-red-500/[0.08] text-red-400 border border-red-500/20">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/[0.08] px-2 py-1 text-[10px] font-medium text-red-400">
               <AlertCircle className="h-2.5 w-2.5" />
               failed
             </span>
@@ -367,9 +393,9 @@ function ProjectCard({
               <span className="text-[10px] text-zinc-600 font-mono truncate">{currentMessage}</span>
               <span className="text-[10px] font-mono text-zinc-500 tabular-nums ml-2 shrink-0">{currentProgress}%</span>
             </div>
-            <div className="h-[2px] w-full rounded-full bg-white/[0.05] overflow-hidden">
+            <div className="h-1 w-full overflow-hidden rounded-sm bg-white/[0.06]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out"
+                className="h-full rounded-sm bg-primary transition-all duration-700 ease-out"
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
@@ -383,25 +409,27 @@ function ProjectCard({
 
         {/* Error */}
         {isFailed && project.error && (
-          <p className="text-[10px] text-red-400/70 font-mono line-clamp-2 bg-red-500/[0.04] border border-red-500/10 rounded-lg px-2.5 py-2">
+          <p className="line-clamp-2 rounded-md border border-red-500/10 bg-red-500/[0.04] px-2.5 py-2 font-mono text-[10px] text-red-400/70">
             {project.error}
           </p>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.04]">
+        <div className="mt-auto flex items-center justify-between border-t border-white/[0.06] pt-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono text-zinc-700">{timeAgo(project.createdAt)}</span>
-            <a
-              href={project.repoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-zinc-700 hover:text-zinc-400 transition-colors"
-              title="Open on GitHub"
-            >
-              <GitBranch className="h-3 w-3" />
-            </a>
+            {isExternal && project.repoUrl && (
+              <a
+                href={project.repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-zinc-700 hover:text-zinc-400 transition-colors"
+                title="Open on GitHub"
+              >
+                <GitBranch className="h-3 w-3" />
+              </a>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
@@ -409,7 +437,7 @@ function ProjectCard({
             {isFailed && (
               <button
                 onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-md text-amber-400 bg-amber-500/[0.08] hover:bg-amber-500/15 transition-colors border border-amber-500/15"
+                className="flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.08] px-2.5 py-1 text-[10px] font-medium text-amber-400 transition-colors hover:bg-amber-500/15"
               >
                 <RefreshCw className="h-2.5 w-2.5" />
                 Retry
@@ -419,9 +447,9 @@ function ProjectCard({
             {/* Open */}
             {isCompleted && (
               <Link
-                href={`/project/${project.id}`}
+                href={`/project?id=${encodeURIComponent(project.id)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 text-[10px] font-semibold px-3 py-1 rounded-md text-white bg-primary hover:bg-primary/85 transition-colors shadow-[0_0_12px_rgba(255,61,61,0.2)]"
+                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-primary/90"
               >
                 Open
                 <ExternalLink className="h-2.5 w-2.5" />
@@ -452,9 +480,8 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
-      const res = await fetch("/api/projects")
-      if (!res.ok) return []
-      return res.json()
+      const records = await getProjects()
+      return records.map((record) => normalizeProjectRecord(record as unknown as Record<string, unknown>))
     },
     refetchInterval: (query) => {
       const data = query.state.data as Project[] | undefined
@@ -468,7 +495,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   async function handleDelete(id: string) {
     try {
-      await fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {})
+      await deleteProjectTauri(id).catch(() => {})
       queryClient.setQueryData<Project[]>(["projects"], (old) =>
         old ? old.filter((p) => p.id !== id) : []
       )
@@ -477,45 +504,32 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     }
   }
 
-  async function handleToggleVisibility(e: React.MouseEvent, project: Project) {
-    e.preventDefault()
-    e.stopPropagation()
-    const newVisibility = project.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC"
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visibility: newVisibility }),
-      })
-      if (!res.ok) return
-      queryClient.setQueryData<Project[]>(["projects"], (old) =>
-        old ? old.map((p) => p.id === project.id ? { ...p, visibility: newVisibility } : p) : []
-      )
-    } catch {
-      // ignore
-    }
-  }
-
   async function handleRetry(project: Project) {
+    if (!project.repoUrl) return
+
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl: project.repoUrl, visibility: project.visibility, forceRetry: true }),
-      })
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["projects"] })
+      const result = await analyze(project.repoUrl, { visibility: project.visibility })
+      if (!result.projectId) {
+        throw new Error("Failed to retry")
       }
     } catch {
       // ignore
     }
   }
 
+  function handleToggleVisibility(e: React.MouseEvent, project: Project) {
+    e.stopPropagation()
+    const newVisibility = project.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC"
+    queryClient.setQueryData<Project[]>(["projects"], (old) =>
+      old ? old.map((p) => p.id === project.id ? { ...p, visibility: newVisibility } : p) : []
+    )
+  }
+
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-2xl bg-[#09090e] border border-white/[0.05] p-4 h-36">
+          <div key={i} className="h-36 rounded-lg border border-white/[0.07] bg-[#101012] p-4">
             <div className="flex items-start justify-between mb-3">
               <div className="space-y-2">
                 <div className="h-2 w-14 rounded-full bg-white/[0.05] animate-pulse" />
@@ -532,9 +546,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-2xl border border-white/[0.06] border-dashed bg-white/[0.01] min-h-[280px]">
+      <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-[#101012]">
         <div className="flex flex-col items-center text-center py-10">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/[0.08] border border-primary/15 mb-5">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
             <Building2 className="h-6 w-6 text-primary/70" />
           </div>
           <p className="text-sm font-semibold text-zinc-300">No cities yet</p>
@@ -544,7 +558,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
           <Button
             onClick={() => onCreateCity?.()}
             size="sm"
-            className="mt-5 gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs h-8 px-4 rounded-lg shadow-[0_0_20px_rgba(255,61,61,0.25)]"
+            className="mt-5 h-8 gap-1.5 rounded-md bg-primary px-4 text-xs text-white hover:bg-primary/90"
           >
             <Plus className="h-3.5 w-3.5" />
             New City
@@ -560,14 +574,14 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   function renderGroup(label: string, icon: React.ReactNode, items: Project[]) {
     if (items.length === 0) return null
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2 px-0.5">
           {icon}
-          <span className="text-[10px] font-medium text-zinc-700 uppercase tracking-widest">{label}</span>
-          <div className="h-px flex-1 bg-white/[0.04]" />
+          <span className="text-xs font-medium text-zinc-500">{label}</span>
+          <div className="h-px flex-1 bg-white/[0.06]" />
           <span className="text-[10px] font-mono text-zinc-700">{items.length}</span>
         </div>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((project) => (
             <ProjectCard
               key={project.id}
@@ -588,7 +602,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {renderGroup("Private", <Lock className="h-3 w-3 text-zinc-700" />, privateProjects)}
       {renderGroup("Public", <Globe className="h-3 w-3 text-zinc-700" />, publicProjects)}
     </div>

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import { open } from "@tauri-apps/plugin-shell"
 import {
   FolderGit2,
   Compass,
@@ -12,8 +13,10 @@ import {
   Globe,
   Lock,
   LogOut,
+  Github,
+  Loader2,
 } from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +28,14 @@ import {
   SidebarGroup,
   SidebarRail,
 } from "@codecity/ui/components/sidebar"
+import {
+  getProjects,
+  githubGetUser,
+  githubLoginPoll,
+  githubLoginStart,
+  logoutGithub,
+  setGithubSession,
+} from "@/lib/tauri"
 
 interface Project {
   id: string
@@ -43,10 +54,58 @@ export function AppSidebar({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const [isSigningIn, setIsSigningIn] = React.useState(false)
+  const [authCode, setAuthCode] = React.useState<string | null>(null)
+  const [authError, setAuthError] = React.useState<string | null>(null)
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" })
-    router.push("/")
+    await logoutGithub()
+    await queryClient.invalidateQueries({ queryKey: ["me"] })
+    router.push("/dashboard")
+  }
+
+  async function handleGithubLogin() {
+    setIsSigningIn(true)
+    setAuthError(null)
+
+    try {
+      const device = await githubLoginStart()
+      setAuthCode(device.user_code)
+      await open(device.verification_uri)
+
+      const startedAt = Date.now()
+      const expiresAt = startedAt + device.expires_in * 1000
+      let intervalMs = Math.max(device.interval, 5) * 1000
+
+      while (Date.now() < expiresAt) {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs))
+        const token = await githubLoginPoll(device.device_code)
+
+        if (token.access_token) {
+          const githubUser = await githubGetUser(token.access_token)
+          await setGithubSession(token.access_token, githubUser.login)
+          await queryClient.invalidateQueries({ queryKey: ["me"] })
+          setAuthCode(null)
+          router.replace("/dashboard")
+          return
+        }
+
+        if (token.error === "authorization_pending") continue
+        if (token.error === "slow_down") {
+          intervalMs += 5000
+          continue
+        }
+
+        throw new Error(token.error_description ?? token.error ?? "GitHub sign-in failed")
+      }
+
+      throw new Error("GitHub sign-in expired. Please try again.")
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "GitHub sign-in failed")
+    } finally {
+      setIsSigningIn(false)
+    }
   }
   const isExplore = pathname.startsWith("/explore")
   const isDashboard = pathname.startsWith("/dashboard")
@@ -54,9 +113,13 @@ export function AppSidebar({
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
-      const res = await fetch("/api/projects")
-      if (!res.ok) return []
-      return res.json()
+      const records = await getProjects()
+      return records.map((r) => ({
+        id: r.id,
+        name: r.name,
+        status: r.status as "COMPLETED" | "PROCESSING" | "FAILED",
+        visibility: r.visibility as "PUBLIC" | "PRIVATE",
+      }))
     },
   })
 
@@ -66,7 +129,7 @@ export function AppSidebar({
   return (
     <Sidebar {...props}>
       {/* Header */}
-      <SidebarHeader className="border-b border-white/[0.05]">
+      <SidebarHeader className="border-b border-white/[0.07] bg-[#0b0b0c]">
         <div className="flex items-center justify-between px-2 py-2.5">
           <Link href="/" className="flex items-center gap-2 min-w-0">
             <img
@@ -80,7 +143,7 @@ export function AppSidebar({
                 if (fallback) fallback.style.display = "flex"
               }}
             />
-            <div className="hidden items-center justify-center size-6 rounded-md bg-primary/15 border border-primary/25 shrink-0">
+            <div className="hidden items-center justify-center size-6 rounded-md bg-white/[0.04] border border-white/[0.08] shrink-0">
               <Building2 className="size-3 text-primary" />
             </div>
             <span className="text-[13px] font-semibold text-zinc-100 tracking-tight truncate">CodeCity</span>
@@ -88,7 +151,7 @@ export function AppSidebar({
           {onNewCity && (
             <button
               onClick={onNewCity}
-              className="flex items-center justify-center size-6 rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-primary/40 hover:text-primary hover:bg-primary/10 transition-all duration-200 shrink-0"
+              className="flex items-center justify-center size-7 rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-100 hover:bg-white/[0.06] transition-colors shrink-0"
               title="New City"
             >
               <Plus className="size-3" />
@@ -97,7 +160,7 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="gap-0 pt-2">
+      <SidebarContent className="gap-0 bg-[#0b0b0c] pt-2">
         {/* Nav */}
         <SidebarGroup className="px-2 pb-2">
           <SidebarMenu className="gap-0.5">
@@ -105,7 +168,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 asChild
                 isActive={isDashboard}
-                className="h-8 rounded-lg text-[12px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.06] transition-all duration-150"
+                className="h-8 rounded-md text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.07] transition-colors"
               >
                 <Link href="/dashboard">
                   <FolderGit2 className="size-3.5" />
@@ -117,7 +180,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 asChild
                 isActive={isExplore}
-                className="h-8 rounded-lg text-[12px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.06] transition-all duration-150"
+                className="h-8 rounded-md text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.07] transition-colors"
               >
                 <Link href="/explore">
                   <Compass className="size-3.5" />
@@ -129,14 +192,14 @@ export function AppSidebar({
         </SidebarGroup>
 
         {/* Divider */}
-        <div className="mx-3 border-t border-white/[0.05] mb-2" />
+        <div className="mx-3 border-t border-white/[0.07] mb-2" />
 
         {/* Recent Cities */}
         <SidebarGroup className="px-2 pb-2">
           <div className="flex items-center justify-between px-1 mb-1.5">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-700">Recent</span>
+            <span className="text-[11px] font-medium text-zinc-500">Recent</span>
             {activeCount > 0 && (
-              <span className="flex items-center gap-1 text-[9px] font-mono text-primary/70">
+              <span className="flex items-center gap-1 text-[10px] text-zinc-500">
                 <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
                 {activeCount} running
               </span>
@@ -151,9 +214,9 @@ export function AppSidebar({
                 <SidebarMenuItem key={project.id}>
                   <SidebarMenuButton
                     asChild
-                    className="h-7 rounded-md text-[11px] text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.03] transition-all duration-150 group"
+                    className="h-7 rounded-md text-[11px] text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-colors group"
                   >
-                    <Link href={`/project/${project.id}`}>
+                    <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
                       {project.visibility === "PUBLIC" ? (
                         <Globe className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
                       ) : (
@@ -178,7 +241,16 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-white/[0.05] p-2">
+      <SidebarFooter className="border-t border-white/[0.07] bg-[#0b0b0c] p-2">
+        {authCode && (
+          <div className="mb-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-2">
+            <p className="text-[10px] text-zinc-600">GitHub code</p>
+            <p className="mt-1 text-[13px] font-mono font-semibold tracking-[0.2em] text-zinc-200">{authCode}</p>
+          </div>
+        )}
+        {authError && (
+          <p className="mb-2 px-2 text-[10px] leading-4 text-primary/80">{authError}</p>
+        )}
         <div className="flex items-center gap-2 px-2 py-1.5">
           {user?.image ? (
             <img src={user.image} alt={user.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08] shrink-0" />
@@ -192,16 +264,27 @@ export function AppSidebar({
               {user?.name ?? (user?.email ? user.email.split("@")[0] : "—")}
             </span>
             <span className="text-[9px] font-mono text-zinc-700 truncate">
-              {user?.email ?? "free plan"}
+              {user?.name ? "GitHub connected" : "GitHub not connected"}
             </span>
           </div>
-          <button
-            onClick={handleLogout}
-            title="Sign out"
-            className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.05] transition-all shrink-0"
-          >
-            <LogOut className="h-3 w-3" />
-          </button>
+          {user?.name ? (
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.05] transition-all shrink-0"
+            >
+              <LogOut className="h-3 w-3" />
+            </button>
+          ) : (
+            <button
+              onClick={handleGithubLogin}
+              disabled={isSigningIn}
+              title="Connect GitHub"
+              className="flex items-center justify-center h-6 w-6 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-60 transition-all shrink-0"
+            >
+              {isSigningIn ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
+            </button>
+          )}
         </div>
       </SidebarFooter>
       <SidebarRail />

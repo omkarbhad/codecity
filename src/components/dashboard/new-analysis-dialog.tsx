@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
-import { Globe, Lock, Building2, GitBranch, Sparkles } from "lucide-react"
+import { Globe, Lock, Building2, GitBranch, FolderOpen } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 } from "@codecity/ui/components/dialog"
 import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
+import { analyze, isTauri } from "@/lib/tauri"
 
 const QUICK_REPOS = [
   { label: "vercel/next.js", url: "https://github.com/vercel/next.js" },
@@ -42,35 +43,19 @@ export function NewAnalysisDialog({
     setError(null)
 
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl: url, visibility }),
-      })
+      const result = await analyze(url.trim(), { visibility })
 
-      if (res.status === 401) {
-        router.push("/login")
-        return
-      }
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error ?? "Failed to analyze repository")
-        setSubmitting(false)
-        return
-      }
-
-      if (data.snapshot || res.status === 200) {
+      if (result.snapshot) {
         onOpenChange(false)
-        router.push(`/project/${data.projectId}`)
+        router.push(`/project?id=${encodeURIComponent(result.projectId)}`)
         return
       }
 
       queryClient.invalidateQueries({ queryKey: ["projects"] })
       onOpenChange(false)
-    } catch {
-      setError("Network error. Please try again.")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Analysis failed"
+      setError(msg)
       setSubmitting(false)
     }
   }
@@ -92,21 +77,12 @@ export function NewAnalysisDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[420px] rounded-2xl border border-white/[0.08] bg-[#07070c] p-0 overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)]">
-        {/* Accent gradient top */}
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-
-        {/* Subtle top glow */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-32"
-          style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255,61,61,0.08), transparent 80%)" }}
-        />
-
+      <DialogContent className="overflow-hidden rounded-lg border border-white/[0.10] bg-[#101012] p-0 shadow-lg sm:max-w-[420px]">
         <div className="relative p-5">
           {/* Header */}
           <DialogHeader className="mb-5">
             <div className="flex items-center gap-3">
-              <div className="relative flex items-center justify-center size-9 rounded-xl bg-primary/[0.08] border border-primary/20 overflow-hidden shrink-0">
+              <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.03]">
                 <img
                   src="/logo.png"
                   alt="CodeCity"
@@ -126,8 +102,8 @@ export function NewAnalysisDialog({
                 <DialogTitle className="text-[15px] font-semibold text-zinc-100 leading-none">
                   New City
                 </DialogTitle>
-                <DialogDescription className="text-[11px] text-zinc-600 mt-0.5 leading-none">
-                  Visualize a GitHub repository as a 3D city
+                <DialogDescription className="mt-1 text-xs leading-none text-zinc-500">
+                  {isTauri() ? "GitHub URL or local folder path" : "Visualize a GitHub repository as a 3D city"}
                 </DialogDescription>
               </div>
             </div>
@@ -136,18 +112,22 @@ export function NewAnalysisDialog({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* URL input */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 block">
-                Repository URL
+              <label className="block text-xs font-medium text-zinc-400">
+                {isTauri() ? "GitHub URL or Local Path" : "Repository URL"}
               </label>
               <div className="relative">
-                <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-600 pointer-events-none" />
+                {isTauri() && (url.startsWith("/") || url.startsWith("~")) ? (
+                  <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-600 pointer-events-none" />
+                ) : (
+                  <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-600 pointer-events-none" />
+                )}
                 <Input
-                  type="url"
-                  placeholder="https://github.com/owner/repo"
+                  type={isTauri() ? "text" : "url"}
+                  placeholder={isTauri() ? "https://github.com/owner/repo or ~/code/myapp" : "https://github.com/owner/repo"}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   disabled={submitting}
-                  className="h-10 pl-9 rounded-xl bg-white/[0.04] border-white/[0.07] text-sm text-zinc-200 placeholder:text-zinc-700 focus-visible:border-primary/40 focus-visible:ring-0 transition-colors font-mono text-[12px]"
+                  className="h-10 rounded-md border-white/[0.10] bg-[#0b0b0c] pl-9 font-mono text-[12px] text-zinc-200 transition-colors placeholder:text-zinc-700 focus-visible:border-primary/50 focus-visible:ring-0"
                   required
                 />
               </div>
@@ -160,7 +140,7 @@ export function NewAnalysisDialog({
                       key={repo.url}
                       type="button"
                       onClick={() => setUrl(repo.url)}
-                      className={`rounded-lg border px-2 py-1 text-[10px] font-mono transition-all duration-150 ${
+                      className={`rounded-md border px-2 py-1 font-mono text-[10px] transition-colors ${
                         url === repo.url
                           ? "border-primary/40 bg-primary/[0.08] text-primary"
                           : "border-white/[0.06] bg-white/[0.02] text-zinc-600 hover:border-white/[0.10] hover:text-zinc-400 hover:bg-white/[0.03]"
@@ -176,14 +156,14 @@ export function NewAnalysisDialog({
             {/* Visibility */}
             {!submitting && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 block">
+                <label className="block text-xs font-medium text-zinc-400">
                   Visibility
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {(["PRIVATE", "PUBLIC"] as const).map((v) => (
                     <label
                       key={v}
-                      className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all duration-150 ${
+                      className={`flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2.5 transition-colors ${
                         visibility === v
                           ? "border-primary/30 bg-primary/[0.06] text-zinc-100"
                           : "border-white/[0.06] bg-white/[0.02] text-zinc-500 hover:border-white/[0.10] hover:text-zinc-400"
@@ -197,7 +177,7 @@ export function NewAnalysisDialog({
                         onChange={() => setVisibility(v)}
                         className="sr-only"
                       />
-                      <div className={`shrink-0 flex items-center justify-center size-6 rounded-lg transition-all ${
+                      <div className={`flex size-6 shrink-0 items-center justify-center rounded-md transition-colors ${
                         visibility === v ? "bg-primary/10 text-primary" : "bg-white/[0.04] text-zinc-600"
                       }`}>
                         {v === "PRIVATE" ? (
@@ -220,18 +200,18 @@ export function NewAnalysisDialog({
 
             {/* Submitting state */}
             {submitting && (
-              <div className="rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-4 text-center">
+              <div className="rounded-md border border-primary/15 bg-primary/[0.04] px-4 py-4 text-center">
                 <div className="flex items-center justify-center gap-2.5 mb-1.5">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-primary/30 border-t-primary animate-spin shrink-0" />
                   <span className="text-[12px] font-mono text-zinc-300">Queuing analysis…</span>
                 </div>
-                <p className="text-[10px] font-mono text-zinc-700">Progress will appear on your dashboard</p>
+                <p className="font-mono text-[10px] text-zinc-700">Progress will appear on your dashboard</p>
               </div>
             )}
 
             {/* Error */}
             {error && (
-              <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] px-3 py-2.5">
+              <div className="rounded-md border border-red-500/20 bg-red-500/[0.05] px-3 py-2.5">
                 <p className="text-[11px] font-mono text-red-400">{error}</p>
               </div>
             )}
@@ -243,7 +223,7 @@ export function NewAnalysisDialog({
                   type="button"
                   onClick={() => onOpenChange(false)}
                   variant="outline"
-                  className="flex-1 h-9 rounded-xl border-white/[0.07] bg-transparent text-zinc-600 hover:text-zinc-200 hover:bg-white/[0.04] hover:border-white/[0.12] transition-all text-[12px]"
+                  className="h-9 flex-1 rounded-md border-white/[0.10] bg-transparent text-[12px] text-zinc-500 transition-colors hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-zinc-200"
                 >
                   Cancel
                 </Button>
@@ -251,13 +231,13 @@ export function NewAnalysisDialog({
               <Button
                 type="submit"
                 disabled={submitting}
-                className={`h-9 rounded-xl bg-primary hover:bg-primary/85 text-white text-[12px] font-semibold transition-all shadow-[0_0_20px_rgba(255,61,61,0.2)] hover:shadow-[0_0_28px_rgba(255,61,61,0.3)] ${submitting ? "w-full" : "flex-[2]"}`}
+                className={`h-9 rounded-md bg-primary text-[12px] font-semibold text-white transition-colors hover:bg-primary/90 ${submitting ? "w-full" : "flex-[2]"}`}
               >
                 {submitting ? (
                   "Building City…"
                 ) : (
                   <span className="flex items-center justify-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <GitBranch className="h-3.5 w-3.5" />
                     Start Analysis
                   </span>
                 )}

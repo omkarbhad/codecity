@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Search, FileCode, ArrowUpRight, Code2, ArrowDownAZ, Clock, TrendingUp, Globe } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { Input } from "@codecity/ui/components/input"
+import { getAllPublicProjects } from "@/lib/tauri"
 
 interface PublicProject {
   id: string
@@ -20,9 +21,17 @@ interface PublicProject {
 type SortMode = "recent" | "name" | "size"
 
 async function fetchExploreProjects(): Promise<PublicProject[]> {
-  const res = await fetch("/api/projects?tab=explore")
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
+  const records = await getAllPublicProjects()
+  return records.map((r) => ({
+    id: r.id,
+    name: r.name,
+    repoUrl: r.repo_url,
+    fileCount: r.file_count,
+    lineCount: r.line_count,
+    thumbnailUrl: null,
+    createdAt: r.created_at,
+    user: { name: null, image: null },
+  }))
 }
 
 function sortProjects(projects: PublicProject[], mode: SortMode): PublicProject[] {
@@ -179,7 +188,7 @@ function ProjectCard({ project, rank }: { project: PublicProject; rank: number }
   const isTop3 = rank <= 3
 
   return (
-    <Link href={`/project/${project.id}`}>
+    <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
       <div className={`group relative rounded-xl border bg-[#0a0a0f] overflow-hidden hover:translate-y-[-1px] transition-all duration-200 ${
         isTop3
           ? "border-white/[0.08] hover:border-primary/25"
