@@ -1,6 +1,6 @@
 import { SidebarProvider } from "@codecity/ui/components/sidebar"
 
-export default function ExploreLayout({
+export default function ReposRedirectLayout({
   children,
 }: {
   children: React.ReactNode

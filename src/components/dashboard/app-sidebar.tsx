@@ -7,7 +7,6 @@ import { open } from "@tauri-apps/plugin-shell"
 import {
   FolderGit2,
   GitBranch,
-  Compass,
   User,
   LogOut,
   Github,
@@ -136,7 +135,7 @@ export function AppSidebar({
       setIsSigningIn(false)
     }
   }
-  const isExplore = pathname.startsWith("/explore")
+  const isRepos = pathname.startsWith("/repos") || pathname.startsWith("/explore")
   const isDashboard = pathname.startsWith("/dashboard")
 
   const { data: projects = [] } = useQuery<Project[]>({
@@ -188,12 +187,12 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={isExplore}
+                isActive={isRepos}
                 className="h-8 rounded-md text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.07] transition-colors"
               >
-                <Link href="/explore">
-                  <Compass className="size-3.5" />
-                  Explore
+                <Link href="/repos">
+                  <Github className="size-3.5" />
+                  GitHub Repos
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
