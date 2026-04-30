@@ -20,10 +20,10 @@ Stable builds are published on the GitHub Releases page.
 
 | Platform | Release asset |
 |---|---|
-| Windows | `.msi` / `.exe` installer |
-| macOS Apple Silicon | `.dmg` / `.app.tar.gz` for `aarch64` |
-| macOS Intel | `.dmg` / `.app.tar.gz` for `x86_64` |
-| Linux | `.AppImage`, `.deb`, and `.rpm` when supported by the runner |
+| Windows | NSIS setup `.exe` and WiX `.msi` installers |
+| macOS Apple Silicon | `.dmg` and `.app.tar.gz` for `aarch64` |
+| macOS Intel | `.dmg` and `.app.tar.gz` for `x86_64` |
+| Linux | `.AppImage`, `.deb`, and `.rpm` packages |
 
 The app updater reads `latest.json` from:
 
@@ -98,8 +98,8 @@ Releases are built by `.github/workflows/release.yml` with `tauri-apps/tauri-act
 
 - macOS Apple Silicon: `aarch64-apple-darwin`
 - macOS Intel: `x86_64-apple-darwin`
-- Windows: `windows-latest`
-- Linux: `ubuntu-22.04`
+- Windows: `windows-latest`, producing NSIS `.exe` and WiX `.msi` installers.
+- Linux: `ubuntu-22.04`, producing `.AppImage`, `.deb`, and `.rpm` packages.
 
 Before the first release, configure these repository secrets:
 
