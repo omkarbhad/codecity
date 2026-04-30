@@ -31,10 +31,10 @@ function Section({
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-white/[0.03] transition-colors"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
       >
         {open ? <ChevronDown className="w-3 h-3 text-white/65" /> : <ChevronRight className="w-3 h-3 text-white/65" />}
-        <span className="text-[10px] font-medium text-white/75 uppercase tracking-wider flex-1">{title}</span>
+        <span className="flex-1 text-xs font-medium text-white/65">{title}</span>
         {count !== undefined && (
           <span className="text-[10px] text-white/65 tabular-nums">{count}</span>
         )}
@@ -82,22 +82,22 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   const cplxLabel = file.complexity <= 10 ? "Low" : file.complexity <= 25 ? "Med" : "High"
 
   return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-3 py-2.5 border-b border-white/[0.04] shrink-0">
+        <div className="shrink-0 border-b border-white/[0.08] px-3 py-2.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <img src={`/icons/vscode/${getFileIcon(fileName)}`} alt="" className="w-4 h-4 shrink-0" />
-                <button onClick={() => openCodeViewer(file.path)} className="text-[13px] font-semibold text-white/90 truncate hover:text-primary transition-colors">{fileName}</button>
+            <button onClick={() => openCodeViewer(file.path)} className="truncate text-[13px] font-semibold text-white/90 transition-colors hover:text-primary">{fileName}</button>
               </div>
               <div className="flex items-center gap-1 mt-1 ml-[24px]">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: districtColor }} />
                 <p className="text-[10px] text-white/65 truncate">{file.district}</p>
-                <button onClick={() => openCodeViewer(file.path)} aria-label="View source" className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors" title="View source">
+                <button onClick={() => openCodeViewer(file.path)} aria-label="View source" className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/65" title="View source">
                   <FileCode className="w-2.5 h-2.5" />
                 </button>
-                <button onClick={handleCopyPath} aria-label="Copy file path" className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors" title="Copy path">
+                <button onClick={handleCopyPath} aria-label="Copy file path" className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/65" title="Copy path">
                   {copied ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                 </button>
                 {repoUrl && (
@@ -105,7 +105,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                     href={`${repoUrl.replace(/\.git$/, "")}/blob/main/${file.path}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors"
+                    className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/65"
                     title="Open on GitHub"
                   >
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
@@ -113,7 +113,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                 )}
               </div>
             </div>
-            <button onClick={() => selectFile(null, null)} aria-label="Close panel" className="p-1 rounded-md hover:bg-white/[0.06] text-white/45 hover:text-white/75 transition-colors shrink-0">
+            <button onClick={() => selectFile(null, null)} aria-label="Close panel" className="shrink-0 rounded-md p-1 text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/75">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -122,15 +122,15 @@ export function SidePanel({ snapshot }: SidePanelProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-1">
           <div className="px-3 py-2">
-            <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
-              <span className="px-2 py-0.5 rounded text-[10px] border border-white/[0.06] text-white/75 flex items-center gap-1.5 font-medium">
+            <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+              <span className="flex items-center gap-1.5 rounded-sm border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-white/70">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: districtColor }} />
                 {file.district}
               </span>
-              {ext && <span className="px-2 py-0.5 rounded text-[10px] border border-white/[0.06] text-white/75 font-medium">{ext}</span>}
-              <span className={`px-2 py-0.5 rounded text-[10px] border border-white/[0.06] font-medium ${cplxColor}`}>{cplxLabel}</span>
-              {file.isReactComponent && <span className="px-2 py-0.5 rounded text-[10px] border border-white/[0.06] text-blue-400/80 font-medium">React</span>}
-              {file.hasUnusedExports && <span className="px-2 py-0.5 rounded text-[10px] border border-white/[0.06] text-red-400/80 font-medium">Unused</span>}
+              {ext && <span className="rounded-sm border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-white/70">{ext}</span>}
+              <span className={`rounded-sm border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium ${cplxColor}`}>{cplxLabel}</span>
+              {file.isReactComponent && <span className="rounded-sm border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-blue-400/80">React</span>}
+              {file.hasUnusedExports && <span className="rounded-sm border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-red-400/80">Unused</span>}
             </div>
 
             <div className="grid grid-cols-3 gap-1.5">
@@ -150,9 +150,9 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                   <button
                     key={`${fn.name}-${i}`}
                     onClick={() => openCodeViewer(file.path, fn.name)}
-                    className="flex items-center justify-between w-full text-left px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                    className="group flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white/[0.04]"
                   >
-                    <span className="text-[11px] text-white/85 truncate flex items-center gap-1.5 group-hover:text-primary transition-colors">
+                    <span className="flex items-center gap-1.5 truncate text-[11px] text-white/85 transition-colors group-hover:text-primary">
                       {fn.exported && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />}
                       {fn.name}
                     </span>
@@ -167,8 +167,8 @@ export function SidePanel({ snapshot }: SidePanelProps) {
             <Section title="Types" count={file.types.length} defaultOpen={file.types.length <= 8}>
               <div className="space-y-px">
                 {file.types.map((t, i) => (
-                  <div key={`${t.name}-${i}`} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400/80 border border-amber-500/[0.08] font-medium">{t.kind}</span>
+                  <div key={`${t.name}-${i}`} className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.04]">
+                    <span className="rounded-sm border border-amber-500/[0.08] bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-400/80">{t.kind}</span>
                     <span className="text-[11px] text-white/75 truncate">{t.name}</span>
                   </div>
                 ))}
@@ -189,7 +189,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                         <button
                           key={`${imp}-${i}`}
                           onClick={() => handleNavigate(imp)}
-                          className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-red-500/[0.06] text-red-400/80 border-red-500/[0.08] hover:bg-red-500/[0.12] transition-all truncate max-w-[130px]"
+                          className="max-w-[130px] truncate rounded-sm border border-red-500/[0.08] bg-red-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-red-400/80 transition-colors hover:bg-red-500/[0.12]"
                           title={imp}
                           aria-label={`Navigate to ${imp}`}
                         >
@@ -209,7 +209,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                         <button
                           key={`${dep}-${i}`}
                           onClick={() => handleNavigate(dep)}
-                          className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-blue-500/[0.06] text-blue-400/80 border-blue-500/[0.08] hover:bg-blue-500/[0.12] transition-all truncate max-w-[130px]"
+                          className="max-w-[130px] truncate rounded-sm border border-blue-500/[0.08] bg-blue-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-blue-400/80 transition-colors hover:bg-blue-500/[0.12]"
                           title={dep}
                           aria-label={`Navigate to ${dep}`}
                         >
@@ -226,7 +226,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {file.externalImports.map((ext, i) => (
-                        <span key={`${ext}-${i}`} className="px-1.5 py-0.5 rounded text-[10px] border font-medium bg-purple-500/[0.06] text-purple-400/80 border-purple-500/[0.08]">
+                        <span key={`${ext}-${i}`} className="rounded-sm border border-purple-500/[0.08] bg-purple-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-purple-400/80">
                           {ext}
                         </span>
                       ))}
@@ -243,9 +243,9 @@ export function SidePanel({ snapshot }: SidePanelProps) {
 
 function StatCell({ label, value, className = "" }: { label: string; value: number; className?: string }) {
   return (
-    <div className="bg-white/[0.03] rounded-md p-2 text-center hover:bg-white/[0.05] transition-colors">
+    <div className="rounded-md border border-white/[0.06] bg-white/[0.03] p-2 text-center transition-colors hover:bg-white/[0.05]">
       <div className={`text-sm font-bold tabular-nums ${className || "text-white/80"}`}>{value.toLocaleString()}</div>
-      <div className="text-[9px] text-white/65 font-medium mt-0.5">{label}</div>
+      <div className="mt-0.5 text-[9px] font-medium text-white/55">{label}</div>
     </div>
   )
 }

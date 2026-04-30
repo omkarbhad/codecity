@@ -16,7 +16,6 @@ import {
   Info,
   GitCommit,
   Keyboard,
-  MessageSquare,
 } from "lucide-react"
 import { cn } from "@codecity/ui/lib/utils"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
@@ -30,7 +29,6 @@ import { BottomBar } from "./bottom-bar"
 import { CityTooltip } from "./city-tooltip"
 import { CommitTimeline } from "./commit-timeline"
 import { CodeViewer } from "./code-viewer"
-import { ChatPanel } from "./chat-panel"
 
 // ── Resize Handle ───────────────────────────────────────────────────────────
 
@@ -87,8 +85,8 @@ function ResizeHandle({
     <div
       ref={handleRef}
       className={cn(
-        "w-[3px] shrink-0 cursor-col-resize transition-colors hover:bg-primary/40 active:bg-primary/60",
-        side === "left" ? "border-r border-white/[0.04]" : "border-l border-white/[0.04]"
+        "w-[3px] shrink-0 cursor-col-resize transition-colors hover:bg-white/[0.12] active:bg-primary/50",
+        side === "left" ? "border-r border-white/[0.06]" : "border-l border-white/[0.06]"
       )}
     />
   )
@@ -96,7 +94,7 @@ function ResizeHandle({
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type PrimaryView = "explorer" | "search" | "filters" | "minimap" | "legend" | "commits" | "chat"
+type PrimaryView = "explorer" | "search" | "filters" | "minimap" | "legend" | "commits"
 
 const MODES: { key: VisualizationMode; label: string; shortcut: string }[] = [
   { key: "dependencies", label: "Deps", shortcut: "1" },
@@ -141,7 +139,6 @@ const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: "legend", icon: Palette, label: "Legend" },
   { id: "minimap", icon: Map, label: "Minimap" },
   { id: "commits", icon: GitCommit, label: "Commits" },
-  { id: "chat", icon: MessageSquare, label: "AI Chat" },
 ]
 
 function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
@@ -150,8 +147,8 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center w-12 shrink-0 bg-[#09090b] py-2 gap-0.5",
-        position === "left" ? "border-r border-white/[0.06]" : "border-l border-white/[0.06]"
+        "flex w-11 shrink-0 flex-col items-center gap-0.5 bg-[#0b0b0c] py-2",
+        position === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
       )}
     >
       {items.map((item) => {
@@ -163,17 +160,17 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
             onClick={() => onViewChange(item.id)}
             title={`${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`}
             className={cn(
-              "relative flex items-center justify-center w-10 h-10 rounded-md transition-all",
+              "relative flex h-9 w-9 items-center justify-center rounded-md transition-colors",
               active
-                ? "text-white bg-white/[0.08]"
-                : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                ? "bg-white/[0.07] text-white"
+                : "text-white/40 hover:bg-white/[0.04] hover:text-white/70"
             )}
           >
             {/* Active indicator bar */}
             {active && (
               <div
                 className={cn(
-                  "absolute top-1.5 bottom-1.5 w-[2px] rounded-full bg-primary",
+                  "absolute bottom-1.5 top-1.5 w-[2px] rounded-sm bg-primary",
                   position === "left" ? "left-0" : "right-0"
                 )}
               />
@@ -192,12 +189,10 @@ function PrimaryPanelContent({
   view,
   snapshot,
   repoUrl,
-  projectName,
 }: {
   view: PrimaryView
   snapshot: CitySnapshot
   repoUrl?: string
-  projectName: string
 }) {
   const searchQuery = useCityStore((s) => s.searchQuery)
   const setSearch = useCityStore((s) => s.setSearch)
@@ -231,7 +226,7 @@ function PrimaryPanelContent({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search files..."
                 aria-label="Search files"
-                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-md pl-7 pr-7 py-1.5 text-[11px] text-white/80 placeholder:text-white/45 outline-none focus:border-white/15 focus:bg-white/[0.06] transition-all"
+                className="w-full rounded-md border border-white/[0.08] bg-[#101012] py-1.5 pl-7 pr-7 text-[11px] text-white/80 outline-none transition-colors placeholder:text-white/35 focus:border-white/18 focus:bg-white/[0.05]"
               />
               {searchQuery && (
                 <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/65 hover:text-white/75 transition-colors">
@@ -279,24 +274,17 @@ function PrimaryPanelContent({
           )}
         </>
       )
-    case "chat":
-      return (
-        <>
-          <PanelHeader title="AI Chat" />
-          <ChatPanel snapshot={snapshot} projectName={projectName} />
-        </>
-      )
   }
 }
 
 function PanelHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="h-9 flex items-center justify-between px-3 border-b border-white/[0.06] shrink-0">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/50">
+    <div className="flex h-9 shrink-0 items-center justify-between border-b border-white/[0.08] px-3">
+      <span className="text-xs font-medium text-white/55">
         {title}
       </span>
       {subtitle && (
-        <span className="text-[9px] text-white/25 tabular-nums">{subtitle}</span>
+        <span className="text-[10px] tabular-nums text-white/30">{subtitle}</span>
       )}
     </div>
   )
@@ -312,7 +300,7 @@ function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot;
   return (
     <>
       <ResizeHandle side="right" onResize={onResize} />
-      <div style={{ width }} className="shrink-0 bg-[#09090b] flex flex-col overflow-hidden hidden md:flex">
+      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden bg-[#0b0b0c] md:flex">
         <SidePanel snapshot={snapshot} />
       </div>
     </>
@@ -329,26 +317,26 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
   const setLayoutMode = useCityStore((s) => s.setLayoutMode)
 
   return (
-    <header className="h-10 shrink-0 flex items-center justify-between gap-2 border-b border-white/[0.07] bg-[#09090b] px-3 z-50">
+    <header className="z-50 flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0b0b0c] px-3">
       {/* Left */}
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={() => router.back()}
-          className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] text-white/65 hover:text-white hover:bg-white/[0.08] transition-all"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white"
         >
           <ArrowLeft className="w-3 h-3" />
         </button>
-        <Link href="/dashboard" className="flex items-center gap-1.5 text-white/85 hover:text-white transition-colors">
+        <Link href="/dashboard" className="flex items-center gap-1.5 text-white/80 transition-colors hover:text-white">
           <img src="/logo.png" alt="CodeCity" className="w-4 h-4 rounded-sm" />
           <span className="text-[13px] font-semibold hidden sm:inline">CodeCity</span>
         </Link>
-        <span className="text-white/65 hidden sm:inline">/</span>
-        <span className="font-sans text-[11px] text-white/65 truncate max-w-[80px] sm:max-w-[160px]">{projectName}</span>
+        <span className="hidden text-white/35 sm:inline">/</span>
+        <span className="truncate font-sans text-xs text-white/60 max-w-[90px] sm:max-w-[200px]">{projectName}</span>
       </div>
 
       {/* Center — layout + viz modes */}
       <div className="hidden sm:flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none">
-        <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px shrink-0">
+        <div className="flex shrink-0 items-center rounded-md border border-white/[0.08] bg-white/[0.03] p-px">
           {LAYOUTS.map((l) => {
             const Icon = l.icon
             const active = layoutMode === l.key
@@ -356,8 +344,8 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
               <button
                 key={l.key}
                 onClick={() => setLayoutMode(l.key)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-[5px] text-[11px] font-medium transition-all ${
-                  active ? "bg-primary/15 text-primary" : "text-white/75 hover:text-white/85 hover:bg-white/[0.04]"
+                className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                  active ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
                 }`}
               >
                 <Icon className="w-3 h-3" />
@@ -367,15 +355,15 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
           })}
         </div>
 
-        <div className="w-px h-4 bg-white/[0.06] shrink-0" />
+        <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
 
-        <div className="flex items-center bg-white/[0.03] rounded-md border border-white/[0.05] p-px shrink-0">
+        <div className="flex shrink-0 items-center rounded-md border border-white/[0.08] bg-white/[0.03] p-px">
           {MODES.map((m) => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`px-2 py-1 rounded-[5px] text-[11px] font-medium transition-all ${
-                visualizationMode === m.key ? "bg-primary/15 text-primary" : "text-white/75 hover:text-white/85 hover:bg-white/[0.04]"
+              className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                visualizationMode === m.key ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
               }`}
             >
               {m.label}
@@ -391,7 +379,7 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
             const idx = LAYOUTS.findIndex((l) => l.key === layoutMode)
             setLayoutMode(LAYOUTS[(idx + 1) % LAYOUTS.length].key)
           }}
-          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] text-[11px] font-medium text-primary"
+          className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[11px] font-medium text-white"
         >
           {(() => {
             const ActiveIcon = LAYOUTS.find((l) => l.key === layoutMode)!.icon
@@ -403,7 +391,7 @@ function ProjectNavbar({ projectName }: { projectName: string }) {
             const idx = MODES.findIndex((m) => m.key === visualizationMode)
             setMode(MODES[(idx + 1) % MODES.length].key)
           }}
-          className="px-2 py-1 rounded-md bg-primary/15 border border-primary/20 text-[11px] font-medium text-primary"
+          className="rounded-md border border-white/[0.08] bg-white/[0.07] px-2 py-1 text-[11px] font-medium text-white"
         >
           {MODES.find((m) => m.key === visualizationMode)?.label}
         </button>
@@ -454,7 +442,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, children }: Proje
   }, [handleViewChange])
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#040408]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#050506]">
       {/* Top navbar — full width */}
       <ProjectNavbar projectName={projectName} />
 
@@ -470,8 +458,8 @@ export function ProjectShell({ snapshot, projectName, repoUrl, children }: Proje
         {/* Primary sidebar panel — slides in/out */}
         {activeView && (
           <>
-            <div style={{ width: primaryWidth }} className="shrink-0 bg-[#09090b] flex flex-col overflow-hidden hidden md:flex">
-              <PrimaryPanelContent view={activeView} snapshot={snapshot} repoUrl={repoUrl} projectName={projectName} />
+            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden bg-[#0b0b0c] md:flex">
+              <PrimaryPanelContent view={activeView} snapshot={snapshot} repoUrl={repoUrl} />
             </div>
             <ResizeHandle side="left" onResize={handlePrimaryResize} />
           </>

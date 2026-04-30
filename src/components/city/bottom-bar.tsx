@@ -81,19 +81,19 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
 
   return (
     <div className="relative">
-      <div className="flex items-center h-6 bg-[#09090b] border-t border-white/[0.06] px-2 gap-0.5 text-[10px] shrink-0">
+      <div className="flex h-7 shrink-0 items-center gap-1 border-t border-white/[0.08] bg-[#0b0b0c] px-2 text-[10px]">
         {/* Left: mode indicators */}
-        <span className="text-[9px] text-primary/80 font-medium bg-primary/[0.08] px-1.5 py-px rounded border border-primary/[0.1]">
+        <span className="rounded-sm border border-white/[0.08] bg-white/[0.04] px-1.5 py-px text-[10px] font-medium text-white/65">
           {layoutLabels[layoutMode]}
         </span>
         <span className="flex items-center gap-1 ml-1">
           <span className="w-1 h-1 rounded-full bg-primary motion-safe:animate-pulse" />
-          <span className="text-[9px] text-white/65 font-medium">
+          <span className="text-[10px] font-medium text-white/60">
             {modeLabels[visualizationMode]}
           </span>
         </span>
 
-        <div className="w-px h-3 bg-white/[0.06] mx-1.5" />
+        <div className="mx-1.5 h-3 w-px bg-white/[0.08]" />
 
         {/* Stats */}
         {items.map((item, i) => (
@@ -101,26 +101,26 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
             <span className={`text-[10px] font-bold tabular-nums ${item.color}`}>
               {item.value >= 1000 ? `${(item.value / 1000).toFixed(1)}k` : item.value}
             </span>
-            <span className="text-[8px] text-white/50 font-medium">{item.label}</span>
+            <span className="text-[9px] font-medium text-white/45">{item.label}</span>
           </div>
         ))}
 
         {(hiddenExtensions.size > 0 || hiddenPaths.size > 0) && (
           <>
-            <div className="w-px h-3 bg-white/[0.06] mx-1" />
+            <div className="mx-1 h-3 w-px bg-white/[0.08]" />
             {hiddenExtensions.size > 0 && (
-              <span className="text-[8px] text-amber-400/80 bg-amber-400/[0.06] px-1.5 py-px rounded font-medium">{hiddenExtensions.size} ext</span>
+              <span className="rounded-sm bg-amber-400/[0.08] px-1.5 py-px text-[9px] font-medium text-amber-400/80">{hiddenExtensions.size} ext</span>
             )}
             {hiddenPaths.size > 0 && (
-              <span className="text-[8px] text-orange-400/80 bg-orange-400/[0.06] px-1.5 py-px rounded font-medium ml-0.5">{hiddenPaths.size} path</span>
+              <span className="ml-0.5 rounded-sm bg-orange-400/[0.08] px-1.5 py-px text-[9px] font-medium text-orange-400/80">{hiddenPaths.size} path</span>
             )}
           </>
         )}
 
         {warnings && warnings.length > 0 && (
           <>
-            <div className="w-px h-3 bg-white/[0.06] mx-1" />
-            <span className="text-[8px] text-amber-400/80 bg-amber-400/[0.06] px-1.5 py-px rounded font-medium cursor-help" title={`${warnings.length} parse errors`}>
+            <div className="mx-1 h-3 w-px bg-white/[0.08]" />
+            <span className="cursor-help rounded-sm bg-amber-400/[0.08] px-1.5 py-px text-[9px] font-medium text-amber-400/80" title={`${warnings.length} parse errors`}>
               {warnings.length} warn
             </span>
           </>
@@ -133,8 +133,8 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
         <button
           ref={helpBtnRef}
           onClick={() => setHelpOpen((v) => !v)}
-          className={`w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded transition-all ${
-            helpOpen ? "bg-primary/15 text-primary" : "text-white/50 hover:text-white/75 hover:bg-white/[0.05]"
+          className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold transition-colors ${
+            helpOpen ? "bg-white/[0.08] text-white" : "text-white/50 hover:bg-white/[0.05] hover:text-white/75"
           }`}
           aria-label="Help — keyboard shortcuts and visual guide"
           aria-expanded={helpOpen}
@@ -145,9 +145,9 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
       {helpOpen && (
         <div
           ref={helpRef}
-          className="absolute bottom-7 right-1 w-[min(320px,calc(100vw-2rem))] bg-[#0a0a0f] border border-white/[0.07] rounded-lg shadow-2xl shadow-black/60 p-3 z-[70] overflow-y-auto max-h-[70vh]"
+          className="absolute bottom-8 right-1 z-[70] max-h-[70vh] w-[min(320px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-white/[0.10] bg-[#101012] p-3 shadow-lg"
         >
-          <p className="text-[10px] text-white/75 uppercase tracking-widest font-medium mb-2">Visual Guide</p>
+          <p className="mb-2 text-xs font-medium text-white/70">Visual guide</p>
           <div className="space-y-1 mb-3 pb-3 border-b border-white/[0.04]">
             {LEGEND_ITEMS.map((item) => (
               <div key={item.label} className="flex items-center gap-2">
@@ -157,7 +157,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
             ))}
           </div>
 
-          <p className="text-[10px] text-white/75 uppercase tracking-widest font-medium mb-2">Shortcuts</p>
+          <p className="mb-2 text-xs font-medium text-white/70">Shortcuts</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {SHORTCUTS.map(([key, desc]) => (
               <div key={key} className="flex items-center gap-2">

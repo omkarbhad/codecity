@@ -143,13 +143,13 @@ const TreeNodeItem = memo(function TreeNodeItem({
   if (node.isFile) {
     return (
       <div
-        className={`flex items-center h-[22px] group pr-2 cursor-pointer text-[12px] transition-colors select-none ${
+        className={`group flex h-[24px] cursor-pointer select-none items-center pr-2 text-[12px] transition-colors ${
           isSelected
-            ? "bg-primary/[0.12] text-white"
+            ? "bg-white/[0.08] text-white"
             : isHidden
               ? "text-white/20"
               : isMatch
-                ? "text-primary/80 bg-primary/[0.06]"
+                ? "bg-primary/[0.06] text-primary/80"
                 : "text-white/60 hover:text-white/90 hover:bg-white/[0.04]"
         }`}
         style={{ paddingLeft: indent }}
@@ -164,7 +164,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
         <span className={`truncate flex-1 ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
         <button
           onClick={(e) => { e.stopPropagation(); togglePathVisibility(node.path) }}
-          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all ${
+          className={`shrink-0 rounded p-0.5 transition-colors hover:bg-white/10 ${
             isHidden ? "text-white/30" : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
           }`}
         >
@@ -177,7 +177,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
   return (
     <div>
       <div
-        className={`flex items-center h-[22px] group pr-2 cursor-pointer text-[12px] transition-colors select-none ${
+        className={`group flex h-[24px] cursor-pointer select-none items-center pr-2 text-[12px] transition-colors ${
           isHidden
             ? "text-white/25"
             : isMatch
@@ -199,7 +199,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
         <span className={`truncate flex-1 ${isHidden ? "line-through opacity-50" : ""}`}>{node.name}</span>
         <button
           onClick={(e) => { e.stopPropagation(); togglePathVisibility(node.path) }}
-          className={`shrink-0 p-0.5 rounded hover:bg-white/10 transition-all ${
+          className={`shrink-0 rounded p-0.5 transition-colors hover:bg-white/10 ${
             isHidden ? "text-white/30" : "text-white/15 hover:text-white/50 opacity-0 group-hover:opacity-100"
           }`}
         >
@@ -269,8 +269,8 @@ export function FileTree({ snapshot }: FileTreeProps) {
   }, [])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="py-0.5 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto overscroll-contain py-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}
@@ -283,13 +283,13 @@ export function FileTree({ snapshot }: FileTreeProps) {
         ))}
       </div>
       {hiddenPaths.size > 0 && (
-        <div className="px-3 py-1 border-t border-white/[0.06] shrink-0 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between border-t border-white/[0.08] px-3 py-1.5">
           <span className="font-sans text-[9px] text-amber-400/40">
             {hiddenPaths.size} hidden
           </span>
           <button
             onClick={showAllPaths}
-            className="text-[9px] font-sans text-amber-400/50 hover:text-amber-400 transition-colors"
+            className="font-sans text-[9px] text-amber-400/50 transition-colors hover:text-amber-400"
           >
             Show all
           </button>
