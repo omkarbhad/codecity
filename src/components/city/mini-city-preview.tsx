@@ -24,14 +24,14 @@ function MiniCameraFit({ cityBounds, maxLines }: { cityBounds: CityBounds; maxLi
     const estimatedHeight = Math.max(8, Math.min(80, Math.sqrt(Math.max(maxLines, 1)) * 2.2))
     return {
       center: [cityBounds.centerX, cityBounds.centerZ] as const,
-      radius: Math.max(22, spread * 1.2),
-      height: Math.max(18, spread * 0.58, estimatedHeight * 1.35),
+      radius: Math.max(15, spread * 0.78),
+      height: Math.max(13, spread * 0.42, estimatedHeight * 1.05),
     }
   }, [cityBounds, maxLines])
 
   useEffect(() => {
-    camera.position.set(center[0] + radius * 0.82, height, center[1] + radius)
-    camera.lookAt(center[0], Math.max(2, height * 0.18), center[1])
+    camera.position.set(center[0] + radius * 0.72, height, center[1] + radius * 0.9)
+    camera.lookAt(center[0], Math.max(1.5, height * 0.2), center[1])
     camera.updateProjectionMatrix()
   }, [camera, center, height, radius])
 
@@ -120,7 +120,7 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
           powerPreference: "low-power",
         }}
         shadows={false} // no shadows for thumbnails — big perf win
-        camera={{ position: [30, 20, 30], fov: 48, near: 0.5, far: 5000 }}
+        camera={{ position: [30, 20, 30], fov: 42, near: 0.5, far: 5000 }}
         style={{ width: "100%", height: "100%" }}
         onCreated={({ gl }) => {
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))

@@ -705,7 +705,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         <DashboardStat tone="violet" icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
         <Button
           onClick={() => onCreateCity?.()}
-          className="col-span-2 h-full min-h-10 gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-xs font-semibold text-white hover:border-primary/45 hover:bg-primary/90 lg:col-span-1"
+          className="col-span-2 h-[45px] self-stretch gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-xs font-semibold text-white hover:border-primary/45 hover:bg-primary/90 lg:col-span-1"
         >
           <HugeIcon icon={Add01Icon} className="size-3.5" />
           New City

@@ -14,19 +14,60 @@ pub enum GitHubError {
 
 pub fn parse_github_url(url: &str) -> Result<(String, String), GitHubError> {
     let trimmed = url.trim().trim_end_matches('/');
+    let reserved_routes = [
+        "about",
+        "apps",
+        "blog",
+        "collections",
+        "customer-stories",
+        "enterprise",
+        "events",
+        "explore",
+        "features",
+        "github",
+        "login",
+        "marketplace",
+        "new",
+        "notifications",
+        "organizations",
+        "orgs",
+        "pricing",
+        "pulls",
+        "readme",
+        "search",
+        "security",
+        "settings",
+        "sponsors",
+        "topics",
+        "trending",
+    ];
 
     let url_pattern = regex::Regex::new(r"^(?:https?://)?github\.com/([^/]+)/([^/]+?)(?:\.git)?$")
         .map_err(|e| GitHubError::InvalidUrl(e.to_string()))?;
 
     if let Some(caps) = url_pattern.captures(trimmed) {
-        return Ok((caps[1].to_string(), caps[2].to_string()));
+        let owner = caps[1].to_string();
+        let repo = caps[2].to_string();
+        if reserved_routes.contains(&owner.as_str()) {
+            return Err(GitHubError::InvalidUrl(format!(
+                "That GitHub link is not a repository. Use a repo URL like https://github.com/owner/repo."
+            )));
+        }
+        return Ok((owner, repo));
     }
 
     let short_pattern = regex::Regex::new(r"^([^/\s]+)/([^/\s]+)$")
         .map_err(|e| GitHubError::InvalidUrl(e.to_string()))?;
 
     if let Some(caps) = short_pattern.captures(trimmed) {
-        return Ok((caps[1].to_string(), caps[2].to_string()));
+        let owner = caps[1].to_string();
+        let repo = caps[2].to_string();
+        if reserved_routes.contains(&owner.as_str()) {
+            return Err(GitHubError::InvalidUrl(format!(
+                "That GitHub path is not a repository. Use owner/repo, for example vercel/next.js."
+            )));
+        }
+        return Ok((owner, repo));
     }
 
     Err(GitHubError::InvalidUrl(format!(

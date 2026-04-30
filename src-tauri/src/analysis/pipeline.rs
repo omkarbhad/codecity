@@ -376,6 +376,22 @@ async fn download_repo_archive(
         .map_err(|e| format!("Failed to download repo archive: {}", e))?;
 
     if !response.status().is_success() {
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(format!(
+                "Repository not found: {}/{}. Check the URL, or sign in if this is a private repository.",
+                owner, repo
+            ));
+        }
+
+        if response.status() == reqwest::StatusCode::FORBIDDEN
+            || response.status() == reqwest::StatusCode::UNAUTHORIZED
+        {
+            return Err(format!(
+                "GitHub could not access {}/{}. Sign in again or check your repository permissions.",
+                owner, repo
+            ));
+        }
+
         return Err(format!(
             "GitHub archive download failed: {}",
             response.status()
@@ -430,37 +446,81 @@ async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBu
 
     log::info!("Cloning repo: {}", repo_url);
 
-    let output = tokio::process::Command::new("git")
-        .args(["clone", "--depth", "1", &clone_url])
-        .arg(&clone_dir)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run git clone: {}", e))?;
+    let output = run_fast_git_clone(&clone_url, &clone_dir).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         // Try without token in URL (might be a public repo and token auth failed)
         if github_token.is_some() {
             clone_url = format!("https://github.com/{}/{}.git", owner, repo);
-            let retry = tokio::process::Command::new("git")
-                .args(["clone", "--depth", "1", &clone_url])
-                .arg(&clone_dir)
-                .output()
-                .await
-                .map_err(|e| format!("Failed to run git clone: {}", e))?;
+            let retry = run_fast_git_clone(&clone_url, &clone_dir).await?;
 
             if !retry.status.success() {
-                return Err(format!(
-                    "git clone failed: {}",
-                    String::from_utf8_lossy(&retry.stderr)
+                return Err(format_git_clone_error(
+                    &owner,
+                    &repo,
+                    &String::from_utf8_lossy(&retry.stderr),
                 ));
             }
         } else {
-            return Err(format!("git clone failed: {}", stderr));
+            return Err(format_git_clone_error(&owner, &repo, &stderr));
         }
     }
 
     Ok(clone_dir)
+}
+
+async fn run_fast_git_clone(
+    clone_url: &str,
+    clone_dir: &Path,
+) -> Result<std::process::Output, String> {
+    tokio::process::Command::new("git")
+        .args([
+            "clone",
+            "--depth",
+            "1",
+            "--single-branch",
+            "--no-tags",
+            clone_url,
+        ])
+        .arg(clone_dir)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run git clone: {}", e))
+}
+
+fn format_git_clone_error(owner: &str, repo: &str, stderr: &str) -> String {
+    let lower = stderr.to_lowercase();
+
+    if lower.contains("repository not found") || lower.contains("not found") {
+        return format!(
+            "Repository not found: {}/{}. Check the URL, or sign in if this is a private repository.",
+            owner, repo
+        );
+    }
+
+    if lower.contains("authentication failed")
+        || lower.contains("could not read username")
+        || lower.contains("permission denied")
+        || lower.contains("access denied")
+    {
+        return format!(
+            "GitHub could not access {}/{}. Sign in again or check your repository permissions.",
+            owner, repo
+        );
+    }
+
+    if lower.contains("could not resolve host") || lower.contains("failed to connect") {
+        return "Could not reach GitHub. Check your internet connection and try again.".to_string();
+    }
+
+    format!(
+        "Could not download {}/{}. Git reported: {}",
+        owner,
+        repo,
+        stderr.trim()
+    )
 }
 
 async fn download_or_clone_repo(
@@ -470,6 +530,12 @@ async fn download_or_clone_repo(
     match download_repo_archive(repo_url, github_token).await {
         Ok(dir) => Ok(dir),
         Err(download_error) => {
+            if download_error.starts_with("Repository not found:")
+                || download_error.starts_with("GitHub could not access")
+            {
+                return Err(download_error);
+            }
+
             log::warn!(
                 "Repo archive download failed, falling back to git clone: {}",
                 download_error

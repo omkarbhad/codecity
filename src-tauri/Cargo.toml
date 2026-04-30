@@ -1,8 +1,8 @@
 [package]
 name = "codecity"
-version = "0.0.0"
-description = "Codecity Desktop App"
-authors = ["Codecity"]
+version = "0.1.0"
+description = "CodeCity Desktop App"
+authors = ["CodeCity"]
 edition = "2021"
 
 [lib]
