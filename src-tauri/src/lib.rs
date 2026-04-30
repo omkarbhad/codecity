@@ -505,16 +505,24 @@ async fn get_source_file_impl(
         analysis::parse_github_url(repo_url).map_err(|error| invalid_params(error.to_string()))?;
 
     if let Some(data_dir) = dirs::data_dir() {
-        let cached_file = data_dir
+        let cached_repo = data_dir
             .join("codecity")
             .join("repos")
-            .join(format!("{owner}-{repo}"))
-            .join(file_path);
+            .join(format!("{owner}-{repo}"));
 
-        if cached_file.is_file() {
-            return std::fs::read_to_string(&cached_file).map_err(|error| {
-                internal_error(format!("Failed to read {}: {error}", cached_file.display()))
-            });
+        if cached_repo.is_dir() {
+            let cached_file = cached_repo.join(file_path);
+
+            if cached_file.is_file() {
+                return std::fs::read_to_string(&cached_file).map_err(|error| {
+                    internal_error(format!("Failed to read {}: {error}", cached_file.display()))
+                });
+            }
+
+            return Err(internal_error(format!(
+                "Source file is missing from the downloaded checkout: {}. The folder or file may have been moved or deleted; refresh the city to reparse the latest files.",
+                file_path
+            )));
         }
     }
 

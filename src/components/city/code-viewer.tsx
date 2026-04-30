@@ -151,6 +151,10 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
+function cleanErrorMessage(message: string): string {
+  return message.replace(/\s+\(-?\d+\)$/, "")
+}
+
 export function CodeViewer() {
   const codeViewer = useCityStore((s) => s.codeViewer)
   const closeCodeViewer = useCityStore((s) => s.closeCodeViewer)
@@ -177,7 +181,7 @@ export function CodeViewer() {
 
     getSourceFile(repoUrl, filePath)
       .then(setCode)
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(cleanErrorMessage(err instanceof Error ? err.message : "Could not load source file")))
       .finally(() => setLoading(false))
   }, [filePath, repoUrl])
 
