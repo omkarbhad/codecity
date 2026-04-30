@@ -1,16 +1,25 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ProjectVisualization } from "@/components/city/project-visualization"
 import { RotateCcw, ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react"
 import { PageLoader } from "@/components/ui/loader"
 import type { CitySnapshot } from "@/lib/types/city"
+import { getProject, getProjectSnapshot, analyze } from "@/lib/tauri"
 
 export default function ProjectPage() {
-  const params = useParams()
+  return (
+    <Suspense fallback={<PageLoader text="Loading city..." />}>
+      <ProjectContent />
+    </Suspense>
+  )
+}
+
+function ProjectContent() {
+  const searchParams = useSearchParams()
   const router = useRouter()
-  const id = params.id as string
+  const id = searchParams.get("id") ?? ""
 
   const [snapshot, setSnapshot] = useState<CitySnapshot | null>(null)
   const [projectName, setProjectName] = useState("")
@@ -22,17 +31,20 @@ export default function ProjectPage() {
   useEffect(() => {
     async function load() {
       try {
-        const projectRes = await fetch(`/api/projects/${id}`)
-        if (!projectRes.ok) {
+        if (!id) {
+          setError("Project id missing.")
+          return
+        }
+        const projectData = await getProject(id)
+        if (!projectData) {
           setError("Project not found. It may have been deleted — try analyzing again.")
           return
         }
-        const projectData = await projectRes.json()
         setProjectName(projectData.name)
-        setRepoUrl(projectData.repoUrl)
+        setRepoUrl(projectData.repo_url)
 
         if (projectData.status === "PROCESSING") {
-          router.replace(`/analyze/${id}`)
+          router.replace(`/analyze?id=${encodeURIComponent(id)}`)
           return
         }
 
@@ -41,13 +53,12 @@ export default function ProjectPage() {
           return
         }
 
-        const snapshotRes = await fetch(`/api/projects/${id}/snapshot`)
-        if (!snapshotRes.ok) {
+        const data = await getProjectSnapshot(id)
+        if (!data) {
           setError("Snapshot not found. Try re-analyzing the repository.")
           return
         }
-        const data = await snapshotRes.json()
-        setSnapshot(data)
+        setSnapshot(data as unknown as CitySnapshot)
       } catch {
         setError("Failed to load project. Try again later.")
       } finally {
@@ -60,16 +71,15 @@ export default function ProjectPage() {
   async function handleReanalyze() {
     setReanalyzing(true)
     try {
-      const res = await fetch(`/api/projects/${id}/reanalyze`, { method: "POST" })
-      if (res.ok) {
-        router.push(`/analyze/${id}`)
+      const result = await analyze(repoUrl)
+      if (result.projectId) {
+        router.push(`/analyze?id=${encodeURIComponent(result.projectId)}`)
       } else {
-        const data = await res.json().catch(() => ({}))
-        setError(data.error ?? "Failed to start re-analysis")
+        setError("Failed to start re-analysis")
         setReanalyzing(false)
       }
     } catch {
-      setError("Network error. Try again.")
+      setError("Analysis error. Try again.")
       setReanalyzing(false)
     }
   }
@@ -82,8 +92,8 @@ export default function ProjectPage() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
         <div className="max-w-sm w-full">
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
+          <div className="rounded-lg border border-white/[0.08] bg-[#101012] p-8 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10">
               <AlertTriangle className="h-5 w-5 text-red-400" />
             </div>
             <h2 className="text-base font-semibold text-zinc-50 mb-2">Something went wrong</h2>
@@ -93,7 +103,7 @@ export default function ProjectPage() {
                 <button
                   onClick={handleReanalyze}
                   disabled={reanalyzing}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-50 w-full"
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
                   {reanalyzing ? "Starting..." : "Re-analyze"}
@@ -102,14 +112,14 @@ export default function ProjectPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => router.back()}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 hover:border-white/[0.12] transition-all"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:border-white/[0.12] hover:text-zinc-200"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back
                 </button>
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 hover:border-white/[0.12] transition-all"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:border-white/[0.12] hover:text-zinc-200"
                 >
                   <RotateCcw className="h-4 w-4" />
                   Retry
@@ -130,7 +140,7 @@ export default function ProjectPage() {
           <button
             onClick={handleReanalyze}
             disabled={reanalyzing}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-50 mx-auto"
+            className="mx-auto flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${reanalyzing ? "animate-spin" : ""}`} />
             {reanalyzing ? "Starting..." : "Re-analyze"}
