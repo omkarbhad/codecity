@@ -3,7 +3,7 @@ import { Github } from "lucide-react"
 
 export function Navbar() {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#050507]/80 backdrop-blur-xl">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.08] bg-[#0b0b0c]/95">
       <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <img src="/logo.png" alt="CodeCity" className="size-7 rounded-md" />
@@ -14,13 +14,14 @@ export function Navbar() {
           <a href="#features" className="transition-colors hover:text-zinc-100">Features</a>
           <a href="#how-it-works" className="transition-colors hover:text-zinc-100">How it works</a>
           <a href="#explore" className="transition-colors hover:text-zinc-100">Explore</a>
+          <a href="#download" className="transition-colors hover:text-zinc-100">Download</a>
         </div>
 
         <Link
           href="https://github.com/omkarbhad/codecity"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex size-8 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-white"
+          className="inline-flex size-8 items-center justify-center rounded-md border border-white/[0.10] text-zinc-300 transition-colors hover:border-white/[0.18] hover:text-white"
           aria-label="Open CodeCity on GitHub"
         >
           <Github className="size-4" />
