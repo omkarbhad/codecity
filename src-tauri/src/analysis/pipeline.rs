@@ -493,6 +493,141 @@ pub async fn analyze(
     }
 }
 
+pub fn enqueue_analyze(
+    db: &Database,
+    input: &str,
+    visibility: Option<&str>,
+    github_token: Option<String>,
+) -> AnalyzeResult {
+    let input = input.trim();
+    let visibility = normalize_visibility(visibility);
+
+    let expanded = expand_input_path(input);
+    let local_path = PathBuf::from(&expanded);
+
+    let (name, source) = if local_path.is_dir() {
+        let name = local_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("local")
+            .to_string();
+        (name, QueuedSource::Local(expanded.clone()))
+    } else if is_github_url(input) {
+        let (owner, repo) = match github::parse_github_url(input) {
+            Ok(result) => result,
+            Err(error) => {
+                return AnalyzeResult {
+                    success: false,
+                    project_id: None,
+                    snapshot: None,
+                    error: Some(error.to_string()),
+                };
+            }
+        };
+        (
+            format!("{}/{}", owner, repo),
+            QueuedSource::GitHub(input.to_string()),
+        )
+    } else {
+        return AnalyzeResult {
+            success: false,
+            project_id: None,
+            snapshot: None,
+            error: Some(format!(
+                "\"{}\" is not a valid local directory or GitHub URL",
+                input
+            )),
+        };
+    };
+
+    if let Ok(Some(dup)) = db.find_duplicate(input, "local") {
+        match dup.status.as_str() {
+            "PENDING" | "PROCESSING" => {
+                return AnalyzeResult {
+                    success: true,
+                    project_id: Some(dup.id),
+                    snapshot: None,
+                    error: None,
+                };
+            }
+            _ => {
+                let _ = db.delete_project(&dup.id);
+            }
+        }
+    }
+
+    let project = match db.create_project(&name, input, visibility, "PENDING", "local") {
+        Ok(project) => project,
+        Err(error) => {
+            return AnalyzeResult {
+                success: false,
+                project_id: None,
+                snapshot: None,
+                error: Some(format!("Failed to create project: {}", error)),
+            };
+        }
+    };
+
+    report_progress(db, &project.id, 1.0, "queued", "Queued", 0, 0);
+
+    let project_id = project.id.clone();
+    tokio::spawn(async move {
+        let worker_db = match Database::new() {
+            Ok(db) => db,
+            Err(error) => {
+                log::error!("Failed to open database for queued analysis: {}", error);
+                return;
+            }
+        };
+
+        run_queued_analysis(&worker_db, project, source, github_token.as_deref()).await;
+    });
+
+    AnalyzeResult {
+        success: true,
+        project_id: Some(project_id),
+        snapshot: None,
+        error: None,
+    }
+}
+
+enum QueuedSource {
+    GitHub(String),
+    Local(String),
+}
+
+fn expand_input_path(input: &str) -> String {
+    if input.starts_with('~') {
+        dirs::home_dir()
+            .map(|h| input.replacen('~', &h.to_string_lossy(), 1))
+            .unwrap_or_else(|| input.to_string())
+    } else {
+        input.to_string()
+    }
+}
+
+async fn run_queued_analysis(
+    db: &Database,
+    project: super::db::ProjectRecord,
+    source: QueuedSource,
+    github_token: Option<&str>,
+) {
+    if let Err(error) = db.update_project_status(&project.id, "PROCESSING", 0, 0, None) {
+        log::error!("Failed to mark queued analysis as processing: {}", error);
+        return;
+    }
+
+    match source {
+        QueuedSource::GitHub(repo_url) => {
+            run_github_analysis(db, &project, &repo_url, github_token).await;
+        }
+        QueuedSource::Local(path) => {
+            report_progress(db, &project.id, 12.0, "scan", "Scanning local folder", 0, 0);
+            parse_and_save(db, &project, Path::new(&path)).await;
+        }
+    };
+}
+
 fn normalize_visibility(visibility: Option<&str>) -> &str {
     match visibility {
         Some("PUBLIC") => "PUBLIC",
@@ -549,6 +684,15 @@ async fn analyze_github(
         }
     };
 
+    run_github_analysis(db, &project, repo_url, github_token).await
+}
+
+async fn run_github_analysis(
+    db: &Database,
+    project: &super::db::ProjectRecord,
+    repo_url: &str,
+    github_token: Option<&str>,
+) -> AnalyzeResult {
     report_progress(
         db,
         &project.id,
@@ -558,7 +702,6 @@ async fn analyze_github(
         0,
         0,
     );
-
     // Download the repo locally first so analysis runs against the filesystem.
     let repo_dir = match download_or_clone_repo(repo_url, github_token).await {
         Ok(dir) => dir,

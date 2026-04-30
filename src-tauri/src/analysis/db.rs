@@ -303,7 +303,7 @@ impl Database {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn.prepare(
             "SELECT id, name, repo_url, visibility, status, file_count, line_count, progress, progress_stage, progress_message, files_discovered, files_parsed, user_id, error, created_at, updated_at
-             FROM projects WHERE visibility = 'PUBLIC' AND status = 'COMPLETED'
+             FROM projects WHERE status = 'COMPLETED'
              ORDER BY updated_at DESC LIMIT 50"
         ).map_err(|e| e.to_string())?;
 

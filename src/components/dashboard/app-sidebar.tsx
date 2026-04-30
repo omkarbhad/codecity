@@ -6,11 +6,9 @@ import Link from "next/link"
 import { open } from "@tauri-apps/plugin-shell"
 import {
   FolderGit2,
+  GitBranch,
   Compass,
   User,
-  Plus,
-  Globe,
-  Lock,
   LogOut,
   Github,
   Loader2,
@@ -43,15 +41,12 @@ interface Project {
   id: string
   name: string
   status: "COMPLETED" | "PROCESSING" | "FAILED"
-  visibility: "PUBLIC" | "PRIVATE"
 }
 
 export function AppSidebar({
-  onNewCity,
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  onNewCity?: () => void
   user?: { name: string | null; image: string | null; email?: string } | null
 }) {
   const pathname = usePathname()
@@ -120,7 +115,6 @@ export function AppSidebar({
         id: r.id,
         name: r.name,
         status: r.status as "COMPLETED" | "PROCESSING" | "FAILED",
-        visibility: r.visibility as "PUBLIC" | "PRIVATE",
       }))
     },
   })
@@ -139,14 +133,7 @@ export function AppSidebar({
             </div>
             <span className="text-[13px] font-semibold text-zinc-100 tracking-tight truncate">CodeCity</span>
           </Link>
-          {onNewCity && (
-            <IconButton
-              onClick={onNewCity}
-              title="New City"
-            >
-              <Plus />
-            </IconButton>
-          )}
+          <UpdateButton />
         </div>
       </SidebarHeader>
 
@@ -207,11 +194,7 @@ export function AppSidebar({
                     className="h-7 rounded-md text-[11px] text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-colors group"
                   >
                     <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
-                      {project.visibility === "PUBLIC" ? (
-                        <Globe className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
-                      ) : (
-                        <Lock className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
-                      )}
+                      <GitBranch className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
                       <span className="truncate font-mono">
                         <span className="text-zinc-700">{owner}/</span>
                         <span className="text-zinc-400 group-hover:text-zinc-200">{repo}</span>
@@ -232,7 +215,6 @@ export function AppSidebar({
 
       {/* Footer */}
       <SidebarFooter className="border-t border-white/[0.07] bg-[#0b0b0c] p-2">
-        <UpdateButton />
         {authCode && (
           <div className="mb-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-2">
             <p className="text-[10px] text-zinc-600">GitHub code</p>

@@ -156,11 +156,11 @@ export interface ParsedFileRecord {
 
 export async function analyze(
   input: string,
-  options?: { visibility?: string; githubToken?: string }
+  options?: { githubToken?: string }
 ): Promise<{ projectId: string; snapshot?: Record<string, unknown> }> {
   const result = await rpc<AnalyzeResult>("analysis.analyze", {
     input,
-    visibility: options?.visibility ?? "PRIVATE",
+    visibility: "PRIVATE",
     githubToken: options?.githubToken ?? null,
   })
 
@@ -171,6 +171,25 @@ export async function analyze(
   return {
     projectId: result.project_id!,
     snapshot: result.snapshot ?? undefined,
+  }
+}
+
+export async function enqueueAnalysis(
+  input: string,
+  options?: { githubToken?: string }
+): Promise<{ projectId: string }> {
+  const result = await rpc<AnalyzeResult>("analysis.enqueue", {
+    input,
+    visibility: "PRIVATE",
+    githubToken: options?.githubToken ?? null,
+  })
+
+  if (!result.success) {
+    throw new Error(result.error ?? "Failed to queue analysis")
+  }
+
+  return {
+    projectId: result.project_id!,
   }
 }
 
