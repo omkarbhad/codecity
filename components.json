@@ -1,0 +1,23 @@
+{
+  "$schema": "./schemas/shadcn-components.schema.json",
+  "style": "mira",
+  "registries": {
+    "@efferd": "https://efferd.com/r/{style}/{name}.json"
+  },
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/ui/styles/globals.css",
+    "baseColor": "zinc",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "hooks": "@/hooks",
+    "lib": "@/lib",
+    "utils": "@codecity/ui/lib/utils",
+    "ui": "@codecity/ui/components"
+  }
+}
