@@ -7,6 +7,7 @@ import { recomputeSnapshot } from "@/lib/tauri"
 import { useCityStore } from "./use-city-store"
 import { ProjectShell } from "./project-shell"
 import { Loader } from "@/components/ui/loader"
+import type { BuildingLoadProgress } from "./instanced-buildings"
 
 const CitySceneCanvas = dynamic(
   () => import("./city-scene").then((mod) => ({ default: mod.CitySceneCanvas })),
@@ -70,8 +71,49 @@ interface Props {
   repoUrl?: string
 }
 
+function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgress; leaving: boolean }) {
+  const totalRectangles = Math.min(28, progress.totalChunks)
+  const loadedRectangles = Math.round((progress.loadedChunks / progress.totalChunks) * totalRectangles)
+  const percent = Math.round((progress.loadedFiles / progress.totalFiles) * 100)
+
+  return (
+    <div
+      className={`pointer-events-none absolute bottom-4 left-1/2 z-40 w-[min(440px,calc(100%-32px))] -translate-x-1/2 rounded-md border border-white/[0.09] bg-[#0b0b0c]/90 px-3 py-2.5 shadow-2xl shadow-black/45 backdrop-blur-xl transition-all duration-300 ${
+        leaving ? "translate-y-1 opacity-0" : "opacity-100"
+      }`}
+    >
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid size-5 shrink-0 grid-cols-2 gap-[2px] rounded border border-white/[0.08] bg-white/[0.035] p-[3px]">
+            <span className="rounded-[1px] bg-primary/70" />
+            <span className="rounded-[1px] bg-white/[0.18]" />
+            <span className="rounded-[1px] bg-white/[0.14]" />
+            <span className="rounded-[1px] bg-primary/45" />
+          </span>
+          <span className="truncate text-[11px] font-medium text-white/62">Building city geometry</span>
+        </div>
+        <span className="shrink-0 font-mono text-[10px] tabular-nums text-white/48">
+          {percent}% · {progress.loadedFiles.toLocaleString()} / {progress.totalFiles.toLocaleString()}
+        </span>
+      </div>
+      <div className="grid h-[7px] grid-flow-col gap-[3px]">
+        {Array.from({ length: totalRectangles }).map((_, index) => (
+          <span
+            key={index}
+            className={`rounded-[2px] transition-colors duration-200 ${
+              index < loadedRectangles ? "bg-primary/75 shadow-[0_0_8px_rgba(59,130,246,0.34)]" : "bg-white/[0.07]"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, repoUrl }: Props) {
   const [currentSnapshot, setCurrentSnapshot] = useState(originalSnapshot)
+  const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
+  const [isBuildingLoadLeaving, setIsBuildingLoadLeaving] = useState(false)
   const originalRef = useRef(originalSnapshot)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
@@ -81,12 +123,17 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   const prevLayoutRef = useRef<LayoutMode>(layoutMode)
   const transitionStartRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const transitionEndRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didMountFiltersRef = useRef(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const loadHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Update original ref if prop changes
   useEffect(() => {
     originalRef.current = originalSnapshot
     setCurrentSnapshot(originalSnapshot)
+    setBuildingLoadProgress(null)
+    setIsBuildingLoadLeaving(false)
+    if (loadHideTimerRef.current) clearTimeout(loadHideTimerRef.current)
   }, [originalSnapshot])
 
   useEffect(() => {
@@ -114,6 +161,11 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
 
   // Auto-recompute layout when filters change (debounced 350ms)
   useEffect(() => {
+    if (!didMountFiltersRef.current) {
+      didMountFiltersRef.current = true
+      return
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     debounceRef.current = setTimeout(() => {
@@ -153,6 +205,45 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   const setMode = useCityStore((s) => s.setMode)
   const toggleBuildingLabels = useCityStore((s) => s.toggleBuildingLabels)
 
+  const handleBuildingLoadProgress = useCallback((progress: BuildingLoadProgress | null) => {
+    if (loadHideTimerRef.current) {
+      clearTimeout(loadHideTimerRef.current)
+      loadHideTimerRef.current = null
+    }
+
+    if (!progress) {
+      setIsBuildingLoadLeaving(true)
+      loadHideTimerRef.current = setTimeout(() => {
+        setBuildingLoadProgress(null)
+        setIsBuildingLoadLeaving(false)
+        loadHideTimerRef.current = null
+      }, 260)
+      return
+    }
+
+    setBuildingLoadProgress(progress)
+
+    if (progress.complete) {
+      loadHideTimerRef.current = setTimeout(() => {
+        setIsBuildingLoadLeaving(true)
+        loadHideTimerRef.current = setTimeout(() => {
+          setBuildingLoadProgress(null)
+          setIsBuildingLoadLeaving(false)
+          loadHideTimerRef.current = null
+        }, 260)
+      }, 220)
+      return
+    }
+
+    setIsBuildingLoadLeaving(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (loadHideTimerRef.current) clearTimeout(loadHideTimerRef.current)
+    }
+  }, [])
+
   // Global keyboard shortcuts: ?, 1-5 (viz modes), B (building labels)
   useEffect(() => {
     const MODE_KEYS: Record<string, import("./use-city-store").VisualizationMode> = {
@@ -191,9 +282,11 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
       <ProjectShell snapshot={currentSnapshot} projectName={projectName} repoUrl={repoUrl}>
         <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
           <SceneErrorBoundary>
-            <CitySceneCanvas snapshot={currentSnapshot} />
+            <CitySceneCanvas snapshot={currentSnapshot} onBuildingLoadProgress={handleBuildingLoadProgress} />
           </SceneErrorBoundary>
         </div>
+
+        {buildingLoadProgress && <BuildingLoadStrip progress={buildingLoadProgress} leaving={isBuildingLoadLeaving} />}
 
         {/* Layout transition overlay */}
         {isTransitioning && (

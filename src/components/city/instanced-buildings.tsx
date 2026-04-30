@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo, useEffect, useCallback } from "react"
+import { useRef, useMemo, useEffect, useCallback, useLayoutEffect, useState } from "react"
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
@@ -10,12 +10,72 @@ import { getBuildingColor, clamp, easeOutQuint } from "@/lib/visualization/color
 
 interface InstancedBuildingsProps {
   snapshot: CitySnapshot
+  onLoadProgress?: (progress: BuildingLoadProgress | null) => void
+}
+
+export interface BuildingLoadProgress {
+  loadedChunks: number
+  totalChunks: number
+  loadedFiles: number
+  totalFiles: number
+  loadedDistricts: string[]
+  loadedGroundDistricts: string[]
+  complete: boolean
 }
 
 const MAX_FLOOR_LINES = 12
 const CLICK_THRESHOLD_PX = 6
+const PROGRESSIVE_THRESHOLD = 2500
+const LARGE_CITY_CHUNK_SIZE = 450
+const SMALL_CITY_CHUNK_SIZE = 900
+const CHUNK_LOAD_DELAY_MS = 120
+const MOVEMENT_IDLE_MS = 220
+const snapshotLoadProgress = new Map<string, number>()
 
-export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
+function getTopFolder(path: string): string {
+  const slashIndex = path.indexOf("/")
+  if (slashIndex === -1) return "_root"
+  return path.slice(0, slashIndex)
+}
+
+function buildFolderChunks(files: CitySnapshot["files"]): number[][] {
+  const folderMap = new Map<string, number[]>()
+
+  files.forEach((file, index) => {
+    const folder = getTopFolder(file.path)
+    const indices = folderMap.get(folder)
+    if (indices) {
+      indices.push(index)
+    } else {
+      folderMap.set(folder, [index])
+    }
+  })
+
+  const maxChunkSize = files.length > 8000 ? LARGE_CITY_CHUNK_SIZE : SMALL_CITY_CHUNK_SIZE
+  const chunks: number[][] = []
+
+  Array.from(folderMap.entries())
+    .sort(([a], [b]) => {
+      if (a === "_root") return -1
+      if (b === "_root") return 1
+      return a.localeCompare(b)
+    })
+    .forEach(([, indices]) => {
+      for (let start = 0; start < indices.length; start += maxChunkSize) {
+        chunks.push(indices.slice(start, start + maxChunkSize))
+      }
+    })
+
+  return chunks
+}
+
+function getSnapshotLoadKey(snapshot: CitySnapshot): string {
+  const firstPath = snapshot.files[0]?.path ?? ""
+  const lastPath = snapshot.files.at(-1)?.path ?? ""
+  return `${snapshot.files.length}:${snapshot.stats.totalLines}:${firstPath}:${lastPath}`
+}
+
+export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildingsProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const buildingMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const platformRef = useRef<THREE.InstancedMesh>(null)
@@ -28,8 +88,58 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
 
   // Track pointer for click vs drag detection
   const pointerDownPos = useRef<{ x: number; y: number; instanceId: number | undefined } | null>(null)
+  const lastMovementAtRef = useRef(0)
 
   const count = snapshot.files.length
+  const shouldLoadProgressively = count > PROGRESSIVE_THRESHOLD
+  const loadKey = useMemo(() => getSnapshotLoadKey(snapshot), [snapshot])
+  const folderChunks = useMemo(() => buildFolderChunks(snapshot.files), [snapshot.files])
+  const firstChunkCount = shouldLoadProgressively ? Math.min(1, folderChunks.length) : folderChunks.length
+  const initialChunkCount = shouldLoadProgressively
+    ? Math.max(firstChunkCount, snapshotLoadProgress.get(loadKey) ?? firstChunkCount)
+    : folderChunks.length
+  const [loadedChunkCount, setLoadedChunkCount] = useState(initialChunkCount)
+  const loadedFileIndices = useMemo(() => {
+    if (!shouldLoadProgressively) return snapshot.files.map((_, index) => index)
+
+    const indices: number[] = []
+    for (let i = 0; i < Math.min(loadedChunkCount, folderChunks.length); i++) {
+      indices.push(...folderChunks[i])
+    }
+    return indices
+  }, [folderChunks, loadedChunkCount, shouldLoadProgressively])
+  const loadedIndices = useMemo(() => new Set(loadedFileIndices), [loadedFileIndices])
+  const fileIndexToInstanceIndex = useMemo(() => {
+    const map = new Map<number, number>()
+    loadedFileIndices.forEach((fileIndex, instanceIndex) => map.set(fileIndex, instanceIndex))
+    return map
+  }, [loadedFileIndices])
+  const loadedFileCount = loadedFileIndices.length
+  const fileIndexByPath = useMemo(() => {
+    const map = new Map<string, number>()
+    snapshot.files.forEach((file, index) => map.set(file.path, index))
+    return map
+  }, [snapshot.files])
+  const loadedDistricts = useMemo(() => {
+    const districts = new Set<string>()
+    loadedIndices.forEach((index) => {
+      const file = snapshot.files[index]
+      if (file) districts.add(file.district)
+    })
+    return Array.from(districts)
+  }, [loadedIndices, snapshot.files])
+  const loadedGroundDistricts = useMemo(() => {
+    const loaded = new Set<string>()
+    for (const district of snapshot.districts) {
+      if (district.files.length === 0) continue
+      const isFullyLoaded = district.files.every((path) => {
+        const index = fileIndexByPath.get(path) ?? -1
+        return index >= 0 && loadedIndices.has(index)
+      })
+      if (isFullyLoaded) loaded.add(district.name)
+    }
+    return Array.from(loaded)
+  }, [fileIndexByPath, loadedIndices, snapshot.districts])
 
   // PERF: Reusable Object3D for matrix computation — avoids per-frame heap allocation
   const _dummy = useRef(new THREE.Object3D())
@@ -38,6 +148,10 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
   const growComplete = useRef(false)
   const GROW_DURATION = Math.min(3.0, 1.2 + count * 0.003)
   const GROW_STAGGER = Math.min(1.0, 0.3 + count * 0.002)
+  const enableGrowAnimation = count <= PROGRESSIVE_THRESHOLD
+  const isProgressivelyLoading = shouldLoadProgressively && loadedChunkCount < folderChunks.length
+  const [hasSettledAfterProgressiveLoad, setHasSettledAfterProgressiveLoad] = useState(!shouldLoadProgressively)
+  const enableDetailGeometry = !isProgressivelyLoading && hasSettledAfterProgressiveLoad
 
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectedIndex = useCityStore((s) => s.selectedIndex)
@@ -55,6 +169,113 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
     return map
   }, [snapshot.districts])
 
+  useEffect(() => {
+    if (!shouldLoadProgressively) return
+
+    const markMovement = () => {
+      lastMovementAtRef.current = performance.now()
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      const key = e.key.toLowerCase()
+      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+        markMovement()
+      }
+    }
+
+    window.addEventListener("wheel", markMovement, { passive: true })
+    window.addEventListener("pointerdown", markMovement, { passive: true })
+    window.addEventListener("pointermove", markMovement, { passive: true })
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      window.removeEventListener("wheel", markMovement)
+      window.removeEventListener("pointerdown", markMovement)
+      window.removeEventListener("pointermove", markMovement)
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [shouldLoadProgressively])
+
+  useEffect(() => {
+    const cachedChunkCount = snapshotLoadProgress.get(loadKey) ?? firstChunkCount
+    const startChunkCount = shouldLoadProgressively
+      ? Math.max(firstChunkCount, Math.min(cachedChunkCount, folderChunks.length))
+      : folderChunks.length
+
+    setLoadedChunkCount(startChunkCount)
+    growStartTime.current = null
+    growComplete.current = !enableGrowAnimation
+
+    let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let nextChunkCount = startChunkCount
+
+    function scheduleNextChunk(delay = CHUNK_LOAD_DELAY_MS) {
+      timeoutId = setTimeout(loadNextChunk, delay)
+    }
+
+    function loadNextChunk() {
+      if (cancelled) return
+      const idleFor = performance.now() - lastMovementAtRef.current
+      if (idleFor < MOVEMENT_IDLE_MS) {
+        scheduleNextChunk(MOVEMENT_IDLE_MS - idleFor + CHUNK_LOAD_DELAY_MS)
+        return
+      }
+
+      nextChunkCount = Math.min(nextChunkCount + 1, folderChunks.length)
+      snapshotLoadProgress.set(loadKey, nextChunkCount)
+      setLoadedChunkCount(nextChunkCount)
+      if (nextChunkCount < folderChunks.length) {
+        scheduleNextChunk()
+      }
+    }
+
+    snapshotLoadProgress.set(loadKey, startChunkCount)
+
+    if (shouldLoadProgressively && startChunkCount < folderChunks.length) {
+      scheduleNextChunk()
+    }
+
+    return () => {
+      cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [enableGrowAnimation, firstChunkCount, folderChunks.length, loadKey, shouldLoadProgressively, snapshot.files])
+
+  useEffect(() => {
+    if (!shouldLoadProgressively) {
+      setHasSettledAfterProgressiveLoad(true)
+      return
+    }
+
+    if (isProgressivelyLoading) {
+      setHasSettledAfterProgressiveLoad(false)
+      return
+    }
+
+    const timeoutId = setTimeout(() => setHasSettledAfterProgressiveLoad(true), 600)
+    return () => clearTimeout(timeoutId)
+  }, [isProgressivelyLoading, shouldLoadProgressively])
+
+  useEffect(() => {
+    if (!onLoadProgress) return
+
+    if (!shouldLoadProgressively) {
+      onLoadProgress(null)
+      return
+    }
+
+    onLoadProgress({
+      loadedChunks: loadedChunkCount,
+      totalChunks: folderChunks.length,
+      loadedFiles: loadedFileCount,
+      totalFiles: count,
+      loadedDistricts,
+      loadedGroundDistricts,
+      complete: loadedChunkCount >= folderChunks.length,
+    })
+  }, [count, folderChunks.length, loadedChunkCount, loadedDistricts, loadedFileCount, loadedGroundDistricts, onLoadProgress, shouldLoadProgressively])
+
   // Build a map from (districtName::subFolderName) → sub-district color
   // so buildings match their sub-district ground color exactly
   const subDistrictColorMap = useMemo(() => {
@@ -71,29 +292,31 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
     return map
   }, [snapshot.districts])
 
-  const buildingColors = useMemo(() => {
-    return snapshot.files.map((file) => {
+  const getBuildingBaseColor = useCallback(
+    (file: CitySnapshot["files"][number]) => {
       const sf = file.subFolder ?? "_root"
-      const sdColor = subDistrictColorMap.get(`${file.district}::${sf}`)
-      return sdColor ?? districtColorMap.get(file.district) ?? "#888888"
-    })
-  }, [snapshot.files, subDistrictColorMap, districtColorMap])
+      return subDistrictColorMap.get(`${file.district}::${sf}`) ?? districtColorMap.get(file.district) ?? "#888888"
+    },
+    [districtColorMap, subDistrictColorMap]
+  )
 
   const growDelays = useMemo(() => {
+    if (!enableGrowAnimation) return []
     const districtNames = snapshot.districts.map((d) => d.name)
     return snapshot.files.map((file) => {
       const distIdx = districtNames.indexOf(file.district)
       return (distIdx / Math.max(1, districtNames.length - 1)) * GROW_STAGGER
     })
-  }, [snapshot.files, snapshot.districts])
+  }, [enableGrowAnimation, snapshot.files, snapshot.districts])
 
-  const dimensions = useMemo(() => {
-    return snapshot.files.map((f) => {
+  const getDimensions = useCallback(
+    (f: CitySnapshot["files"][number]) => {
       const height = clamp(f.lines / 60, 0.3, 12)
       const width = clamp(1.0 + f.functions.length * 0.12, 1.0, 2.2)
       return { height, width, depth: width }
-    })
-  }, [snapshot.files])
+    },
+    []
+  )
 
   // LOD gating: skip expensive decorations for very large codebases
   const enableDecorations = count < 1500
@@ -185,15 +408,17 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
   }, [selectedFile, selectFile, snapshot.files, visibleMask])
 
   // Update instance matrices and colors
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!meshRef.current) return
 
     const dummy = new THREE.Object3D()
     const _color = new THREE.Color()
+    meshRef.current.count = loadedFileIndices.length
 
-    for (let i = 0; i < count; i++) {
+    for (let instanceIndex = 0; instanceIndex < loadedFileIndices.length; instanceIndex++) {
+      const i = loadedFileIndices[instanceIndex]
       const file = snapshot.files[i]
-      const dim = dimensions[i]
+      const dim = getDimensions(file)
 
       if (visibleMask && !visibleMask[i]) {
         dummy.position.set(0, -1000, 0)
@@ -204,12 +429,12 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       }
 
       dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
+      meshRef.current.setMatrixAt(instanceIndex, dummy.matrix)
 
-      const buildingColor = buildingColors[i] ?? districtColorMap.get(file.district) ?? "#888888"
+      const buildingColor = getBuildingBaseColor(file)
       const isDimmed = !!(relatedFiles && !relatedFiles.has(file.path))
       getBuildingColor(file, visualizationMode, buildingColor, isDimmed, _color)
-      meshRef.current.setColorAt(i, _color)
+      meshRef.current.setColorAt(instanceIndex, _color)
     }
 
     meshRef.current.instanceMatrix.needsUpdate = true
@@ -220,10 +445,10 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       for (let pi = 0; pi < decorationData.platforms.length; pi++) {
         const i = decorationData.platforms[pi]
         const file = snapshot.files[i]
-        const dim = dimensions[i]
-        const buildingColor = buildingColors[i] ?? districtColorMap.get(file.district) ?? "#888888"
+        const dim = getDimensions(file)
+        const buildingColor = getBuildingBaseColor(file)
 
-        if (visibleMask && !visibleMask[i]) {
+        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
           dummy.position.set(0, -1000, 0)
           dummy.scale.set(0, 0, 0)
         } else {
@@ -246,9 +471,9 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       for (let ai = 0; ai < decorationData.antennas.length; ai++) {
         const i = decorationData.antennas[ai]
         const file = snapshot.files[i]
-        const dim = dimensions[i]
+        const dim = getDimensions(file)
 
-        if (visibleMask && !visibleMask[i]) {
+        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
           dummy.position.set(0, -1000, 0)
           dummy.scale.set(0, 0, 0)
         } else {
@@ -258,7 +483,7 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
         dummy.updateMatrix()
         antennaCylRef.current.setMatrixAt(ai, dummy.matrix)
 
-        if (visibleMask && !visibleMask[i]) {
+        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
           dummy.position.set(0, -1000, 0)
         } else {
           dummy.position.set(file.position.x, dim.height + 1.2, file.position.z)
@@ -275,9 +500,9 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       for (let di = 0; di < decorationData.domes.length; di++) {
         const i = decorationData.domes[di]
         const file = snapshot.files[i]
-        const dim = dimensions[i]
+        const dim = getDimensions(file)
 
-        if (visibleMask && !visibleMask[i]) {
+        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
           dummy.position.set(0, -1000, 0)
           dummy.scale.set(0, 0, 0)
         } else {
@@ -297,9 +522,9 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       for (let ti = 0; ti < decorationData.typeRings.length; ti++) {
         const i = decorationData.typeRings[ti]
         const file = snapshot.files[i]
-        const dim = dimensions[i]
+        const dim = getDimensions(file)
 
-        if (visibleMask && !visibleMask[i]) {
+        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
           dummy.position.set(0, -1000, 0)
           dummy.scale.set(0, 0, 0)
         } else {
@@ -313,7 +538,7 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       }
       typeRingRef.current.instanceMatrix.needsUpdate = true
     }
-  }, [snapshot.files, dimensions, districtColorMap, buildingColors, visualizationMode, visibleMask, count, decorationData, relatedFiles])
+  }, [snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visualizationMode, visibleMask, decorationData, relatedFiles, loadedIndices, loadedFileIndices])
 
   // PERF: Batch all edge wireframes into ONE merged BufferGeometry
   // Use a shared unit box edge template to avoid creating/disposing N geometries
@@ -337,19 +562,34 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
   useEffect(() => {
     if (!edgesMeshRef.current) return
     const mesh = edgesMeshRef.current
+    if (!enableDetailGeometry) {
+      mesh.visible = false
+      return
+    }
+
+    mesh.visible = true
     const vertCount = unitEdgePositions.length / 3
 
-    const allPositions: number[] = []
-    const allColors: number[] = []
+    let visibleCount = 0
+    for (let i = 0; i < count; i++) {
+      if (loadedIndices && !loadedIndices.has(i)) continue
+      if (!visibleMask || visibleMask[i]) visibleCount++
+    }
+
+    const allPositions = new Float32Array(visibleCount * unitEdgePositions.length)
+    const allColors = new Float32Array(visibleCount * vertCount * 3)
     // PERF: Reuse single Color instance instead of allocating per building
     const _c = new THREE.Color()
+    let offset = 0
+    let colorOffset = 0
 
     for (let i = 0; i < count; i++) {
+      if (loadedIndices && !loadedIndices.has(i)) continue
       if (visibleMask && !visibleMask[i]) continue
 
       const file = snapshot.files[i]
-      const dim = dimensions[i]
-      const edgeColor = buildingColors[i] ?? districtColorMap.get(file.district) ?? "#888888"
+      const dim = getDimensions(file)
+      const edgeColor = getBuildingBaseColor(file)
       const isDimmed = !!(relatedFiles && !relatedFiles.has(file.path))
       const isUnused = file.hasUnusedExports
 
@@ -358,18 +598,18 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       _c.multiplyScalar(opacity / 0.3)
 
       for (let vi = 0; vi < vertCount; vi++) {
-        allPositions.push(
-          unitEdgePositions[vi * 3] * dim.width + file.position.x,
-          unitEdgePositions[vi * 3 + 1] * dim.height + dim.height / 2,
-          unitEdgePositions[vi * 3 + 2] * dim.depth + file.position.z
-        )
-        allColors.push(_c.r, _c.g, _c.b)
+        allPositions[offset++] = unitEdgePositions[vi * 3] * dim.width + file.position.x
+        allPositions[offset++] = unitEdgePositions[vi * 3 + 1] * dim.height + dim.height / 2
+        allPositions[offset++] = unitEdgePositions[vi * 3 + 2] * dim.depth + file.position.z
+        allColors[colorOffset++] = _c.r
+        allColors[colorOffset++] = _c.g
+        allColors[colorOffset++] = _c.b
       }
     }
 
     const geom = new THREE.BufferGeometry()
-    geom.setAttribute("position", new THREE.Float32BufferAttribute(allPositions, 3))
-    geom.setAttribute("color", new THREE.Float32BufferAttribute(allColors, 3))
+    geom.setAttribute("position", new THREE.BufferAttribute(allPositions, 3))
+    geom.setAttribute("color", new THREE.BufferAttribute(allColors, 3))
 
     // Assign new geometry first, then dispose the old one
     const oldGeom = prevEdgeGeomRef.current
@@ -383,32 +623,40 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
         prevEdgeGeomRef.current = null
       }
     }
-  }, [snapshot.files, dimensions, districtColorMap, buildingColors, visibleMask, count, relatedFiles, unitEdgePositions])
+  }, [snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visibleMask, count, relatedFiles, unitEdgePositions, loadedIndices, enableDetailGeometry])
 
   // PERF: Batch floor lines into single InstancedMesh
   const floorLineCount = useMemo(() => {
-    if (!enableFloorLines) return 1
+    if (!enableFloorLines || !enableDetailGeometry) return 1
     let total = 0
     for (let i = 0; i < count; i++) {
+      if (loadedIndices && !loadedIndices.has(i)) continue
       if (visibleMask && !visibleMask[i]) continue
       total += Math.min(snapshot.files[i].functions.length, MAX_FLOOR_LINES)
     }
     return Math.max(1, total) // At least 1 to avoid empty InstancedMesh
-  }, [count, snapshot.files, visibleMask, enableFloorLines])
+  }, [count, snapshot.files, visibleMask, enableFloorLines, loadedIndices, enableDetailGeometry])
 
   useEffect(() => {
     if (!floorLinesMeshRef.current || !enableFloorLines) return
     const mesh = floorLinesMeshRef.current
+    if (!enableDetailGeometry) {
+      mesh.visible = false
+      return
+    }
+
+    mesh.visible = true
 
     const dummy = new THREE.Object3D()
     const _c = new THREE.Color()
     let idx = 0
 
     for (let i = 0; i < count; i++) {
+      if (loadedIndices && !loadedIndices.has(i)) continue
       if (visibleMask && !visibleMask[i]) continue
 
       const file = snapshot.files[i]
-      const dim = dimensions[i]
+      const dim = getDimensions(file)
       const fnCount = Math.min(file.functions.length, MAX_FLOOR_LINES)
       if (fnCount === 0) continue
 
@@ -443,7 +691,7 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
 
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
-  }, [snapshot.files, dimensions, visibleMask, count, relatedFiles, floorLineCount])
+  }, [snapshot.files, getDimensions, visibleMask, count, relatedFiles, floorLineCount, loadedIndices, enableDetailGeometry, enableFloorLines])
 
   // Track previous selected/hovered indices for smooth scale reset
   const prevSelectedIndex = useRef<number | null>(null)
@@ -455,17 +703,23 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
     const t = clock.getElapsedTime()
     const dummy = _dummy.current
 
-    if (!growComplete.current) {
+    if (!enableGrowAnimation && !growComplete.current) {
+      growComplete.current = true
+      if (edgesMeshRef.current) edgesMeshRef.current.visible = enableDetailGeometry
+      if (floorLinesMeshRef.current) floorLinesMeshRef.current.visible = enableFloorLines && enableDetailGeometry
+    }
+
+    if (enableGrowAnimation && !growComplete.current) {
       if (growStartTime.current === null) growStartTime.current = t
 
       const elapsed = t - growStartTime.current
       let allDone = true
 
-      for (let i = 0; i < count; i++) {
+      for (const i of loadedFileIndices) {
         if (visibleMask && !visibleMask[i]) continue
 
         const file = snapshot.files[i]
-        const dim = dimensions[i]
+        const dim = getDimensions(file)
         const delay = growDelays[i]
         const localT = Math.max(0, elapsed - delay) / GROW_DURATION
         const progress = Math.min(1, easeOutQuint(localT))
@@ -476,7 +730,8 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
         dummy.position.set(file.position.x, scaledHeight / 2, file.position.z)
         dummy.scale.set(dim.width, Math.max(0.01, scaledHeight), dim.depth)
         dummy.updateMatrix()
-        meshRef.current!.setMatrixAt(i, dummy.matrix)
+        const instanceIndex = fileIndexToInstanceIndex.get(i)
+        if (instanceIndex !== undefined) meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
       }
 
       meshRef.current.instanceMatrix.needsUpdate = true
@@ -499,24 +754,26 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
 
     if (prevSel !== null && prevSel !== selectedIndex && prevSel !== hoveredIndex) {
       const file = snapshot.files[prevSel]
-      const dim = dimensions[prevSel]
-      if (file && dim && !(visibleMask && !visibleMask[prevSel])) {
+      const dim = file ? getDimensions(file) : undefined
+      const instanceIndex = fileIndexToInstanceIndex.get(prevSel)
+      if (file && dim && instanceIndex !== undefined && !(visibleMask && !visibleMask[prevSel])) {
         dummy.position.set(file.position.x, dim.height / 2, file.position.z)
         dummy.scale.set(dim.width, dim.height, dim.depth)
         dummy.updateMatrix()
-        meshRef.current.setMatrixAt(prevSel, dummy.matrix)
+        meshRef.current.setMatrixAt(instanceIndex, dummy.matrix)
         needsUpdate = true
       }
     }
 
     if (prevHov !== null && prevHov !== hoveredIndex && prevHov !== selectedIndex && prevHov !== prevSel) {
       const file = snapshot.files[prevHov]
-      const dim = dimensions[prevHov]
-      if (file && dim && !(visibleMask && !visibleMask[prevHov])) {
+      const dim = file ? getDimensions(file) : undefined
+      const instanceIndex = fileIndexToInstanceIndex.get(prevHov)
+      if (file && dim && instanceIndex !== undefined && !(visibleMask && !visibleMask[prevHov])) {
         dummy.position.set(file.position.x, dim.height / 2, file.position.z)
         dummy.scale.set(dim.width, dim.height, dim.depth)
         dummy.updateMatrix()
-        meshRef.current.setMatrixAt(prevHov, dummy.matrix)
+        meshRef.current.setMatrixAt(instanceIndex, dummy.matrix)
         needsUpdate = true
       }
     }
@@ -525,7 +782,7 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
     prevHoveredIndex.current = hoveredIndex
 
     if (selectedIndex !== null || hoveredIndex !== null) {
-      for (let i = 0; i < count; i++) {
+      for (const i of loadedFileIndices) {
         if (visibleMask && !visibleMask[i]) continue
 
         const isSelected = i === selectedIndex
@@ -534,7 +791,7 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
         if (!isSelected && !isHovered) continue
 
         const file = snapshot.files[i]
-        const dim = dimensions[i]
+        const dim = getDimensions(file)
 
         let scale = 1
         if (isSelected) {
@@ -546,8 +803,11 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
         dummy.position.set(file.position.x, dim.height / 2, file.position.z)
         dummy.scale.set(dim.width * scale, dim.height * scale, dim.depth * scale)
         dummy.updateMatrix()
-        meshRef.current!.setMatrixAt(i, dummy.matrix)
-        needsUpdate = true
+        const instanceIndex = fileIndexToInstanceIndex.get(i)
+        if (instanceIndex !== undefined) {
+          meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
+          needsUpdate = true
+        }
       }
     }
 
@@ -581,30 +841,32 @@ export function InstancedBuildings({ snapshot }: InstancedBuildingsProps) {
       pointerDownPos.current = null
 
       // Only treat as click if pointer didn't move much (not a drag/pan)
-      if (dist < CLICK_THRESHOLD_PX && instanceId !== undefined && instanceId < count) {
-        if (visibleMask && !visibleMask[instanceId]) return
-        const file = snapshot.files[instanceId]
-        if (instanceId === selectedIndex) {
+      if (dist < CLICK_THRESHOLD_PX && instanceId !== undefined && instanceId < loadedFileIndices.length) {
+        const fileIndex = loadedFileIndices[instanceId]
+        if (visibleMask && !visibleMask[fileIndex]) return
+        const file = snapshot.files[fileIndex]
+        if (fileIndex === selectedIndex) {
           selectFile(null, null)
         } else {
-          selectFile(file.path, instanceId)
+          selectFile(file.path, fileIndex)
         }
       }
     },
-    [snapshot.files, count, selectFile, selectedIndex, visibleMask]
+    [snapshot.files, loadedFileIndices, selectFile, selectedIndex, visibleMask]
   )
 
   const handlePointerMove = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation()
-      if (e.instanceId !== undefined && e.instanceId < count) {
-        if (visibleMask && !visibleMask[e.instanceId]) return
-        const file = snapshot.files[e.instanceId]
-        hoverFile(file.path, e.instanceId)
+      if (e.instanceId !== undefined && e.instanceId < loadedFileIndices.length) {
+        const fileIndex = loadedFileIndices[e.instanceId]
+        if (visibleMask && !visibleMask[fileIndex]) return
+        const file = snapshot.files[fileIndex]
+        hoverFile(file.path, fileIndex)
         document.body.style.cursor = "pointer"
       }
     },
-    [snapshot.files, count, hoverFile, visibleMask]
+    [snapshot.files, loadedFileIndices, hoverFile, visibleMask]
   )
 
   const handlePointerOut = useCallback(

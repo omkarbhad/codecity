@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useMemo, useRef } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
@@ -8,7 +8,7 @@ import { Lighting } from "./lighting"
 import { Ground } from "./ground"
 import { DistrictGround } from "./district-ground"
 import { DistrictLabels } from "./district-labels"
-import { InstancedBuildings } from "./instanced-buildings"
+import { InstancedBuildings, type BuildingLoadProgress } from "./instanced-buildings"
 import { DependencyPipes } from "./dependency-pipes"
 import { CameraController } from "./camera-controller"
 import { SelectionMarker } from "./selection-marker"
@@ -18,6 +18,7 @@ import { getCityBounds } from "@/lib/visualization/city-bounds"
 
 interface CitySceneProps {
   snapshot: CitySnapshot
+  onBuildingLoadProgress?: (progress: BuildingLoadProgress | null) => void
 }
 
 /** Invisible ground plane to catch clicks on empty space and deselect.
@@ -120,8 +121,33 @@ function AmbientParticles({ count = 200, spread = 200 }: { count?: number; sprea
 }
 
 /** Canvas-only scene — zustand store is global, no provider needed. */
-export function CitySceneCanvas({ snapshot }: CitySceneProps) {
+export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneProps) {
+  const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
+  const [showSecondaryDetails, setShowSecondaryDetails] = useState(false)
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
+  const isProgressivelyLoading = !!buildingLoadProgress && !buildingLoadProgress.complete
+  const loadedDistricts = useMemo(() => {
+    if (!buildingLoadProgress || buildingLoadProgress.complete) return null
+    return new Set(buildingLoadProgress.loadedGroundDistricts)
+  }, [buildingLoadProgress])
+
+  const handleBuildingLoadProgress = useCallback(
+    (progress: BuildingLoadProgress | null) => {
+      setBuildingLoadProgress(progress)
+      onBuildingLoadProgress?.(progress)
+    },
+    [onBuildingLoadProgress]
+  )
+
+  useEffect(() => {
+    if (isProgressivelyLoading) {
+      setShowSecondaryDetails(false)
+      return
+    }
+
+    const timeoutId = setTimeout(() => setShowSecondaryDetails(true), buildingLoadProgress?.complete ? 900 : 0)
+    return () => clearTimeout(timeoutId)
+  }, [buildingLoadProgress?.complete, isProgressivelyLoading])
 
   // Compute dynamic fog density and spread based on city size
   const cityMetrics = useMemo(() => {
@@ -164,14 +190,20 @@ export function CitySceneCanvas({ snapshot }: CitySceneProps) {
         <Ground snapshot={snapshot} cityBounds={cityBounds} />
         <ClickCatcher />
 
-        {snapshot.districts.map((d) => (
-          <DistrictGround key={d.name} district={d} />
-        ))}
+        {snapshot.districts
+          .filter((district) => !loadedDistricts || loadedDistricts.has(district.name))
+          .map((d) => (
+            <DistrictGround key={d.name} district={d} />
+          ))}
 
-        <InstancedBuildings snapshot={snapshot} />
-        <BuildingLabels snapshot={snapshot} cityBounds={cityBounds} />
-        <SelectionMarker snapshot={snapshot} />
-        <DependencyPipes snapshot={snapshot} />
+        <InstancedBuildings snapshot={snapshot} onLoadProgress={handleBuildingLoadProgress} />
+        {showSecondaryDetails && (
+          <>
+            <BuildingLabels snapshot={snapshot} cityBounds={cityBounds} />
+            <SelectionMarker snapshot={snapshot} />
+            <DependencyPipes snapshot={snapshot} />
+          </>
+        )}
         <CameraController snapshot={snapshot} cityBounds={cityBounds} />
 
         {/* Ambient atmosphere */}
