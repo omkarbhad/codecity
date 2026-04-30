@@ -44,7 +44,7 @@
       "endpoints": [
         "https://github.com/MagnovaAI/codecity/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJFQ0E3RkY4M0Y0MDE3OEMKUldTTUYwQS8rSC9Ldml4Tm1XZGpQTUV5MHBiMzF6VEZoTGNITm9BRXBmOWQxSEVwNWdTRDhUVUkK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ0MkU5NUY4OUNFRTg3MkIKUldRcmgrNmMrSlV1MUlxODFTRlIwTzgzdkhWRXFNLzE0elV5SUhBdE16RnFhU3BMVkFWdU9vcmMK"
     }
   }
 }
