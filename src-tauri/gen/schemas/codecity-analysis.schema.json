@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecity.local/schemas/codecity-analysis.schema.json",
+  "title": "CodeCity Analysis Snapshot",
+  "type": "object",
+  "required": ["schemaVersion", "files", "districts", "stats"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "districts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/district" }
+    },
+    "stats": { "$ref": "#/$defs/stats" },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "required": [
+        "path",
+        "lines",
+        "sizeBytes",
+        "extension",
+        "language",
+        "functions",
+        "types",
+        "classes",
+        "symbols",
+        "imports",
+        "importedBy",
+        "externalImports",
+        "decorators",
+        "complexity",
+        "isReactComponent",
+        "hasUnusedExports",
+        "fileType",
+        "position",
+        "district"
+      ],
+      "properties": {
+        "path": { "type": "string" },
+        "lines": { "type": "integer", "minimum": 0 },
+        "sizeBytes": { "type": "integer", "minimum": 0 },
+        "extension": { "type": "string" },
+        "language": { "type": "string" },
+        "functions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/function" }
+        },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/typeSymbol" }
+        },
+        "classes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/class" }
+        },
+        "symbols": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/symbol" }
+        },
+        "imports": {
+          "description": "Internal imports resolved to repository-relative file paths.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "importedBy": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "externalImports": {
+          "description": "External package or module roots.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "decorators": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "complexity": { "type": "integer", "minimum": 0 },
+        "isReactComponent": { "type": "boolean" },
+        "hasUnusedExports": { "type": "boolean" },
+        "fileType": { "$ref": "#/$defs/fileType" },
+        "position": { "$ref": "#/$defs/position" },
+        "district": { "type": "string" },
+        "subFolder": { "type": "string" }
+      }
+    },
+    "function": {
+      "type": "object",
+      "required": ["name", "exported", "lines", "startLine", "endLine"],
+      "properties": {
+        "name": { "type": "string" },
+        "exported": { "type": "boolean" },
+        "lines": { "type": "integer", "minimum": 0 },
+        "startLine": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "typeSymbol": {
+      "type": "object",
+      "required": ["name", "kind", "startLine", "endLine"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "startLine": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "class": {
+      "type": "object",
+      "required": ["name", "startLine", "endLine"],
+      "properties": {
+        "name": { "type": "string" },
+        "startLine": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "symbol": {
+      "type": "object",
+      "required": ["name", "kind", "exported", "startLine", "endLine"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "exported": { "type": "boolean" },
+        "startLine": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "district": {
+      "type": "object",
+      "required": ["name", "color", "files", "bounds"],
+      "properties": {
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "subDistricts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/district" }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "totalFiles",
+        "totalFunctions",
+        "totalClasses",
+        "totalLines",
+        "totalTypes",
+        "totalImports",
+        "externalImports",
+        "unusedExports",
+        "totalComplexity",
+        "averageComplexity",
+        "maxComplexity",
+        "languages"
+      ],
+      "properties": {
+        "totalFiles": { "type": "integer", "minimum": 0 },
+        "totalFunctions": { "type": "integer", "minimum": 0 },
+        "totalClasses": { "type": "integer", "minimum": 0 },
+        "totalLines": { "type": "integer", "minimum": 0 },
+        "totalTypes": { "type": "integer", "minimum": 0 },
+        "totalImports": { "type": "integer", "minimum": 0 },
+        "externalImports": { "type": "integer", "minimum": 0 },
+        "unusedExports": { "type": "integer", "minimum": 0 },
+        "totalComplexity": { "type": "integer", "minimum": 0 },
+        "averageComplexity": { "type": "number", "minimum": 0 },
+        "maxComplexity": { "type": "integer", "minimum": 0 },
+        "languages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/languageStats" }
+        }
+      }
+    },
+    "languageStats": {
+      "type": "object",
+      "required": ["language", "files", "lines", "symbols"],
+      "properties": {
+        "language": { "type": "string" },
+        "files": { "type": "integer", "minimum": 0 },
+        "lines": { "type": "integer", "minimum": 0 },
+        "symbols": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "position": {
+      "type": "object",
+      "required": ["x", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["x", "z", "width", "depth"],
+      "properties": {
+        "x": { "type": "number" },
+        "z": { "type": "number" },
+        "width": { "type": "number" },
+        "depth": { "type": "number" }
+      }
+    },
+    "fileType": {
+      "type": "string",
+      "enum": [
+        "typescript",
+        "javascript",
+        "python",
+        "rust",
+        "go",
+        "java",
+        "css",
+        "markup",
+        "config",
+        "c",
+        "cpp",
+        "ruby",
+        "php",
+        "swift",
+        "kotlin",
+        "bash",
+        "zig",
+        "lua",
+        "haskell",
+        "dart",
+        "elixir",
+        "scala",
+        "r",
+        "julia",
+        "perl",
+        "csharp",
+        "erlang",
+        "nix",
+        "glsl",
+        "ocaml",
+        "groovy",
+        "elisp",
+        "other"
+      ]
+    }
+  }
+}
