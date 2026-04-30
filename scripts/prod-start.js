@@ -4,18 +4,18 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const webDir = path.join(__dirname, '..', 'web');
-const standaloneDir = path.join(webDir, '.next', 'standalone');
-const serverDir = path.join(webDir, '.next', 'server');
+const appDir = path.join(__dirname, '..');
+const standaloneDir = path.join(appDir, '.next', 'standalone');
+const serverDir = path.join(appDir, '.next', 'server');
 
 let serverProcess = null;
 
 async function buildWeb() {
   console.log('Building Next.js web app...');
-  execSync('pnpm build', { cwd: webDir, stdio: 'inherit' });
+  execSync('pnpm build', { cwd: appDir, stdio: 'inherit' });
 
   if (fs.existsSync(standaloneDir)) {
-    const staticDir = path.join(webDir, '.next', 'static');
+    const staticDir = path.join(appDir, '.next', 'static');
     const standaloneStatic = path.join(standaloneDir, '.next', 'static');
 
     if (fs.existsSync(staticDir)) {
@@ -26,7 +26,7 @@ async function buildWeb() {
       execSync(`cp -r ${staticDir} ${standaloneStatic}`, { shell: '/bin/bash' });
     }
 
-    const publicDir = path.join(webDir, 'public');
+    const publicDir = path.join(appDir, 'public');
     if (fs.existsSync(publicDir)) {
       execSync(`cp -r ${publicDir}/* ${standaloneDir}/ 2>/dev/null || true`, { shell: '/bin/bash' });
     }
@@ -47,7 +47,7 @@ function startNextServer() {
     });
   } else {
     serverProcess = spawn('pnpm', ['start'], {
-      cwd: webDir,
+      cwd: appDir,
       env: { ...process.env, PORT: '3000' },
       stdio: 'inherit'
     });
@@ -69,7 +69,7 @@ function startNextServer() {
 function startTauri() {
   console.log('Starting Tauri...');
   const tauriProcess = spawn('pnpm', ['tauri', 'dev'], {
-    cwd: path.join(__dirname, '..'),
+    cwd: appDir,
     stdio: 'inherit',
     shell: true
   });

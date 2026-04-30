@@ -1,10 +1,13 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Build outputs
 .next/
 dist/
+out/
 .turbo/
+coverage/
 
 # Environment variables
 .env
@@ -12,7 +15,7 @@ dist/
 .env.*.local
 
 # Vercel
-.vercel
+.vercel/
 
 # OS files
 .DS_Store
@@ -34,11 +37,14 @@ Thumbs.db
 .claude/
 .docs/
 .playwright-mcp/
-.env*.local
 .grepai/
 
 # Rust / Tauri
 target/
 src-tauri/target/
 *.dSYM/
-Cargo.lock
+
+# Generated local state
+*.local.db
+*.sqlite
+*.sqlite3

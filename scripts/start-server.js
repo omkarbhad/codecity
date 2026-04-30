@@ -1,8 +1,9 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-const serverPath = path.join(__dirname, '..', 'web', '.next', 'server');
-const standalonePath = path.join(__dirname, '..', 'web', '.next', 'standalone');
+const appPath = path.join(__dirname, '..');
+const serverPath = path.join(appPath, '.next', 'server');
+const standalonePath = path.join(appPath, '.next', 'standalone');
 
 let serverProcess;
 
@@ -19,7 +20,7 @@ function startServer() {
   } else {
     console.log('Starting Next.js server from server folder...');
     serverProcess = spawn('pnpm', ['start'], {
-      cwd: path.join(__dirname, '..', 'web'),
+      cwd: appPath,
       env: { ...process.env, PORT: '3000' },
       stdio: 'inherit'
     });
