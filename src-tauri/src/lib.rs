@@ -181,6 +181,18 @@ async fn dispatch_rpc(
                 .await,
             )
         }
+        "analysis.enqueue" => {
+            let params: AnalyzeParams = parse_params(params)?;
+            let token = params
+                .github_token
+                .or_else(|| state.db.get_setting("github_token").ok().flatten());
+            to_value(analysis::enqueue_analyze(
+                &state.db,
+                &params.input,
+                params.visibility.as_deref(),
+                token,
+            ))
+        }
         "analysis.analyzeCode" => {
             let params: AnalyzeCodeParams = parse_params(params)?;
             let parsed = analysis::parse_files(&params.files, None);

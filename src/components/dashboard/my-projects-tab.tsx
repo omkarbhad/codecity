@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   Plus,
-  Globe,
-  Lock,
   Trash2,
   Building2,
   FileCode,
@@ -30,7 +28,6 @@ interface Project {
   id: string
   name: string
   repoUrl: string
-  visibility: "PUBLIC" | "PRIVATE"
   status: string
   fileCount?: number
   lineCount?: number
@@ -48,7 +45,6 @@ function normalizeProjectRecord(record: Record<string, unknown>): Project {
     id: String(record.id ?? ""),
     name: String(record.name ?? "Untitled"),
     repoUrl: String(record.repo_url ?? record.repoUrl ?? ""),
-    visibility: record.visibility === "PUBLIC" ? "PUBLIC" : "PRIVATE",
     status: String(record.status ?? "FAILED"),
     fileCount: Number(record.file_count ?? record.fileCount ?? 0),
     lineCount: Number(record.line_count ?? record.lineCount ?? 0),
@@ -196,14 +192,14 @@ function DeleteButton({
   if (confirmOpen) {
     return (
       <div
-        className="flex items-center gap-0.5 overflow-hidden rounded-md border border-red-500/30 bg-red-500/10"
+        className="flex items-center gap-0.5 overflow-hidden rounded-md border border-white/[0.10] bg-white/[0.04]"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-[10px] font-medium text-red-400 px-2 py-1 leading-none">Delete?</span>
+        <span className="px-2 py-1 text-[10px] font-medium leading-none text-zinc-400">Remove?</span>
         <IconButton
           onClick={confirm}
-          className="size-6 border-transparent bg-transparent text-red-400 hover:border-red-500/20 hover:bg-red-500/10"
-          aria-label="Confirm delete"
+          className="size-6 border-transparent bg-transparent text-zinc-500 hover:border-white/[0.10] hover:bg-white/[0.04] hover:text-zinc-200"
+          aria-label="Confirm remove"
         >
           <Check />
         </IconButton>
@@ -221,8 +217,8 @@ function DeleteButton({
   return (
     <IconButton
       onClick={openConfirm}
-      className="size-7 border-transparent bg-transparent text-zinc-700 opacity-0 hover:border-red-500/15 hover:bg-red-500/[0.08] hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
-      aria-label="Delete project"
+      className="size-7 border-white/[0.07] bg-white/[0.02] text-zinc-600 hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-zinc-300"
+      aria-label="Remove project"
     >
       <Trash2 />
     </IconButton>
@@ -248,14 +244,12 @@ function ProjectCard({
   project,
   isQueued,
   onDelete,
-  onToggleVisibility,
   onRetry,
   queryClient,
 }: {
   project: Project
   isQueued: boolean
   onDelete: (id: string) => void
-  onToggleVisibility: (e: React.MouseEvent, project: Project) => void
   onRetry: (project: Project) => void
   queryClient: ReturnType<typeof useQueryClient>
 }) {
@@ -278,7 +272,7 @@ function ProjectCard({
 
   const { owner, repo, isExternal } = getProjectLabel(project)
 
-  const currentProgress = isActive && progress ? progress.progress : 0
+  const currentProgress = isActive && progress ? Math.round(progress.progress) : 0
   const currentMessage = isActive && progress
     ? progress.message
     : isQueued
@@ -287,11 +281,11 @@ function ProjectCard({
 
   return (
     <div
-      className={`group relative flex min-h-[176px] flex-col overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
-        ${isCompleted ? "border-white/[0.08] hover:border-white/[0.13]" : ""}
-        ${isActive ? "border-primary/35" : ""}
-        ${isQueued ? "border-white/[0.04] opacity-60" : ""}
-        ${isFailed ? "border-red-500/25" : ""}
+      className={`relative flex min-h-[232px] flex-col overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
+        ${isCompleted ? "border-white/[0.08] hover:border-white/[0.12]" : ""}
+        ${isActive ? "border-primary/35 bg-primary/[0.025]" : ""}
+        ${isQueued ? "border-white/[0.06] opacity-70" : ""}
+        ${isFailed ? "border-white/[0.09]" : ""}
       `}
     >
       {/* Active — scanning line */}
@@ -303,7 +297,7 @@ function ProjectCard({
 
       {/* 3D city preview pane */}
       {isCompleted && (
-        <div className="relative h-[112px] overflow-hidden border-b border-white/[0.06] bg-[#080809]">
+        <div className="relative h-[124px] overflow-hidden border-b border-white/[0.06] bg-[#080809]">
           {snapshotLoading && (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#080809]">
               <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono text-zinc-700">
@@ -325,16 +319,12 @@ function ProjectCard({
         </div>
       )}
 
-      <div className="relative flex flex-1 flex-col gap-3 p-3.5">
+      <div className="relative flex flex-1 flex-col gap-3 p-3">
         {/* Top row */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-1.5">
-              {project.visibility === "PRIVATE" ? (
-                <Lock className="h-3 w-3 text-zinc-700 shrink-0" />
-              ) : (
-                <Globe className="h-3 w-3 text-zinc-700 shrink-0" />
-              )}
+              <GitBranch className="h-3 w-3 text-zinc-700 shrink-0" />
               <span className="truncate font-mono text-[11px] text-zinc-600">{owner}/</span>
             </div>
             <h3 className="truncate text-sm font-semibold leading-tight text-zinc-100">
@@ -344,7 +334,7 @@ function ProjectCard({
 
           {/* Status pill */}
           {isCompleted && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/[0.07] px-2 py-1 text-[10px] font-medium text-emerald-400">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] font-medium text-zinc-500">
               <Check className="size-3" />
               done
             </span>
@@ -361,7 +351,7 @@ function ProjectCard({
             </span>
           )}
           {isFailed && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/[0.08] px-2 py-1 text-[10px] font-medium text-red-400">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.04] px-2 py-1 text-[10px] font-medium text-zinc-400">
               <AlertCircle className="h-2.5 w-2.5" />
               failed
             </span>
@@ -414,15 +404,15 @@ function ProjectCard({
 
         {/* Error */}
         {isFailed && project.error && (
-          <p className="line-clamp-2 rounded-md border border-red-500/10 bg-red-500/[0.04] px-2.5 py-2 font-mono text-[10px] text-red-400/70">
+          <p className="line-clamp-2 rounded-md border border-white/[0.08] bg-white/[0.025] px-2.5 py-2 font-mono text-[10px] text-zinc-500">
             {project.error}
           </p>
         )}
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between border-t border-white/[0.06] pt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-zinc-700">{timeAgo(project.createdAt)}</span>
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-[10px] font-mono text-zinc-700">{timeAgo(project.createdAt)}</span>
             {isExternal && project.repoUrl && (
               <a
                 href={project.repoUrl}
@@ -437,12 +427,12 @@ function ProjectCard({
             )}
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1.5">
             {/* Retry */}
             {isFailed && (
               <button
                 onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.08] px-2.5 py-1 text-[10px] font-medium text-amber-400 transition-colors hover:bg-amber-500/15"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-zinc-200"
               >
                 <RefreshCw className="h-2.5 w-2.5" />
                 Retry
@@ -454,21 +444,12 @@ function ProjectCard({
               <Link
                 href={`/project?id=${encodeURIComponent(project.id)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-primary/90"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.05] px-2.5 text-[10px] font-medium text-zinc-200 transition-colors hover:border-white/[0.16] hover:bg-white/[0.08]"
               >
                 Open
                 <ExternalLink className="h-2.5 w-2.5" />
               </Link>
             )}
-
-            {/* Visibility toggle */}
-            <IconButton
-              onClick={(e) => onToggleVisibility(e, project)}
-              className="size-7 border-transparent bg-transparent text-zinc-700 opacity-0 hover:border-white/[0.08] focus:opacity-100 group-hover:opacity-100"
-              aria-label={project.visibility === "PUBLIC" ? "Make private" : "Make public"}
-            >
-              {project.visibility === "PUBLIC" ? <Lock /> : <Globe />}
-            </IconButton>
 
             {/* Delete — inline confirm */}
             <DeleteButton projectId={project.id} onDelete={onDelete} />
@@ -514,21 +495,13 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     if (!project.repoUrl) return
 
     try {
-      const result = await analyze(project.repoUrl, { visibility: project.visibility })
+      const result = await analyze(project.repoUrl)
       if (!result.projectId) {
         throw new Error("Failed to retry")
       }
     } catch {
       // ignore
     }
-  }
-
-  function handleToggleVisibility(e: React.MouseEvent, project: Project) {
-    e.stopPropagation()
-    const newVisibility = project.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC"
-    queryClient.setQueryData<Project[]>(["projects"], (old) =>
-      old ? old.map((p) => p.id === project.id ? { ...p, visibility: newVisibility } : p) : []
-    )
   }
 
   if (isLoading) {
@@ -575,8 +548,6 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   }
 
   const settledProjects = projects.filter((p) => p.status !== "PROCESSING" && p.status !== "PENDING")
-  const privateProjects = settledProjects.filter((p) => p.visibility === "PRIVATE")
-  const publicProjects = settledProjects.filter((p) => p.visibility === "PUBLIC")
   const completedProjects = projects.filter((p) => p.status === "COMPLETED")
   const failedProjects = projects.filter((p) => p.status === "FAILED")
   const totalFiles = completedProjects.reduce((sum, p) => sum + (p.fileCount ?? 0), 0)
@@ -602,7 +573,6 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                 project.id !== activeProjectId
               }
               onDelete={handleDelete}
-              onToggleVisibility={handleToggleVisibility}
               onRetry={handleRetry}
               queryClient={queryClient}
             />
@@ -614,11 +584,18 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
         <DashboardStat icon={<Building2 className="size-3.5" />} label="cities" value={projects.length} />
         <DashboardStat icon={<Loader2 className="size-3.5" />} label="active" value={processingProjects.length} />
         <DashboardStat icon={<FileCode className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
         <DashboardStat icon={<Code2 className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
+        <Button
+          onClick={() => onCreateCity?.()}
+          className="col-span-2 h-full min-h-10 gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-xs font-semibold text-white hover:border-primary/45 hover:bg-primary/90 lg:col-span-1"
+        >
+          <Plus className="size-3.5" />
+          New City
+        </Button>
       </div>
 
       {processingProjects.length > 0 && (
@@ -636,7 +613,6 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
                 project={project}
                 isQueued={project.id !== activeProjectId}
                 onDelete={handleDelete}
-                onToggleVisibility={handleToggleVisibility}
                 onRetry={handleRetry}
                 queryClient={queryClient}
               />
@@ -645,10 +621,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         </div>
       )}
 
-      {renderGroup("Private", <Lock className="h-3 w-3 text-zinc-700" />, privateProjects)}
-      {renderGroup("Public", <Globe className="h-3 w-3 text-zinc-700" />, publicProjects)}
+      {renderGroup("Cities", <Building2 className="h-3 w-3 text-zinc-700" />, settledProjects)}
       {failedProjects.length > 0 && (
-        <div className="rounded-lg border border-red-500/10 bg-red-500/[0.03] px-3 py-2 font-mono text-[10px] text-red-400/70">
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 font-mono text-[10px] text-zinc-500">
           {failedProjects.length} failed analysis {failedProjects.length === 1 ? "needs" : "need"} attention.
         </div>
       )}

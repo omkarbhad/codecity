@@ -14,12 +14,17 @@ function shortError(message: string): string {
 }
 
 export function UpdateButton() {
+  const [canUpdate, setCanUpdate] = React.useState(false)
   const [state, setState] = React.useState<UpdateState>("idle")
   const [update, setUpdate] = React.useState<AppUpdateInfo | null>(null)
   const [progress, setProgress] = React.useState(0)
   const [message, setMessage] = React.useState("Check for updates")
 
-  if (!isTauri()) return null
+  React.useEffect(() => {
+    setCanUpdate(isTauri())
+  }, [])
+
+  if (!canUpdate) return null
 
   async function handleCheck() {
     setState("checking")
@@ -73,18 +78,19 @@ export function UpdateButton() {
           : RefreshCw
 
   return (
-    <div className="mb-2 rounded-md border border-white/[0.07] bg-white/[0.02] p-2">
+    <div className="relative flex shrink-0 justify-end">
       <button
         type="button"
         onClick={action}
         disabled={disabled}
-        className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-medium text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-200 disabled:cursor-wait disabled:opacity-70"
+        title={message}
+        aria-label={message}
+        className="flex size-7 items-center justify-center rounded-md border border-transparent bg-transparent text-zinc-700 transition-colors hover:border-white/[0.08] hover:bg-white/[0.03] hover:text-zinc-300 disabled:cursor-wait disabled:opacity-70"
       >
         <Icon className={`size-3.5 shrink-0 ${disabled ? "animate-spin text-primary" : "text-zinc-600"}`} />
-        <span className="min-w-0 flex-1 truncate">{message}</span>
       </button>
       {state === "downloading" && (
-        <div className="mt-2 h-1 overflow-hidden rounded-sm bg-white/[0.08]">
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 overflow-hidden rounded-sm bg-white/[0.08]">
           <div
             className="h-full rounded-sm bg-primary transition-all duration-300"
             style={{ width: `${progress}%` }}

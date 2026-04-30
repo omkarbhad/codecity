@@ -4,8 +4,7 @@ import { Suspense, useState } from "react"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { MyProjectsTab } from "@/components/dashboard/my-projects-tab"
 import { NewAnalysisDialog } from "@/components/dashboard/new-analysis-dialog"
-import { FolderGit2, Plus } from "lucide-react"
-import { Button } from "@codecity/ui/components/button"
+import { FolderGit2 } from "lucide-react"
 import {
   SidebarInset,
   SidebarTrigger,
@@ -25,7 +24,7 @@ function DashboardContent() {
 
   return (
     <>
-      <AppSidebar onNewCity={() => setShowNewDialog(true)} />
+      <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0b0b0c] px-4">
           <div className="flex items-center gap-2">
@@ -36,14 +35,6 @@ function DashboardContent() {
               My cities
             </span>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setShowNewDialog(true)}
-            className="h-8 gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-white hover:bg-primary/90"
-          >
-            <Plus className="size-3.5" />
-            New City
-          </Button>
         </header>
 
         <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">

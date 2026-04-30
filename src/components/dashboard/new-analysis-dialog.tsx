@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { open as openDialog } from "@tauri-apps/plugin-dialog"
-import { Globe, Lock, GitBranch, FolderOpen, Loader2, Search } from "lucide-react"
+import { GitBranch, FolderOpen, Loader2, Search } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +13,7 @@ import {
 } from "@codecity/ui/components/dialog"
 import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
-import { analyze, getProjects, isTauri, listGithubRepos, type GitHubRepoSummary } from "@/lib/tauri"
+import { enqueueAnalysis, isTauri, listGithubRepos, type GitHubRepoSummary } from "@/lib/tauri"
 import { LogoIcon } from "@/components/logo"
 
 const QUICK_REPOS = [
@@ -25,21 +24,6 @@ const QUICK_REPOS = [
 ]
 
 type SourceMode = "github" | "local"
-type RepoVisibility = "all" | "private" | "public"
-
-interface AnalysisProgress {
-  progress: number
-  stage: string
-  message: string
-  filesDiscovered: number
-  filesParsed: number
-}
-
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
-  return n.toString()
-}
 
 function normalizeInput(value: string): string {
   return value
@@ -58,13 +42,9 @@ export function NewAnalysisDialog({
 }) {
   const [url, setUrl] = useState("")
   const [sourceMode, setSourceMode] = useState<SourceMode>("github")
-  const [repoVisibility, setRepoVisibility] = useState<RepoVisibility>("private")
   const [repoSearch, setRepoSearch] = useState("")
-  const [visibility, setVisibility] = useState<"PUBLIC" | "PRIVATE">("PRIVATE")
   const [submitting, setSubmitting] = useState(false)
-  const [submittedInput, setSubmittedInput] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
   const queryClient = useQueryClient()
 
   const {
@@ -72,53 +52,26 @@ export function NewAnalysisDialog({
     isError: reposErrored,
     isLoading: reposLoading,
   } = useQuery<GitHubRepoSummary[]>({
-    queryKey: ["github-repos", repoVisibility],
+    queryKey: ["github-repos", "all"],
     enabled: open && sourceMode === "github" && isTauri() && !submitting,
-    queryFn: () => listGithubRepos(repoVisibility),
+    queryFn: () => listGithubRepos("all"),
   })
 
   const filteredRepos = githubRepos.filter((repo) =>
     repo.full_name.toLowerCase().includes(repoSearch.toLowerCase())
   )
 
-  const { data: liveProgress } = useQuery<AnalysisProgress | null>({
-    queryKey: ["analysis-progress", submittedInput],
-    enabled: submitting && !!submittedInput,
-    refetchInterval: 700,
-    queryFn: async () => {
-      const projects = await getProjects()
-      const normalizedInput = normalizeInput(submittedInput)
-      const project = projects.find((p) => normalizeInput(p.repo_url) === normalizedInput)
-      if (!project) return null
-
-      return {
-        progress: Math.max(0, Math.min(100, Number(project.progress ?? 0))),
-        stage: project.progress_stage ?? "queued",
-        message: project.progress_message ?? "Queued",
-        filesDiscovered: Number(project.files_discovered ?? 0),
-        filesParsed: Number(project.files_parsed ?? 0),
-      }
-    },
-  })
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const input = url.trim()
     if (!input) return
     setSubmitting(true)
-    setSubmittedInput(input)
     setError(null)
 
     try {
-      const result = await analyze(input, { visibility })
-
-      if (result.snapshot) {
-        onOpenChange(false)
-        router.push(`/project?id=${encodeURIComponent(result.projectId)}`)
-        return
-      }
-
+      await enqueueAnalysis(input)
       queryClient.invalidateQueries({ queryKey: ["projects"] })
+      setSubmitting(false)
       onOpenChange(false)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Analysis failed"
@@ -151,15 +104,11 @@ export function NewAnalysisDialog({
           if (next) {
             setUrl("")
             setSourceMode("github")
-            setRepoVisibility("private")
             setRepoSearch("")
-            setSubmittedInput("")
             setError(null)
             setSubmitting(false)
-            setVisibility("PRIVATE")
           } else {
             setError(null)
-            setSubmittedInput("")
           }
           onOpenChange(next)
         }
@@ -219,27 +168,6 @@ export function NewAnalysisDialog({
 
             {!submitting && sourceMode === "github" && isTauri() && (
               <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">
-                <div className="mb-2 grid grid-cols-3 gap-1">
-                  {([
-                    { value: "private" as const, label: "Private" },
-                    { value: "all" as const, label: "All repos" },
-                    { value: "public" as const, label: "Public" },
-                  ]).map((item) => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => setRepoVisibility(item.value)}
-                      className={`h-7 rounded-md text-[11px] font-medium transition-colors ${
-                        repoVisibility === item.value
-                          ? "bg-white/[0.08] text-zinc-100"
-                          : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
                 <div className="relative mb-2">
                   <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-zinc-700" />
                   <Input
@@ -258,7 +186,7 @@ export function NewAnalysisDialog({
                     </div>
                   ) : reposErrored ? (
                     <div className="flex h-20 items-center justify-center px-4 text-center text-[11px] leading-5 text-zinc-600">
-                      Connect GitHub to browse private and organization repositories.
+                      Connect GitHub to browse repositories from your account and organizations.
                     </div>
                   ) : filteredRepos.length > 0 ? (
                     <div className="space-y-1">
@@ -271,7 +199,6 @@ export function NewAnalysisDialog({
                             type="button"
                             onClick={() => {
                               setUrl(repo.html_url)
-                              setVisibility(repo.private ? "PRIVATE" : "PUBLIC")
                               setError(null)
                             }}
                             className={`flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-colors ${
@@ -280,11 +207,7 @@ export function NewAnalysisDialog({
                                 : "border-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
                             }`}
                           >
-                            {repo.private ? (
-                              <Lock className="size-3.5 shrink-0 text-zinc-500" />
-                            ) : (
-                              <Globe className="size-3.5 shrink-0 text-zinc-500" />
-                            )}
+                            <GitBranch className="size-3.5 shrink-0 text-zinc-500" />
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-mono text-[11px] text-zinc-300">
                                 {repo.full_name}
@@ -361,82 +284,15 @@ export function NewAnalysisDialog({
               )}
             </div>
 
-            {/* Visibility */}
-            {!submitting && (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-zinc-400">
-                  Visibility
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["PRIVATE", "PUBLIC"] as const).map((v) => (
-                    <label
-                      key={v}
-                      className={`flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2.5 transition-colors ${
-                        visibility === v
-                          ? "border-primary/35 bg-primary/[0.06] text-zinc-100"
-                          : "border-white/[0.07] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-zinc-300"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="visibility"
-                        value={v}
-                        checked={visibility === v}
-                        onChange={() => setVisibility(v)}
-                        className="sr-only"
-                      />
-                      <div className={`flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                        visibility === v ? "border-primary/20 bg-primary/10 text-primary" : "border-white/[0.07] bg-white/[0.03] text-zinc-600"
-                      }`}>
-                        {v === "PRIVATE" ? (
-                          <Lock className="h-3 w-3" />
-                        ) : (
-                          <Globe className="h-3 w-3" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-medium leading-none">{v === "PRIVATE" ? "Private" : "Public"}</p>
-                        <p className="text-[9px] text-zinc-600 mt-0.5 leading-none">
-                          {v === "PRIVATE" ? "Only you can see" : "Visible in Explore"}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Submitting state */}
             {submitting && (
               <div className="rounded-md border border-primary/15 bg-primary/[0.04] px-4 py-4 text-center">
-                <div className="mb-2 flex items-center justify-center gap-2.5">
+                <div className="flex items-center justify-center gap-2.5">
                   <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
                   <span className="text-[12px] font-mono text-zinc-300">
-                    {liveProgress?.message ?? "Preparing analysis…"}
+                    Adding city to queue…
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-sm bg-white/[0.08]">
-                  <div
-                    className="h-full rounded-sm bg-primary transition-all duration-500"
-                    style={{ width: `${liveProgress?.progress ?? 4}%` }}
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] text-zinc-700">
-                  <span>{liveProgress?.stage ?? "queued"}</span>
-                  <span>{Math.round(liveProgress?.progress ?? 4)}%</span>
-                </div>
-                {(liveProgress?.filesDiscovered ?? 0) > 0 && (
-                  <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-2 text-left">
-                    <div>
-                      <p className="font-mono text-[10px] text-zinc-700">files found</p>
-                      <p className="font-mono text-[12px] text-zinc-300">{formatNumber(liveProgress?.filesDiscovered ?? 0)}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-[10px] text-zinc-700">files parsed</p>
-                      <p className="font-mono text-[12px] text-zinc-300">{formatNumber(liveProgress?.filesParsed ?? 0)}</p>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -465,7 +321,7 @@ export function NewAnalysisDialog({
                 className={`h-9 rounded-md bg-primary text-[12px] font-semibold text-white transition-colors hover:bg-primary/90 ${submitting ? "w-full" : "flex-[2]"}`}
               >
                 {submitting ? (
-                  "Building City…"
+                  "Queueing…"
                 ) : (
                   <span className="flex items-center justify-center gap-1.5">
                     {sourceMode === "local" ? <FolderOpen className="size-3.5" /> : <GitBranch className="size-3.5" />}

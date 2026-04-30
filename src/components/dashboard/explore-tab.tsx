@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, FileCode, ArrowUpRight, Code2, ArrowDownAZ, Clock, TrendingUp, Globe } from "lucide-react"
+import { Search, FileCode, ArrowUpRight, Code2, ArrowDownAZ, Clock, TrendingUp, Building2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { Input } from "@codecity/ui/components/input"
 import { getAllPublicProjects } from "@/lib/tauri"
@@ -161,12 +161,12 @@ export function ExploreTab() {
       {/* Empty state */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center rounded-lg border border-white/[0.05] bg-white/[0.01] py-16">
-          <Globe className="h-8 w-8 text-zinc-700 mb-3" />
+          <Building2 className="h-8 w-8 text-zinc-700 mb-3" />
           <p className="text-[13px] font-mono text-zinc-500">
-            {search ? `no results for "${search}"` : "no public cities yet"}
+            {search ? `no results for "${search}"` : "no cities yet"}
           </p>
           <p className="text-[11px] text-zinc-700 mt-1">
-            {search ? "Try a different search term" : "Be the first to share one"}
+            {search ? "Try a different search term" : "Analyze a repository to create one"}
           </p>
         </div>
       ) : (
