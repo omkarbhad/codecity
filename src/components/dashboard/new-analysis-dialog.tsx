@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { open as openDialog } from "@tauri-apps/plugin-dialog"
-import { GitBranch, FolderOpen, Loader2, Search } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { FolderOpenIcon, GithubIcon, GitBranchIcon } from "@hugeicons/core-free-icons"
 import {
   Dialog,
   DialogContent,
@@ -13,8 +14,9 @@ import {
 } from "@codecity/ui/components/dialog"
 import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
-import { enqueueAnalysis, isTauri, listGithubRepos, type GitHubRepoSummary } from "@/lib/tauri"
+import { enqueueAnalysis, isTauri } from "@/lib/tauri"
 import { LogoIcon } from "@/components/logo"
+import { HugeIcon } from "@/components/ui/huge-icon"
 
 const QUICK_REPOS = [
   { label: "vercel/next.js", url: "https://github.com/vercel/next.js" },
@@ -36,30 +38,17 @@ function normalizeInput(value: string): string {
 export function NewAnalysisDialog({
   open,
   onOpenChange,
+  initialInput,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  initialInput?: string
 }) {
   const [url, setUrl] = useState("")
   const [sourceMode, setSourceMode] = useState<SourceMode>("github")
-  const [repoSearch, setRepoSearch] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const queryClient = useQueryClient()
-
-  const {
-    data: githubRepos = [],
-    isError: reposErrored,
-    isLoading: reposLoading,
-  } = useQuery<GitHubRepoSummary[]>({
-    queryKey: ["github-repos", "all"],
-    enabled: open && sourceMode === "github" && isTauri() && !submitting,
-    queryFn: () => listGithubRepos("all"),
-  })
-
-  const filteredRepos = githubRepos.filter((repo) =>
-    repo.full_name.toLowerCase().includes(repoSearch.toLowerCase())
-  )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -102,9 +91,8 @@ export function NewAnalysisDialog({
       onOpenChange={(next) => {
         if (!submitting) {
           if (next) {
-            setUrl("")
+            setUrl(initialInput ?? "")
             setSourceMode("github")
-            setRepoSearch("")
             setError(null)
             setSubmitting(false)
           } else {
@@ -137,10 +125,9 @@ export function NewAnalysisDialog({
             {!submitting && isTauri() && (
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { mode: "github" as const, label: "GitHub", icon: GitBranch },
-                  { mode: "local" as const, label: "Offline folder", icon: FolderOpen },
+                  { mode: "github" as const, label: "GitHub", icon: GithubIcon },
+                  { mode: "local" as const, label: "Offline folder", icon: FolderOpenIcon },
                 ]).map((item) => {
-                  const Icon = item.icon
                   const active = sourceMode === item.mode
                   return (
                     <button
@@ -149,7 +136,6 @@ export function NewAnalysisDialog({
                       onClick={() => {
                         setSourceMode(item.mode)
                         setUrl("")
-                        setRepoSearch("")
                         setError(null)
                       }}
                       className={`flex h-10 items-center justify-center gap-2 rounded-md border text-[12px] font-medium transition-colors ${
@@ -158,74 +144,11 @@ export function NewAnalysisDialog({
                           : "border-white/[0.07] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-zinc-300"
                       }`}
                     >
-                      <Icon className="size-3.5" />
+                      <HugeIcon icon={item.icon} className="size-3.5" />
                       {item.label}
                     </button>
                   )
                 })}
-              </div>
-            )}
-
-            {!submitting && sourceMode === "github" && isTauri() && (
-              <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-zinc-700" />
-                  <Input
-                    value={repoSearch}
-                    onChange={(e) => setRepoSearch(e.target.value)}
-                    placeholder="Search repos and orgs"
-                    className="h-8 rounded-md border-white/[0.08] bg-[#0b0b0c] pl-8 text-[12px] text-zinc-300 placeholder:text-zinc-700 focus-visible:border-primary/40 focus-visible:ring-0"
-                  />
-                </div>
-
-                <div className="max-h-44 overflow-y-auto pr-1">
-                  {reposLoading ? (
-                    <div className="flex h-20 items-center justify-center gap-2 text-[11px] text-zinc-600">
-                      <Loader2 className="size-3.5 animate-spin" />
-                      Loading repositories
-                    </div>
-                  ) : reposErrored ? (
-                    <div className="flex h-20 items-center justify-center px-4 text-center text-[11px] leading-5 text-zinc-600">
-                      Connect GitHub to browse repositories from your account and organizations.
-                    </div>
-                  ) : filteredRepos.length > 0 ? (
-                    <div className="space-y-1">
-                      {filteredRepos.slice(0, 30).map((repo) => {
-                        const selected = normalizeInput(url) === normalizeInput(repo.html_url)
-
-                        return (
-                          <button
-                            key={repo.id}
-                            type="button"
-                            onClick={() => {
-                              setUrl(repo.html_url)
-                              setError(null)
-                            }}
-                            className={`flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-colors ${
-                              selected
-                                ? "border-primary/35 bg-primary/[0.07]"
-                                : "border-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
-                            }`}
-                          >
-                            <GitBranch className="size-3.5 shrink-0 text-zinc-500" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-mono text-[11px] text-zinc-300">
-                                {repo.full_name}
-                              </p>
-                              <p className="mt-0.5 truncate text-[10px] text-zinc-700">
-                                {repo.owner_type === "Organization" ? "organization" : "user"} · {repo.default_branch}
-                              </p>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex h-20 items-center justify-center px-4 text-center text-[11px] leading-5 text-zinc-600">
-                      No repositories found for this filter.
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
@@ -237,9 +160,9 @@ export function NewAnalysisDialog({
               <div className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
                 {sourceMode === "local" || (isTauri() && (url.startsWith("/") || url.startsWith("~"))) ? (
-                  <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-600 pointer-events-none" />
+                  <HugeIcon icon={FolderOpenIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-zinc-600 pointer-events-none" />
                 ) : (
-                  <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-600 pointer-events-none" />
+                  <HugeIcon icon={GitBranchIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-zinc-600 pointer-events-none" />
                 )}
                 <Input
                   type={isTauri() ? "text" : "url"}
@@ -324,7 +247,7 @@ export function NewAnalysisDialog({
                   "Queueing…"
                 ) : (
                   <span className="flex items-center justify-center gap-1.5">
-                    {sourceMode === "local" ? <FolderOpen className="size-3.5" /> : <GitBranch className="size-3.5" />}
+                    {sourceMode === "local" ? <HugeIcon icon={FolderOpenIcon} className="size-3.5" /> : <HugeIcon icon={GitBranchIcon} className="size-3.5" />}
                     {sourceMode === "local" ? "Analyze Folder" : "Start Analysis"}
                   </span>
                 )}

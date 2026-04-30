@@ -3,10 +3,12 @@
 import { Suspense, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ProjectVisualization } from "@/components/city/project-visualization"
-import { RotateCcw, ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react"
+import { RotateCcw, ArrowLeft, AlertTriangle } from "lucide-react"
+import { ArrowReloadHorizontalIcon } from "@hugeicons/core-free-icons"
 import { PageLoader } from "@/components/ui/loader"
 import type { CitySnapshot } from "@/lib/types/city"
 import { getProject, getProjectSnapshot, refreshAnalysis, type ProjectRecord } from "@/lib/tauri"
+import { HugeIcon } from "@/components/ui/huge-icon"
 
 type RefreshState = {
   status: "idle" | "running" | "failed"
@@ -178,7 +180,7 @@ function ProjectContent() {
                   disabled={refreshState.status === "running"}
                   className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  <RefreshCw className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
+                  <HugeIcon icon={ArrowReloadHorizontalIcon} className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
                   {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
                 </button>
               )}
@@ -215,7 +217,7 @@ function ProjectContent() {
             disabled={refreshState.status === "running"}
             className="mx-auto flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
+            <HugeIcon icon={ArrowReloadHorizontalIcon} className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
             {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
           </button>
         </div>
@@ -286,7 +288,7 @@ function ProjectRefreshControl({
             : "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white/85"
         }`}
       >
-        <RefreshCw className={`size-3.5 ${isRunning ? "animate-spin" : ""}`} />
+        <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${isRunning ? "animate-spin" : ""}`} />
       </button>
     </div>
   )
