@@ -5,12 +5,16 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev --port 3000",
+    "dev:homepage": "next dev homepage --port 3001",
     "desktop": "tauri dev",
     "build": "next build",
+    "build:homepage": "next build homepage",
     "build:desktop": "tauri build --debug --no-bundle",
     "bundle:desktop": "tauri build",
     "start": "next start",
+    "start:homepage": "next start homepage --port 3001",
     "lint": "tsc --noEmit",
+    "lint:homepage": "tsc --project homepage/tsconfig.json --noEmit",
     "type-check": "tsc --noEmit",
     "tauri": "tauri"
   },
