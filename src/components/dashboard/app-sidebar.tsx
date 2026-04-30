@@ -28,9 +28,12 @@ import {
 import { IconButton } from "@codecity/ui/components/icon-button"
 import {
   getProjects,
+  getGithubToken,
   githubGetUser,
+  githubImportCliSession,
   githubLoginPoll,
   githubLoginStart,
+  isTauri,
   logoutGithub,
   setGithubSession,
 } from "@/lib/tauri"
@@ -56,6 +59,22 @@ export function AppSidebar({
   const [authCode, setAuthCode] = React.useState<string | null>(null)
   const [authError, setAuthError] = React.useState<string | null>(null)
 
+  const { data: githubUser = null } = useQuery({
+    queryKey: ["me"],
+    enabled: isTauri(),
+    queryFn: async () => {
+      const token = await getGithubToken()
+      if (!token) return null
+      const profile = await githubGetUser(token)
+      return {
+        name: profile.login,
+        image: profile.avatar_url,
+      }
+    },
+  })
+
+  const activeUser = user ?? githubUser
+
   async function handleLogout() {
     await logoutGithub()
     await queryClient.invalidateQueries({ queryKey: ["me"] })
@@ -67,7 +86,20 @@ export function AppSidebar({
     setAuthError(null)
 
     try {
-      const device = await githubLoginStart()
+      let device
+      try {
+        device = await githubLoginStart()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (!message.includes("Not Found")) throw error
+
+        await githubImportCliSession()
+        await queryClient.invalidateQueries({ queryKey: ["me"] })
+        setAuthCode(null)
+        router.replace("/dashboard")
+        return
+      }
+
       setAuthCode(device.user_code)
       await open(device.verification_uri)
 
@@ -225,8 +257,8 @@ export function AppSidebar({
           <p className="mb-2 px-2 text-[10px] leading-4 text-primary/80">{authError}</p>
         )}
         <div className="flex items-center gap-2 px-2 py-1.5">
-          {user?.image ? (
-            <img src={user.image} alt={user.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08] shrink-0" />
+          {activeUser?.image ? (
+            <img src={activeUser.image} alt={activeUser.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08] shrink-0" />
           ) : (
             <div className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
               <User className="h-3 w-3 text-zinc-600" />
@@ -234,13 +266,13 @@ export function AppSidebar({
           )}
           <div className="flex flex-col min-w-0 flex-1 gap-0">
             <span className="text-[11px] font-medium text-zinc-400 truncate">
-              {user?.name ?? (user?.email ? user.email.split("@")[0] : "—")}
+              {activeUser?.name ?? (user?.email ? user.email.split("@")[0] : "—")}
             </span>
             <span className="text-[9px] font-mono text-zinc-700 truncate">
-              {user?.name ? "GitHub connected" : "GitHub not connected"}
+              {activeUser?.name ? "GitHub connected" : "GitHub not connected"}
             </span>
           </div>
-          {user?.name ? (
+          {activeUser?.name ? (
             <IconButton
               onClick={handleLogout}
               title="Sign out"
