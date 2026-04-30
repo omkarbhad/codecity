@@ -408,7 +408,6 @@ function ProjectNavbar({
       </div>
 
       <div className="col-start-3 flex min-w-0 justify-end gap-2 font-mono text-[10px] text-white/45">
-        {actions}
         <div className="hidden items-center gap-3 lg:flex">
           <span className="flex items-center gap-1">
             <FileCode className="size-3 text-white/30" />
@@ -421,6 +420,7 @@ function ProjectNavbar({
             lines
           </span>
         </div>
+        {actions}
       </div>
 
       {/* Mobile center — tap to cycle */}

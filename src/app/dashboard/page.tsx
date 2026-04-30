@@ -1,10 +1,12 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { MyProjectsTab } from "@/components/dashboard/my-projects-tab"
 import { NewAnalysisDialog } from "@/components/dashboard/new-analysis-dialog"
-import { FolderGit2 } from "lucide-react"
+import { FolderGitTwoIcon } from "@hugeicons/core-free-icons"
+import { HugeIcon } from "@/components/ui/huge-icon"
 import {
   SidebarInset,
   SidebarTrigger,
@@ -20,7 +22,22 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
+  const searchParams = useSearchParams()
   const [showNewDialog, setShowNewDialog] = useState(false)
+  const [initialCityInput, setInitialCityInput] = useState<string | undefined>()
+
+  useEffect(() => {
+    const input = searchParams.get("new")
+    if (input) {
+      setInitialCityInput(input)
+      setShowNewDialog(true)
+    }
+  }, [searchParams])
+
+  function openNewCity(input?: string) {
+    setInitialCityInput(input)
+    setShowNewDialog(true)
+  }
 
   return (
     <>
@@ -30,19 +47,26 @@ function DashboardContent() {
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-200" />
             <Separator orientation="vertical" className="mx-1 h-4 bg-white/[0.08]" />
-            <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-400">
-              <FolderGit2 className="size-3.5 text-zinc-600" />
+            <span className="flex items-center gap-1.5 text-sm font-medium text-zinc-300">
+              <HugeIcon icon={FolderGitTwoIcon} className="size-3.5 text-zinc-600" />
               My cities
             </span>
           </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
-          <MyProjectsTab onCreateCity={() => setShowNewDialog(true)} />
+          <MyProjectsTab onCreateCity={() => openNewCity()} />
         </div>
       </SidebarInset>
 
-      <NewAnalysisDialog open={showNewDialog} onOpenChange={setShowNewDialog} />
+      <NewAnalysisDialog
+        open={showNewDialog}
+        onOpenChange={(open) => {
+          setShowNewDialog(open)
+          if (!open) setInitialCityInput(undefined)
+        }}
+        initialInput={initialCityInput}
+      />
     </>
   )
 }
