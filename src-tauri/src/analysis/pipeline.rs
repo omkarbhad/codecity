@@ -1,12 +1,16 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use super::db::Database;
 use super::github;
 use super::layout::CitySnapshot;
 use super::parser;
+
+static CANCELLED_ANALYSES: once_cell::sync::Lazy<Mutex<HashSet<String>>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(HashSet::new()));
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +28,44 @@ pub struct AnalyzeResult {
     pub project_id: Option<String>,
     pub snapshot: Option<CitySnapshot>,
     pub error: Option<String>,
+}
+
+fn mark_cancelled(project_id: &str) {
+    if let Ok(mut cancelled) = CANCELLED_ANALYSES.lock() {
+        cancelled.insert(project_id.to_string());
+    }
+}
+
+fn clear_cancelled(project_id: &str) {
+    if let Ok(mut cancelled) = CANCELLED_ANALYSES.lock() {
+        cancelled.remove(project_id);
+    }
+}
+
+fn is_cancelled(project_id: &str) -> bool {
+    CANCELLED_ANALYSES
+        .lock()
+        .map(|cancelled| cancelled.contains(project_id))
+        .unwrap_or(false)
+}
+
+fn cached_repo_dir(repo_url: &str) -> Option<PathBuf> {
+    let (owner, repo) = github::parse_github_url(repo_url).ok()?;
+    Some(repos_dir().ok()?.join(format!("{}-{}", owner, repo)))
+}
+
+pub fn cancel_analysis(db: &Database, project_id: &str) -> Result<(), String> {
+    mark_cancelled(project_id);
+
+    if let Some(project) = db.get_project(project_id)? {
+        if let Some(repo_dir) = cached_repo_dir(&project.repo_url) {
+            if repo_dir.exists() {
+                let _ = std::fs::remove_dir_all(repo_dir);
+            }
+        }
+    }
+
+    db.delete_project(project_id)
 }
 
 const SKIP_DIRS: &[&str] = &[
@@ -696,6 +738,10 @@ async fn run_queued_analysis(
     source: QueuedSource,
     github_token: Option<&str>,
 ) {
+    if is_cancelled(&project.id) {
+        return;
+    }
+
     if let Err(error) = db.update_project_status(&project.id, "PROCESSING", 0, 0, None) {
         log::error!("Failed to mark queued analysis as processing: {}", error);
         return;
@@ -710,6 +756,8 @@ async fn run_queued_analysis(
             parse_and_save(db, &project, Path::new(&path)).await;
         }
     };
+
+    clear_cancelled(&project.id);
 }
 
 fn normalize_visibility(visibility: Option<&str>) -> &str {
@@ -777,6 +825,15 @@ async fn run_github_analysis(
     repo_url: &str,
     github_token: Option<&str>,
 ) -> AnalyzeResult {
+    if is_cancelled(&project.id) {
+        return AnalyzeResult {
+            success: false,
+            project_id: Some(project.id.clone()),
+            snapshot: None,
+            error: Some("Analysis cancelled".to_string()),
+        };
+    }
+
     report_progress(
         db,
         &project.id,
@@ -793,6 +850,15 @@ async fn run_github_analysis(
             return fail_project(db, &project.id, e.to_string(), 0, 0);
         }
     };
+
+    if is_cancelled(&project.id) {
+        return AnalyzeResult {
+            success: false,
+            project_id: Some(project.id.clone()),
+            snapshot: None,
+            error: Some("Analysis cancelled".to_string()),
+        };
+    }
 
     report_progress(
         db,
@@ -860,6 +926,15 @@ async fn parse_and_save(
     project: &super::db::ProjectRecord,
     dir: &Path,
 ) -> AnalyzeResult {
+    if is_cancelled(&project.id) {
+        return AnalyzeResult {
+            success: false,
+            project_id: Some(project.id.clone()),
+            snapshot: None,
+            error: Some("Analysis cancelled".to_string()),
+        };
+    }
+
     report_progress(
         db,
         &project.id,
@@ -884,6 +959,15 @@ async fn parse_and_save(
     let mut files_parsed = 0_i64;
 
     for (index, (folder, batch)) in folder_batches.into_iter().enumerate() {
+        if is_cancelled(&project.id) {
+            return AnalyzeResult {
+                success: false,
+                project_id: Some(project.id.clone()),
+                snapshot: None,
+                error: Some("Analysis cancelled".to_string()),
+            };
+        }
+
         report_progress(
             db,
             &project.id,
@@ -908,6 +992,15 @@ async fn parse_and_save(
         files_discovered,
         files_parsed,
     );
+
+    if is_cancelled(&project.id) {
+        return AnalyzeResult {
+            success: false,
+            project_id: Some(project.id.clone()),
+            snapshot: None,
+            error: Some("Analysis cancelled".to_string()),
+        };
+    }
 
     parser::resolve_internal_imports(&mut parsed);
     let files_parsed = parsed.len() as i64;
@@ -941,6 +1034,15 @@ async fn parse_and_save(
         files_discovered,
         files_parsed,
     );
+
+    if is_cancelled(&project.id) {
+        return AnalyzeResult {
+            success: false,
+            project_id: Some(project.id.clone()),
+            snapshot: None,
+            error: Some("Analysis cancelled".to_string()),
+        };
+    }
 
     let snapshot = super::layout::create_snapshot(parsed, vec![]);
 

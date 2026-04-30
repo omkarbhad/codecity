@@ -247,6 +247,10 @@ export async function deleteProject(id: string): Promise<void> {
   await rpc<null>("projects.delete", { id })
 }
 
+export async function cancelProject(id: string): Promise<void> {
+  await rpc<null>("projects.cancel", { id })
+}
+
 export async function getAllPublicProjects(): Promise<ProjectRecord[]> {
   return rpc<ProjectRecord[]>("projects.listPublic").catch(emptyWhenBackendUnavailable([]))
 }
@@ -303,6 +307,10 @@ export async function listGithubRepos(
   }
 
   return repos
+}
+
+export async function listTrendingGithubRepos(): Promise<GitHubRepoSummary[]> {
+  return rpc<GitHubRepoSummary[]>("github.trendingRepos").catch(emptyWhenBackendUnavailable([]))
 }
 
 export async function setGithubToken(token: string): Promise<void> {

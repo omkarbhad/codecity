@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, thiserror::Error)]
 pub enum GitHubError {
@@ -241,6 +243,65 @@ pub async fn fetch_repositories(
             default_branch: repo.default_branch,
         })
         .collect())
+}
+
+pub async fn fetch_trending_repositories() -> Result<Vec<GitHubRepoSummary>, GitHubError> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get("https://github.com/trending")
+        .header("Accept", "text/html")
+        .header("User-Agent", "Codecity-Desktop")
+        .send()
+        .await
+        .map_err(|error| GitHubError::HttpError(error.to_string()))?;
+
+    if !response.status().is_success() {
+        return Ok(Vec::new());
+    }
+
+    let html = response
+        .text()
+        .await
+        .map_err(|error| GitHubError::HttpError(error.to_string()))?;
+    let article_pattern = regex::Regex::new(r#"(?s)<article\b.*?</article>"#)
+        .map_err(|error| GitHubError::ApiError(error.to_string()))?;
+    let repo_pattern = regex::Regex::new(r#"href="/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)""#)
+        .map_err(|error| GitHubError::ApiError(error.to_string()))?;
+
+    let mut seen = std::collections::HashSet::new();
+    let mut repos = Vec::new();
+
+    for article in article_pattern.find_iter(&html) {
+        let Some(capture) = repo_pattern.captures(article.as_str()) else {
+            continue;
+        };
+        let owner = capture[1].to_string();
+        let repo = capture[2].to_string();
+        let full_name = format!("{}/{}", owner, repo);
+
+        if !seen.insert(full_name.clone()) {
+            continue;
+        }
+
+        let mut hasher = DefaultHasher::new();
+        full_name.hash(&mut hasher);
+        repos.push(GitHubRepoSummary {
+            id: (hasher.finish() & i64::MAX as u64) as i64,
+            full_name,
+            html_url: format!("https://github.com/{}/{}", owner, repo),
+            private: false,
+            owner_login: owner,
+            owner_type: "User".to_string(),
+            updated_at: chrono::Utc::now().to_rfc3339(),
+            default_branch: "main".to_string(),
+        });
+
+        if repos.len() >= 5 {
+            break;
+        }
+    }
+
+    Ok(repos)
 }
 
 pub async fn fetch_commit_files(

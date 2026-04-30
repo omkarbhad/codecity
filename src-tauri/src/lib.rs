@@ -252,6 +252,11 @@ async fn dispatch_rpc(
                 .map_err(internal_error)?;
             Ok(Value::Null)
         }
+        "projects.cancel" => {
+            let params: IdParams = parse_params(params)?;
+            analysis::cancel_analysis(&state.db, &params.id).map_err(internal_error)?;
+            Ok(Value::Null)
+        }
         "projects.getSnapshot" => {
             let params: ProjectIdParams = parse_params(params)?;
             to_value(state.db.get_snapshot(&params.project_id).ok().flatten())
@@ -319,6 +324,12 @@ async fn dispatch_rpc(
             let repos = analysis::fetch_repositories(&params.visibility, params.page, &token)
                 .await
                 .map_err(|error| internal_error(error.to_string()))?;
+            to_value(repos)
+        }
+        "github.trendingRepos" => {
+            let repos = analysis::fetch_trending_repositories()
+                .await
+                .unwrap_or_default();
             to_value(repos)
         }
         "github.setToken" => {
