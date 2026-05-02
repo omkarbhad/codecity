@@ -4,7 +4,8 @@ import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useRef,
 import dynamic from "next/dynamic"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
 import { recomputeSnapshot } from "@/lib/tauri"
-import { useCityStore } from "./use-city-store"
+import { isPathHidden, useCityStore } from "./use-city-store"
+import { getExtension } from "./extension-filter"
 import { ProjectShell } from "./project-shell"
 import { Loader } from "@/components/ui/loader"
 import type { BuildingLoadProgress } from "./instanced-buildings"
@@ -120,22 +121,23 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
   const layoutMode = useCityStore((s) => s.layoutMode)
   const setRepoUrl = useCityStore((s) => s.setRepoUrl)
+  const resetProjectState = useCityStore((s) => s.resetProjectState)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevLayoutRef = useRef<LayoutMode>(layoutMode)
   const transitionStartRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const transitionEndRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const didMountFiltersRef = useRef(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const loadHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Update original ref if prop changes
   useEffect(() => {
+    resetProjectState()
     originalRef.current = originalSnapshot
     setCurrentSnapshot(originalSnapshot)
     setBuildingLoadProgress(null)
     setIsBuildingLoadLeaving(false)
     if (loadHideTimerRef.current) clearTimeout(loadHideTimerRef.current)
-  }, [originalSnapshot])
+  }, [originalSnapshot, resetProjectState])
 
   useEffect(() => {
     if (repoUrl) setRepoUrl(repoUrl)
@@ -144,39 +146,19 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   const recompute = useCallback(async (mode: LayoutMode) => {
     if (originalRef.current.files.length === 0) return
 
-    const hasFilters = hiddenPaths.size > 0 || hiddenExtensions.size > 0
-
-    if (!hasFilters && mode === "folder") {
+    if (mode === "folder") {
       setCurrentSnapshot(originalRef.current)
       return
     }
 
     const newSnapshot = await recomputeSnapshot(
       originalRef.current,
-      Array.from(hiddenPaths),
-      Array.from(hiddenExtensions),
+      [],
+      [],
       mode
     )
     setCurrentSnapshot(newSnapshot)
-  }, [hiddenPaths, hiddenExtensions])
-
-  // Auto-recompute layout when filters change (debounced 350ms)
-  useEffect(() => {
-    if (!didMountFiltersRef.current) {
-      didMountFiltersRef.current = true
-      return
-    }
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-
-    debounceRef.current = setTimeout(() => {
-      void recompute(layoutMode)
-    }, 350)
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [hiddenPaths, hiddenExtensions, recompute])
+  }, [])
 
   // Immediate re-layout on layout mode change with transition
   useEffect(() => {
@@ -205,6 +187,21 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
 
   const setMode = useCityStore((s) => s.setMode)
   const toggleBuildingLabels = useCityStore((s) => s.toggleBuildingLabels)
+  const selectedFile = useCityStore((s) => s.selectedFile)
+  const selectFile = useCityStore((s) => s.selectFile)
+
+  useEffect(() => {
+    if (!selectedFile) return
+    const file = currentSnapshot.files.find((item) => item.path === selectedFile)
+    if (
+      file &&
+      !isPathHidden(file.path, hiddenPaths) &&
+      !hiddenExtensions.has(getExtension(file.path))
+    ) {
+      return
+    }
+    selectFile(null, null)
+  }, [currentSnapshot.files, hiddenExtensions, hiddenPaths, selectedFile, selectFile])
 
   const handleBuildingLoadProgress = useCallback((progress: BuildingLoadProgress | null) => {
     if (loadHideTimerRef.current) {
@@ -280,7 +277,13 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
         Press Escape to deselect the current file. Press R to reset camera. WASD to pan.
       </div>
 
-      <ProjectShell snapshot={currentSnapshot} projectName={projectName} repoUrl={repoUrl} navbarActions={navbarActions}>
+      <ProjectShell
+        snapshot={currentSnapshot}
+        explorerSnapshot={originalRef.current}
+        projectName={projectName}
+        repoUrl={repoUrl}
+        navbarActions={navbarActions}
+      >
         <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
           <SceneErrorBoundary>
             <CitySceneCanvas snapshot={currentSnapshot} onBuildingLoadProgress={handleBuildingLoadProgress} />

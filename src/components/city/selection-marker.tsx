@@ -4,6 +4,7 @@ import { useRef, useMemo, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
+import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { useCityStore } from "./use-city-store"
 
 interface SelectionMarkerProps {
@@ -48,7 +49,7 @@ export const SelectionMarker = memo(function SelectionMarker({ snapshot }: Selec
   if (!fileData) return null
 
   const buildingWidth = Math.max(1.2, Math.min(2.8, 1.2 + fileData.functions.length * 0.15))
-  const buildingHeight = Math.max(0.4, Math.min(18, fileData.lines / 50))
+  const buildingHeight = getBuildingHeight(fileData)
   const ringRadius = buildingWidth * 0.8 + 0.3
 
   return (

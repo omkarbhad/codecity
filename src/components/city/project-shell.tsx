@@ -117,6 +117,7 @@ const LAYOUTS: { key: LayoutMode; label: string; icon: typeof FolderTree }[] = [
 
 interface ProjectShellProps {
   snapshot: CitySnapshot
+  explorerSnapshot?: CitySnapshot
   projectName: string
   repoUrl?: string
   navbarActions?: ReactNode
@@ -194,10 +195,12 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
 function PrimaryPanelContent({
   view,
   snapshot,
+  explorerSnapshot,
   repoUrl,
 }: {
   view: PrimaryView
   snapshot: CitySnapshot
+  explorerSnapshot: CitySnapshot
   repoUrl?: string
 }) {
   const searchQuery = useCityStore((s) => s.searchQuery)
@@ -214,8 +217,8 @@ function PrimaryPanelContent({
     case "explorer":
       return (
         <>
-          <PanelHeader title="Explorer" subtitle={`${snapshot.files.length.toLocaleString()} files`} />
-          <FileTree snapshot={snapshot} />
+          <PanelHeader title="Explorer" subtitle={`${explorerSnapshot.files.length.toLocaleString()} files`} />
+          <FileTree snapshot={explorerSnapshot} selectionSnapshot={snapshot} />
         </>
       )
     case "search":
@@ -242,15 +245,15 @@ function PrimaryPanelContent({
             </div>
           </div>
           <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            <FileTree snapshot={snapshot} />
+            <FileTree snapshot={explorerSnapshot} selectionSnapshot={snapshot} />
           </div>
         </>
       )
     case "filters":
       return (
         <>
-          <PanelHeader title="Filters" subtitle={`${snapshot.files.length.toLocaleString()} files`} />
-          <ExtensionFilter snapshot={snapshot} />
+          <PanelHeader title="Filters" subtitle={`${explorerSnapshot.files.length.toLocaleString()} files`} />
+          <ExtensionFilter snapshot={explorerSnapshot} />
         </>
       )
     case "legend":
@@ -455,10 +458,11 @@ function ProjectNavbar({
 const MIN_PANEL = 180
 const MAX_PANEL = 480
 
-export function ProjectShell({ snapshot, projectName, repoUrl, navbarActions, children }: ProjectShellProps) {
+export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectName, repoUrl, navbarActions, children }: ProjectShellProps) {
   const [activeView, setActiveView] = useState<PrimaryView | null>("explorer")
   const [primaryWidth, setPrimaryWidth] = useState(240)
   const [secondaryWidth, setSecondaryWidth] = useState(280)
+  const selectedFile = useCityStore((s) => s.selectedFile)
 
   const handleViewChange = useCallback((view: PrimaryView) => {
     setActiveView((prev) => (prev === view ? null : view))
@@ -471,6 +475,10 @@ export function ProjectShell({ snapshot, projectName, repoUrl, navbarActions, ch
   const handleSecondaryResize = useCallback((delta: number) => {
     setSecondaryWidth((w) => Math.min(MAX_PANEL, Math.max(MIN_PANEL, w + delta)))
   }, [])
+
+  useEffect(() => {
+    if (selectedFile) setActiveView("explorer")
+  }, [selectedFile])
 
   // Keyboard shortcuts for activity bar
   useEffect(() => {
@@ -509,7 +517,7 @@ export function ProjectShell({ snapshot, projectName, repoUrl, navbarActions, ch
         {activeView && (
           <>
             <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-r border-white/[0.08] bg-[#0b0b0c] shadow-[18px_0_60px_rgba(0,0,0,0.16)] md:flex">
-              <PrimaryPanelContent view={activeView} snapshot={snapshot} repoUrl={repoUrl} />
+              <PrimaryPanelContent view={activeView} snapshot={snapshot} explorerSnapshot={explorerSnapshot} repoUrl={repoUrl} />
             </div>
             <ResizeHandle side="left" onResize={handlePrimaryResize} />
           </>

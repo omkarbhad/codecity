@@ -4,6 +4,7 @@ import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot, FileData } from "@/lib/types/city"
+import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { useCityStore } from "./use-city-store"
 
 interface DependencyPipesProps {
@@ -174,7 +175,7 @@ export const DependencyPipes = memo(function DependencyPipes({ snapshot }: Depen
 
     const result: PipeData[] = []
     const seen = new Set<string>()
-    const srcHeight = Math.max(0.4, Math.min(18, src.lines / 50))
+    const srcHeight = getBuildingHeight(src)
     let jitterIdx = 0
 
     for (const imp of src.imports) {
@@ -184,7 +185,7 @@ export const DependencyPipes = memo(function DependencyPipes({ snapshot }: Depen
       const target = fileMap.get(imp)
       if (!target) continue
 
-      const tgtHeight = Math.max(0.4, Math.min(18, target.lines / 50))
+      const tgtHeight = getBuildingHeight(target)
       const curve = buildRoadCurve(src, target, srcHeight, tgtHeight, jitterIdx++)
       if (!curve) continue
       const distance = Math.sqrt(
@@ -201,7 +202,7 @@ export const DependencyPipes = memo(function DependencyPipes({ snapshot }: Depen
       const source = fileMap.get(dep)
       if (!source) continue
 
-      const depHeight = Math.max(0.4, Math.min(18, source.lines / 50))
+      const depHeight = getBuildingHeight(source)
       const curve = buildRoadCurve(source, src, depHeight, srcHeight, jitterIdx++)
       if (!curve) continue
       const distance = Math.sqrt(

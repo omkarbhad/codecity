@@ -7,6 +7,7 @@ import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
 import type { CityBounds } from "@/lib/visualization/city-bounds"
 import { getCityBounds } from "@/lib/visualization/city-bounds"
+import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { useCityStore } from "./use-city-store"
 
 interface CameraControllerProps {
@@ -76,7 +77,7 @@ export function CameraController({ snapshot, cityBounds }: CameraControllerProps
     const file = snapshot.files.find((f) => f.path === selectedFile)
     if (!file) return
 
-    const height = Math.max(0.4, Math.min(18, file.lines / 50))
+    const height = getBuildingHeight(file)
     const targetPoint = new THREE.Vector3(file.position.x, height * 0.3, file.position.z)
 
     const controlsTarget = getControlsTarget()

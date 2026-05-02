@@ -34,11 +34,29 @@ function getLang(path: string): string {
   const map: Record<string, string> = {
     ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
     py: "python", rs: "rust", go: "go", java: "java", c: "c", cpp: "cpp",
-    h: "c", hpp: "cpp", css: "css", scss: "css", html: "html", json: "json",
-    md: "markdown", mdx: "markdown", yaml: "yaml", yml: "yaml", toml: "toml", sh: "bash",
+    h: "c", hpp: "cpp", cu: "cpp", cuh: "cpp", ptx: "asm", ll: "llvm",
+    hlsl: "glsl", wgsl: "glsl", css: "css", scss: "css", html: "html", json: "json",
+    md: "markdown", mdx: "mdx", yaml: "yaml", yml: "yaml", toml: "toml", sh: "bash",
     zsh: "bash", rb: "ruby", php: "php", swift: "swift", kt: "kotlin",
   }
   return map[ext] ?? "text"
+}
+
+function prepareMarkdownPreview(code: string, lang: string): string {
+  if (lang !== "mdx") return code
+
+  return code
+    .split("\n")
+    .map((line) => {
+      if (/^\s*(import|export)\s/.test(line)) {
+        return `\`${line.replace(/`/g, "\\`")}\``
+      }
+      if (/^\s*<\/?[A-Z][\w.:-]*(\s|>|\/>)/.test(line)) {
+        return `\`${line.replace(/`/g, "\\`")}\``
+      }
+      return line
+    })
+    .join("\n")
 }
 
 // Simple keyword-aware syntax highlighting (no external deps)
@@ -155,6 +173,11 @@ function cleanErrorMessage(message: string): string {
   return message.replace(/\s+\(-?\d+\)$/, "")
 }
 
+function getGitHubFileUrl(repoUrl: string, filePath: string, line: number | null): string | null {
+  if (!/^https?:\/\/(www\.)?github\.com\//.test(repoUrl)) return null
+  return `${repoUrl.replace(/\.git$/, "")}/blob/main/${filePath}${line !== null ? `#L${line + 1}` : ""}`
+}
+
 export function CodeViewer() {
   const codeViewer = useCityStore((s) => s.codeViewer)
   const closeCodeViewer = useCityStore((s) => s.closeCodeViewer)
@@ -223,10 +246,10 @@ export function CodeViewer() {
   const fileName = filePath?.split("/").pop() ?? ""
   const targetLine = code && functionName ? findFunctionLine(code, functionName, lang) : null
   const lines = code?.split("\n") ?? []
+  const isMarkdownPreview = lang === "markdown" || lang === "mdx"
+  const previewCode = code ? prepareMarkdownPreview(code, lang) : ""
 
-  const githubUrl = repoUrl
-    ? `${repoUrl.replace(/\.git$/, "")}/blob/main/${filePath}${targetLine !== null ? `#L${targetLine + 1}` : ""}`
-    : null
+  const githubUrl = repoUrl && filePath ? getGitHubFileUrl(repoUrl, filePath, targetLine) : null
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#0a0a0f]/98 backdrop-blur-sm">
@@ -295,8 +318,13 @@ export function CodeViewer() {
           </div>
         )}
 
-        {code && lang === "markdown" && (
+        {code && isMarkdownPreview && (
           <div className="markdown-body px-8 py-6 max-w-[900px] mx-auto">
+            {lang === "mdx" && (
+              <div className="mb-4 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] text-white/45">
+                MDX preview preserves imports, exports, and custom components as inline code.
+              </div>
+            )}
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw]}
@@ -342,12 +370,12 @@ export function CodeViewer() {
                 summary: ({ children }) => <summary className="px-3 py-2 cursor-pointer text-[13px] text-white/80 font-medium bg-white/[0.02] hover:bg-white/[0.04] transition-colors">{children}</summary>,
               }}
             >
-              {code}
+              {previewCode}
             </ReactMarkdown>
           </div>
         )}
 
-        {code && lang !== "markdown" && (
+        {code && !isMarkdownPreview && (
           <div className="text-[12px] leading-[20px] min-w-fit" style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" }}>
             {lines.map((line, i) => {
               const isTarget = targetLine !== null && i === targetLine

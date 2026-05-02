@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use super::db::Database;
 use super::github;
-use super::layout::CitySnapshot;
+use super::layout::{CitySnapshot, SourceTreeEntry};
 use super::parser;
 
 static CANCELLED_ANALYSES: once_cell::sync::Lazy<Mutex<HashSet<String>>> =
@@ -88,14 +88,358 @@ const SKIP_DIRS: &[&str] = &[
 ];
 
 const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "css", "scss", "less", "sass", "html", "htm",
-    "md", "mdx", "json", "yaml", "yml", "toml", "go", "rs", "java", "kt", "kts", "rb", "php",
-    "swift", "c", "h", "cpp", "cxx", "cc", "hpp", "hxx", "hh", "sh", "bash", "zsh", "fish", "zig",
-    "lua", "hs", "lhs", "dart", "ex", "exs", "scala", "r", "R", "jl", "pl", "pm", "t", "cs", "erl",
-    "hrl", "nix", "glsl", "frag", "vert", "comp", "ml", "mli", "groovy", "gradle", "el",
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "mjs",
+    "cjs",
+    "mts",
+    "cts",
+    "es",
+    "es6",
+    "vue",
+    "svelte",
+    "astro",
+    "css",
+    "scss",
+    "less",
+    "sass",
+    "html",
+    "htm",
+    "svg",
+    "md",
+    "mdx",
+    "json",
+    "jsonc",
+    "yaml",
+    "yml",
+    "toml",
+    "webmanifest",
+    "ipynb",
+    "py",
+    "pyi",
+    "pyx",
+    "pxd",
+    "pxi",
+    "go",
+    "rs",
+    "java",
+    "kt",
+    "kts",
+    "rb",
+    "php",
+    "swift",
+    "c",
+    "h",
+    "cu",
+    "cuh",
+    "cpp",
+    "cxx",
+    "cc",
+    "hpp",
+    "hxx",
+    "hh",
+    "cs",
+    "fs",
+    "fsi",
+    "fsx",
+    "vb",
+    "m",
+    "mm",
+    "zig",
+    "lua",
+    "dart",
+    "scala",
+    "groovy",
+    "r",
+    "R",
+    "jl",
+    "hs",
+    "lhs",
+    "ex",
+    "exs",
+    "erl",
+    "hrl",
+    "beam",
+    "ml",
+    "mli",
+    "clj",
+    "cljs",
+    "cljc",
+    "edn",
+    "lisp",
+    "lsp",
+    "cl",
+    "scm",
+    "ss",
+    "idr",
+    "lidr",
+    "agda",
+    "lean",
+    "purs",
+    "nim",
+    "cr",
+    "v",
+    "d",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "ksh",
+    "awk",
+    "ps1",
+    "bat",
+    "cmd",
+    "asm",
+    "s",
+    "o",
+    "obj",
+    "a",
+    "lib",
+    "so",
+    "dylib",
+    "dll",
+    "exe",
+    "rlib",
+    "class",
+    "jar",
+    "war",
+    "ear",
+    "wasm",
+    "wat",
+    "xml",
+    "xsd",
+    "xsl",
+    "ini",
+    "cfg",
+    "conf",
+    "env",
+    "csv",
+    "tsv",
+    "ndjson",
+    "avro",
+    "parquet",
+    "orc",
+    "npy",
+    "npz",
+    "h5",
+    "hdf5",
+    "hdf",
+    "feather",
+    "arrow",
+    "duckdb",
+    "db",
+    "sqlite",
+    "sqlite3",
+    "pkl",
+    "pickle",
+    "joblib",
+    "model",
+    "weights",
+    "pt",
+    "pth",
+    "ckpt",
+    "safetensors",
+    "onnx",
+    "pb",
+    "pbtxt",
+    "tflite",
+    "lite",
+    "keras",
+    "mlmodel",
+    "mar",
+    "engine",
+    "trt",
+    "caffemodel",
+    "prototxt",
+    "params",
+    "bin",
+    "gguf",
+    "ggml",
+    "tiktoken",
+    "spm",
+    "bpe",
+    "vocab",
+    "proto",
+    "thrift",
+    "dockerfile",
+    "makefile",
+    "mk",
+    "gradle",
+    "bazel",
+    "bzl",
+    "tf",
+    "tfvars",
+    "hcl",
+    "nix",
+    "ejs",
+    "pug",
+    "hbs",
+    "mustache",
+    "liquid",
+    "njk",
+    "rst",
+    "adoc",
+    "asciidoc",
+    "tex",
+    "latex",
+    "bib",
+    "feature",
+    "spec",
+    "snap",
+    "tap",
+    "log",
+    "patch",
+    "diff",
+    "lock",
+    "glsl",
+    "frag",
+    "vert",
+    "comp",
+    "hlsl",
+    "wgsl",
+    "cg",
+    "ptx",
+    "cubin",
+    "fatbin",
+    "nvvm",
+    "ll",
+    "bc",
+    "coffee",
+    "lit",
+    "marko",
+    "graphql",
+    "gql",
+    "sql",
+    "dockerignore",
+    "gitignore",
+    "gitattributes",
+    "editorconfig",
+    "properties",
+    "plist",
+    "xcconfig",
+    "bicep",
+    "cue",
+    "dhall",
+    "ron",
+    "rego",
+    "nomad",
+    "hurl",
+    "http",
+    "rest",
+    "vhd",
+    "vhdl",
+    "sv",
+    "svh",
+    "matlab",
+    "octave",
+    "sas",
+    "stata",
+    "do",
+    "qml",
+    "qss",
+    "plantuml",
+    "puml",
+    "mermaid",
+    "mmd",
 ];
 
-const MAX_FILE_BYTES: u64 = 1_000_000;
+const SUPPORTED_FILENAMES: &[&str] = &[
+    ".babelrc",
+    ".browserslistrc",
+    ".dockerignore",
+    ".editorconfig",
+    ".env",
+    ".env.development",
+    ".env.example",
+    ".env.local",
+    ".env.production",
+    ".env.test",
+    ".eslintignore",
+    ".eslintrc",
+    ".gitattributes",
+    ".gitignore",
+    ".graphqlrc",
+    ".npmrc",
+    ".nvmrc",
+    ".prettierignore",
+    ".prettierrc",
+    ".stylelintrc",
+    ".yamllint",
+    "Brewfile",
+    "Containerfile",
+    "Dockerfile",
+    "Gemfile",
+    "Justfile",
+    "Makefile",
+    "Podfile",
+    "Procfile",
+    "Rakefile",
+    "Tiltfile",
+    "Vagrantfile",
+    "WORKSPACE",
+    "angular.json",
+    "bun.lock",
+    "bun.lockb",
+    "compose.yaml",
+    "compose.yml",
+    "deno.json",
+    "deno.jsonc",
+    "docker-compose.yaml",
+    "docker-compose.yml",
+    "eslint.config.cjs",
+    "eslint.config.js",
+    "eslint.config.mjs",
+    "eslint.config.ts",
+    "go.mod",
+    "go.sum",
+    "next.config.js",
+    "next.config.mjs",
+    "next.config.ts",
+    "package.json",
+    "pnpm-workspace.yaml",
+    "postcss.config.cjs",
+    "postcss.config.js",
+    "postcss.config.mjs",
+    "postcss.config.ts",
+    "prettier.config.cjs",
+    "prettier.config.js",
+    "prettier.config.mjs",
+    "pyproject.toml",
+    "remix.config.js",
+    "remix.config.mjs",
+    "requirements.txt",
+    "environment.yml",
+    "environment.yaml",
+    "conda.yaml",
+    "conda.yml",
+    "Pipfile",
+    "dvc.yaml",
+    "params.yaml",
+    "mlproject",
+    "MLproject",
+    "model-card.md",
+    "ModelCard.md",
+    "rust-toolchain",
+    "rust-toolchain.toml",
+    "svelte.config.js",
+    "svelte.config.ts",
+    "tailwind.config.cjs",
+    "tailwind.config.js",
+    "tailwind.config.mjs",
+    "tailwind.config.ts",
+    "tsconfig.json",
+    "turbo.json",
+    "vite.config.js",
+    "vite.config.mjs",
+    "vite.config.ts",
+    "vitest.config.js",
+    "vitest.config.mjs",
+    "vitest.config.ts",
+];
+
+const UNDISPLAYABLE_FILE_CONTENT: &str = "[File content cannot be shown]";
 
 const SKIP_FILES: &[&str] = &[
     "package-lock.json",
@@ -134,6 +478,21 @@ fn should_skip_file(path: &Path) -> bool {
 
 fn is_supported_extension(ext: &str) -> bool {
     SUPPORTED_EXTENSIONS.contains(&ext)
+}
+
+fn is_supported_filename(file_name: &str) -> bool {
+    SUPPORTED_FILENAMES.contains(&file_name)
+}
+
+fn is_probably_binary(bytes: &[u8]) -> bool {
+    bytes.contains(&0)
+}
+
+fn relative_path(base_dir: &Path, path: &Path) -> String {
+    path.strip_prefix(base_dir)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
 }
 
 fn report_progress(
@@ -200,8 +559,11 @@ fn collect_source_files(dir: &Path) -> Vec<PathBuf> {
                     }
                 }
             } else if path.is_file() {
+                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                if is_supported_extension(ext) && !should_skip_file(&path) {
+                if (is_supported_extension(ext) || is_supported_filename(file_name))
+                    && !should_skip_file(&path)
+                {
                     result.push(path);
                 }
             }
@@ -211,31 +573,68 @@ fn collect_source_files(dir: &Path) -> Vec<PathBuf> {
     result
 }
 
+fn collect_source_tree_entries(base_dir: &Path) -> Vec<SourceTreeEntry> {
+    fn visit(base_dir: &Path, dir: &Path, entries: &mut Vec<SourceTreeEntry>) {
+        if let Ok(children) = std::fs::read_dir(dir) {
+            for child in children.flatten() {
+                let path = child.path();
+                let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                    continue;
+                };
+
+                if path.is_dir() {
+                    if should_skip_dir(name) {
+                        continue;
+                    }
+                    if path
+                        .strip_prefix(base_dir)
+                        .is_ok_and(|relative| !relative.as_os_str().is_empty())
+                    {
+                        entries.push(SourceTreeEntry {
+                            path: relative_path(base_dir, &path),
+                            is_file: false,
+                            parsed: false,
+                        });
+                    }
+                    visit(base_dir, &path, entries);
+                } else if path.is_file() {
+                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    let parsed = (is_supported_extension(ext) || is_supported_filename(name))
+                        && !should_skip_file(&path);
+                    entries.push(SourceTreeEntry {
+                        path: relative_path(base_dir, &path),
+                        is_file: true,
+                        parsed,
+                    });
+                }
+            }
+        }
+    }
+
+    let mut entries = Vec::new();
+    visit(base_dir, base_dir, &mut entries);
+    entries.sort_by(|a, b| a.path.cmp(&b.path));
+    entries
+}
+
 /// Read files from a local directory and return (relative_path, content) pairs
 fn read_local_files(base_dir: &Path) -> Vec<(String, String)> {
     let files = collect_source_files(base_dir);
     let mut result = Vec::new();
 
     for path in files {
-        if let Ok(metadata) = std::fs::metadata(&path) {
-            if metadata.len() > MAX_FILE_BYTES {
-                log::warn!(
-                    "Skipping large file {} ({} bytes)",
-                    path.display(),
-                    metadata.len()
-                );
-                continue;
+        let relative = relative_path(base_dir, &path);
+
+        match std::fs::read(&path) {
+            Ok(bytes) => {
+                let content = if is_probably_binary(&bytes) {
+                    UNDISPLAYABLE_FILE_CONTENT.to_string()
+                } else {
+                    String::from_utf8(bytes)
+                        .unwrap_or_else(|_| UNDISPLAYABLE_FILE_CONTENT.to_string())
+                };
+                result.push((relative, content));
             }
-        }
-
-        let relative = path
-            .strip_prefix(base_dir)
-            .unwrap_or(&path)
-            .to_string_lossy()
-            .to_string();
-
-        match std::fs::read_to_string(&path) {
-            Ok(content) => result.push((relative, content)),
             Err(e) => log::warn!("Skipping {}: {}", path.display(), e),
         }
     }
@@ -1012,6 +1411,7 @@ async fn parse_and_save(
     );
 
     let files = read_local_files(dir);
+    let source_tree = collect_source_tree_entries(dir);
     let files_discovered = files.len() as i64;
 
     if files.is_empty() {
@@ -1110,7 +1510,12 @@ async fn parse_and_save(
         };
     }
 
-    let snapshot = super::layout::create_snapshot(parsed, vec![]);
+    let snapshot = super::layout::create_snapshot_with_mode_and_source_tree(
+        parsed,
+        vec![],
+        super::layout::LayoutMode::Folder,
+        source_tree,
+    );
 
     report_progress(
         db,

@@ -59,6 +59,8 @@ pub struct FileData {
     pub external_imports: Vec<String>,
     pub decorators: Vec<String>,
     pub complexity: usize,
+    #[serde(default)]
+    pub frontend_frameworks: Vec<String>,
     pub is_react_component: bool,
     pub has_unused_exports: bool,
     pub file_type: FileType,
@@ -66,6 +68,14 @@ pub struct FileData {
     pub district: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sub_folder: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceTreeEntry {
+    pub path: String,
+    pub is_file: bool,
+    pub parsed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,6 +118,8 @@ pub struct CitySnapshot {
     pub files: Vec<FileData>,
     pub districts: Vec<DistrictData>,
     pub stats: CityStats,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_tree: Vec<SourceTreeEntry>,
     pub warnings: Option<Vec<String>>,
 }
 
@@ -139,6 +151,7 @@ const EXTENSION_COLORS: &[(&str, &str)] = &[
     (".html", "#e34c26"),
     (".json", "#a0a0a0"),
     (".md", "#083fa1"),
+    (".mdx", "#1f6feb"),
     (".yaml", "#cb171e"),
     (".yml", "#cb171e"),
     (".toml", "#9c4221"),
@@ -148,6 +161,12 @@ const EXTENSION_COLORS: &[(&str, &str)] = &[
     (".rb", "#cc342d"),
     (".vue", "#42b883"),
     (".svelte", "#ff3e00"),
+    (".astro", "#ff5d01"),
+    (".cu", "#76b900"),
+    (".cuh", "#76b900"),
+    (".ptx", "#76b900"),
+    (".cubin", "#5a8f00"),
+    (".fatbin", "#5a8f00"),
 ];
 
 fn extension(path: &str) -> String {
@@ -166,7 +185,7 @@ fn district_color(index: usize, name: &str, mode: LayoutMode) -> String {
 }
 
 fn building_dimensions(file: &ParsedFile) -> (f32, f32) {
-    let height = (file.lines as f32 / 60.0).clamp(0.3, 12.0);
+    let height = (file.lines as f32 / 60.0).clamp(0.3, 50.0);
     let width = (1.0 + file.functions.len() as f32 * 0.12).clamp(1.0, 2.2);
     (width, height)
 }
@@ -1114,6 +1133,7 @@ pub fn layout_city(
                 external_imports: position.file.external_imports.clone(),
                 decorators: position.file.decorators.clone(),
                 complexity: position.file.complexity,
+                frontend_frameworks: position.file.frontend_frameworks.clone(),
                 is_react_component: position.file.is_react_component,
                 has_unused_exports: position.file.has_unused_exports,
                 file_type: position.file.file_type.clone(),
@@ -1201,15 +1221,36 @@ pub fn create_snapshot_with_mode(
     warnings: Vec<String>,
     mode: LayoutMode,
 ) -> CitySnapshot {
+    create_snapshot_with_mode_and_source_tree(parsed, warnings, mode, Vec::new())
+}
+
+pub fn create_snapshot_with_mode_and_source_tree(
+    parsed: Vec<ParsedFile>,
+    warnings: Vec<String>,
+    mode: LayoutMode,
+    mut source_tree: Vec<SourceTreeEntry>,
+) -> CitySnapshot {
     let mut districts = compute_districts(&parsed, mode);
     let files = layout_city(&parsed, &mut districts, mode);
     let stats = compute_stats(&files);
+
+    if source_tree.is_empty() {
+        source_tree = files
+            .iter()
+            .map(|file| SourceTreeEntry {
+                path: file.path.clone(),
+                is_file: true,
+                parsed: true,
+            })
+            .collect();
+    }
 
     CitySnapshot {
         schema_version: 1,
         files,
         districts,
         stats,
+        source_tree,
         warnings: if warnings.is_empty() {
             None
         } else {
@@ -1264,6 +1305,7 @@ fn file_to_parsed(file: &FileData, visible_paths: &HashSet<String>) -> ParsedFil
         external_imports: file.external_imports.clone(),
         decorators: file.decorators.clone(),
         complexity: file.complexity,
+        frontend_frameworks: file.frontend_frameworks.clone(),
         is_react_component: file.is_react_component,
         has_unused_exports: file.has_unused_exports,
         file_type: file.file_type.clone(),
@@ -1292,6 +1334,7 @@ pub fn recompute_snapshot(
             files: Vec::new(),
             districts: Vec::new(),
             stats: compute_stats(&[]),
+            source_tree: original.source_tree,
             warnings: original.warnings,
         };
     }
@@ -1305,5 +1348,6 @@ pub fn recompute_snapshot(
 
     let mut snapshot = create_snapshot_with_mode(parsed, Vec::new(), mode);
     snapshot.warnings = original.warnings;
+    snapshot.source_tree = original.source_tree;
     snapshot
 }

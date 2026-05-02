@@ -6,6 +6,7 @@ import { Text, Billboard } from "@react-three/drei"
 import type { CitySnapshot } from "@/lib/types/city"
 import type { CityBounds } from "@/lib/visualization/city-bounds"
 import { getCityBounds } from "@/lib/visualization/city-bounds"
+import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { useCityStore } from "./use-city-store"
 
 const MAX_VISIBLE_LABELS = 40
@@ -41,7 +42,7 @@ export function BuildingLabels({ snapshot, cityBounds }: BuildingLabelsProps) {
   )
 
   const heights = useMemo(
-    () => snapshot.files.map((f) => Math.max(0.4, Math.min(18, f.lines / 50))),
+    () => snapshot.files.map((f) => getBuildingHeight(f)),
     [snapshot.files]
   )
 

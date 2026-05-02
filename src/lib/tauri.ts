@@ -147,6 +147,7 @@ export interface ParsedFileRecord {
   externalImports: string[]
   decorators: string[]
   complexity: number
+  frontendFrameworks: string[]
   isReactComponent: boolean
   hasUnusedExports: boolean
   fileType: string
