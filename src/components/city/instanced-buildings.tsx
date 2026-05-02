@@ -7,6 +7,7 @@ import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore, isPathHidden } from "./use-city-store"
 import { getExtension } from "./extension-filter"
 import { getBuildingColor, clamp, easeOutQuint } from "@/lib/visualization/color-utils"
+import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 
 interface InstancedBuildingsProps {
   snapshot: CitySnapshot
@@ -25,11 +26,14 @@ export interface BuildingLoadProgress {
 
 const MAX_FLOOR_LINES = 12
 const CLICK_THRESHOLD_PX = 6
-const PROGRESSIVE_THRESHOLD = 2500
-const LARGE_CITY_CHUNK_SIZE = 450
-const SMALL_CITY_CHUNK_SIZE = 900
-const CHUNK_LOAD_DELAY_MS = 120
+const PROGRESSIVE_THRESHOLD = 1200
+const LARGE_CITY_THRESHOLD = 15000
+const LARGE_CITY_CHUNK_SIZE = 650
+const SMALL_CITY_CHUNK_SIZE = 800
+const CHUNK_LOAD_DELAY_MS = 45
 const MOVEMENT_IDLE_MS = 220
+const MOVING_CHUNK_DELAY_MS = 650
+const DETAIL_GEOMETRY_THRESHOLD = 1200
 const snapshotLoadProgress = new Map<string, number>()
 
 function getTopFolder(path: string): string {
@@ -51,7 +55,7 @@ function buildFolderChunks(files: CitySnapshot["files"]): number[][] {
     }
   })
 
-  const maxChunkSize = files.length > 8000 ? LARGE_CITY_CHUNK_SIZE : SMALL_CITY_CHUNK_SIZE
+  const maxChunkSize = files.length > LARGE_CITY_THRESHOLD ? LARGE_CITY_CHUNK_SIZE : SMALL_CITY_CHUNK_SIZE
   const chunks: number[][] = []
 
   Array.from(folderMap.entries())
@@ -89,12 +93,13 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   // Track pointer for click vs drag detection
   const pointerDownPos = useRef<{ x: number; y: number; instanceId: number | undefined } | null>(null)
   const lastMovementAtRef = useRef(0)
+  const lastChunkLoadedAtRef = useRef(0)
 
   const count = snapshot.files.length
   const shouldLoadProgressively = count > PROGRESSIVE_THRESHOLD
   const loadKey = useMemo(() => getSnapshotLoadKey(snapshot), [snapshot])
   const folderChunks = useMemo(() => buildFolderChunks(snapshot.files), [snapshot.files])
-  const firstChunkCount = shouldLoadProgressively ? Math.min(1, folderChunks.length) : folderChunks.length
+  const firstChunkCount = shouldLoadProgressively ? Math.min(2, folderChunks.length) : folderChunks.length
   const initialChunkCount = shouldLoadProgressively
     ? Math.max(firstChunkCount, snapshotLoadProgress.get(loadKey) ?? firstChunkCount)
     : folderChunks.length
@@ -151,7 +156,8 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   const enableGrowAnimation = count <= PROGRESSIVE_THRESHOLD
   const isProgressivelyLoading = shouldLoadProgressively && loadedChunkCount < folderChunks.length
   const [hasSettledAfterProgressiveLoad, setHasSettledAfterProgressiveLoad] = useState(!shouldLoadProgressively)
-  const enableDetailGeometry = !isProgressivelyLoading && hasSettledAfterProgressiveLoad
+  const enableDetailGeometry =
+    count <= DETAIL_GEOMETRY_THRESHOLD && !isProgressivelyLoading && hasSettledAfterProgressiveLoad
 
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectedIndex = useCityStore((s) => s.selectedIndex)
@@ -209,6 +215,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
     let cancelled = false
     let timeoutId: ReturnType<typeof setTimeout> | null = null
     let nextChunkCount = startChunkCount
+    lastChunkLoadedAtRef.current = performance.now()
 
     function scheduleNextChunk(delay = CHUNK_LOAD_DELAY_MS) {
       timeoutId = setTimeout(loadNextChunk, delay)
@@ -216,13 +223,16 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
 
     function loadNextChunk() {
       if (cancelled) return
-      const idleFor = performance.now() - lastMovementAtRef.current
-      if (idleFor < MOVEMENT_IDLE_MS) {
-        scheduleNextChunk(MOVEMENT_IDLE_MS - idleFor + CHUNK_LOAD_DELAY_MS)
+      const now = performance.now()
+      const idleFor = now - lastMovementAtRef.current
+      const isMoving = idleFor < MOVEMENT_IDLE_MS
+      if (isMoving && now - lastChunkLoadedAtRef.current < MOVING_CHUNK_DELAY_MS) {
+        scheduleNextChunk(MOVING_CHUNK_DELAY_MS - (now - lastChunkLoadedAtRef.current))
         return
       }
 
       nextChunkCount = Math.min(nextChunkCount + 1, folderChunks.length)
+      lastChunkLoadedAtRef.current = now
       snapshotLoadProgress.set(loadKey, nextChunkCount)
       setLoadedChunkCount(nextChunkCount)
       if (nextChunkCount < folderChunks.length) {
@@ -311,7 +321,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
 
   const getDimensions = useCallback(
     (f: CitySnapshot["files"][number]) => {
-      const height = clamp(f.lines / 60, 0.3, 12)
+      const height = getBuildingHeight(f)
       const width = clamp(1.0 + f.functions.length * 0.12, 1.0, 2.2)
       return { height, width, depth: width }
     },
