@@ -8,6 +8,10 @@ export type FileType =
   | "css"
   | "markup"
   | "config"
+  | "json"
+  | "markdown"
+  | "mdx"
+  | "toml"
   | "c"
   | "cpp"
   | "ruby"
@@ -31,6 +35,53 @@ export type FileType =
   | "ocaml"
   | "groovy"
   | "elisp"
+  | "vue"
+  | "svelte"
+  | "astro"
+  | "graphql"
+  | "sql"
+  | "proto"
+  | "dockerfile"
+  | "makefile"
+  | "shader"
+  | "cuda"
+  | "llvm"
+  | "nvidiaartifact"
+  | "webassembly"
+  | "fsharp"
+  | "visualbasic"
+  | "objectivec"
+  | "clojure"
+  | "lisp"
+  | "idris"
+  | "agda"
+  | "lean"
+  | "purescript"
+  | "nim"
+  | "crystal"
+  | "vlang"
+  | "dlang"
+  | "powershell"
+  | "batch"
+  | "assembly"
+  | "terraform"
+  | "template"
+  | "restructuredtext"
+  | "asciidoc"
+  | "latex"
+  | "gherkin"
+  | "data"
+  | "notebook"
+  | "mlmodel"
+  | "mlcheckpoint"
+  | "mltensor"
+  | "mltokenizer"
+  | "binary"
+  | "configlanguage"
+  | "diagram"
+  | "hardware"
+  | "matlab"
+  | "qml"
   | "other"
 
 export type LayoutMode = "folder" | "extension" | "semantic"
@@ -40,7 +91,14 @@ export interface CitySnapshot {
   files: FileData[]
   districts: DistrictData[]
   stats: CityStats
+  sourceTree?: SourceTreeEntry[]
   warnings?: string[]
+}
+
+export interface SourceTreeEntry {
+  path: string
+  isFile: boolean
+  parsed: boolean
 }
 
 export interface FileData {
@@ -58,6 +116,7 @@ export interface FileData {
   externalImports: string[]
   decorators: string[]
   complexity: number
+  frontendFrameworks: string[]
   isReactComponent: boolean
   hasUnusedExports: boolean
   fileType: FileType
