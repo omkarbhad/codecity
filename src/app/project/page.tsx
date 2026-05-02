@@ -166,37 +166,37 @@ function ProjectContent() {
   if (error) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
-        <div className="max-w-sm w-full">
-          <div className="rounded-lg border border-white/[0.08] bg-[#101012] p-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10">
-              <AlertTriangle className="h-5 w-5 text-red-400" />
+        <div className="w-full max-w-sm">
+          <div className="rounded-xl border border-white/[0.08] bg-neutral-900/95 p-6 text-center shadow-lg shadow-black/40 backdrop-blur-xl">
+            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-lg border border-rose-400/25 bg-rose-400/[0.08]">
+              <AlertTriangle className="size-5 text-rose-300" />
             </div>
-            <h2 className="text-base font-semibold text-zinc-50 mb-2">Something went wrong</h2>
-            <p className="text-sm text-zinc-500 mb-6 leading-relaxed">{error}</p>
+            <h2 className="mb-2 text-[14px] font-semibold leading-[1.25] text-neutral-100">Something went wrong</h2>
+            <p className="mb-6 text-[12px] leading-[1.5] text-neutral-400">{error}</p>
             <div className="flex flex-col gap-2">
               {repoUrl && (
                 <button
                   onClick={handleReanalyze}
                   disabled={refreshState.status === "running"}
-                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-[12px] font-medium leading-none text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
                 >
-                  <HugeIcon icon={ArrowReloadHorizontalIcon} className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
+                  <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
                   {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
                 </button>
               )}
               <div className="flex gap-2">
                 <button
                   onClick={() => router.back()}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:border-white/[0.12] hover:text-zinc-200"
+                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 text-[12px] font-medium leading-none text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="size-3.5" />
                   Back
                 </button>
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:border-white/[0.12] hover:text-zinc-200"
+                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 text-[12px] font-medium leading-none text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <RotateCcw className="size-3.5" />
                   Retry
                 </button>
               </div>
@@ -209,15 +209,15 @@ function ProjectContent() {
 
   if (!snapshot) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
+      <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
         <div className="text-center">
-          <p className="text-sm text-zinc-500 mb-3">No visualization data available.</p>
+          <p className="mb-3 text-[12px] leading-[1.5] text-neutral-400">No visualization data available.</p>
           <button
             onClick={handleReanalyze}
             disabled={refreshState.status === "running"}
-            className="mx-auto flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="mx-auto flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[12px] font-medium leading-none text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
           >
-            <HugeIcon icon={ArrowReloadHorizontalIcon} className={`h-4 w-4 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
+            <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
             {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
           </button>
         </div>
@@ -258,21 +258,21 @@ function ProjectRefreshControl({
   return (
     <div className="flex min-w-0 items-center gap-2">
       {isRunning && (
-        <div className="hidden min-w-[150px] max-w-[220px] items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.025] px-2 py-1 sm:flex">
+        <div className="hidden h-8 min-w-[160px] max-w-[224px] items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.025] px-2 sm:flex">
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[10px] font-medium text-white/55">{state.message || "Refreshing city"}</span>
+            <span className="block truncate text-[10px] font-medium leading-none text-neutral-400">{state.message || "Refreshing city"}</span>
             <span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/[0.08]">
               <span
-                className="block h-full rounded-full bg-primary/80 transition-[width] duration-300"
+                className="block h-full rounded-full bg-primary transition-[width] duration-300"
                 style={{ width: `${Math.max(4, Math.min(100, state.progress))}%` }}
               />
             </span>
           </span>
-          <span className="font-mono text-[10px] tabular-nums text-white/45">{Math.round(state.progress)}%</span>
+          <span className="font-mono text-[10px] leading-none text-neutral-300 tabular-nums">{Math.round(state.progress)}%</span>
         </div>
       )}
       {isFailed && (
-        <span className="hidden max-w-[240px] truncate rounded-md border border-primary/25 bg-primary/[0.07] px-2 py-1 text-[10px] font-medium text-primary/90 sm:block">
+        <span className="hidden h-8 max-w-[240px] items-center truncate rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 text-[11px] font-medium leading-none text-rose-300 sm:inline-flex">
           {state.message || "Refresh failed"}
         </span>
       )}
@@ -282,10 +282,10 @@ function ProjectRefreshControl({
         disabled={disabled || isRunning}
         title={isFailed ? state.message || "Refresh failed" : "Refresh analysis"}
         aria-label={isFailed ? state.message || "Refresh failed" : "Refresh analysis"}
-        className={`flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors disabled:pointer-events-none disabled:opacity-55 ${
+        className={`flex size-8 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 ${
           isFailed
-            ? "border-primary/35 bg-primary/[0.08] text-primary/90 hover:bg-primary/[0.12]"
-            : "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white/85"
+            ? "border-rose-400/30 bg-rose-400/[0.08] text-rose-300 hover:bg-rose-400/[0.14]"
+            : "border-white/[0.08] bg-white/[0.03] text-neutral-400 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-neutral-100"
         }`}
       >
         <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${isRunning ? "animate-spin" : ""}`} />

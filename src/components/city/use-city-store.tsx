@@ -52,6 +52,7 @@ interface CityState {
   toggleBuildingLabels: () => void
   openCodeViewer: (filePath: string, functionName?: string | null) => void
   closeCodeViewer: () => void
+  resetProjectState: () => void
 }
 
 export const useCityStore = create<CityState>((set) => ({
@@ -110,6 +111,18 @@ export const useCityStore = create<CityState>((set) => ({
   openCodeViewer: (filePath, functionName = null) =>
     set({ codeViewer: { filePath, functionName: functionName ?? null } }),
   closeCodeViewer: () => set({ codeViewer: null }),
+  resetProjectState: () =>
+    set({
+      selectedFile: null,
+      selectedIndex: null,
+      hoveredFile: null,
+      hoveredIndex: null,
+      searchQuery: "",
+      hiddenExtensions: new Set<string>(),
+      hiddenPaths: new Set<string>(),
+      highlightedFiles: new Set<string>(),
+      codeViewer: null,
+    }),
 }))
 
 /**

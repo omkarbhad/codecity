@@ -24,6 +24,8 @@ pub struct ParsedFile {
     pub external_imports: Vec<String>,
     pub decorators: Vec<String>,
     pub complexity: usize,
+    #[serde(default)]
+    pub frontend_frameworks: Vec<String>,
     pub is_react_component: bool,
     pub has_unused_exports: bool,
     pub file_type: FileType,
@@ -84,6 +86,10 @@ pub enum FileType {
     Css,
     Markup,
     Config,
+    Json,
+    Markdown,
+    Mdx,
+    Toml,
     C,
     Cpp,
     Ruby,
@@ -107,28 +113,97 @@ pub enum FileType {
     Ocaml,
     Groovy,
     Elisp,
+    Vue,
+    Svelte,
+    Astro,
+    Graphql,
+    Sql,
+    Proto,
+    Dockerfile,
+    Makefile,
+    Shader,
+    Cuda,
+    Llvm,
+    NvidiaArtifact,
+    WebAssembly,
+    FSharp,
+    VisualBasic,
+    ObjectiveC,
+    Clojure,
+    Lisp,
+    Idris,
+    Agda,
+    Lean,
+    PureScript,
+    Nim,
+    Crystal,
+    Vlang,
+    Dlang,
+    PowerShell,
+    Batch,
+    Assembly,
+    Terraform,
+    Template,
+    ReStructuredText,
+    AsciiDoc,
+    Latex,
+    Gherkin,
+    Data,
+    Notebook,
+    MlModel,
+    MlCheckpoint,
+    MlTensor,
+    MlTokenizer,
+    Binary,
+    ConfigLanguage,
+    Diagram,
+    Hardware,
+    Matlab,
+    Qml,
     Other,
 }
 
 impl FileType {
+    pub fn from_path(path: &str) -> Self {
+        let file_name = Path::new(path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        match file_name {
+            "Dockerfile" | "Containerfile" => return FileType::Dockerfile,
+            "Makefile" | "makefile" | "GNUmakefile" => return FileType::Makefile,
+            _ => {}
+        }
+
+        let ext = path.rsplit('.').next().unwrap_or("");
+        Self::from_extension(ext)
+    }
+
     pub fn from_extension(ext: &str) -> Self {
         match ext {
-            "ts" | "tsx" => FileType::TypeScript,
-            "js" | "jsx" | "mjs" | "cjs" => FileType::JavaScript,
-            "py" => FileType::Python,
+            "ts" | "tsx" | "mts" | "cts" => FileType::TypeScript,
+            "js" | "jsx" | "mjs" | "cjs" | "es" | "es6" => FileType::JavaScript,
+            "py" | "pyi" | "pyx" | "pxd" | "pxi" => FileType::Python,
             "rs" => FileType::Rust,
             "go" => FileType::Go,
             "java" => FileType::Java,
             "css" | "scss" | "less" | "sass" => FileType::Css,
             "html" | "htm" | "xml" | "svg" => FileType::Markup,
-            "json" | "yaml" | "yml" | "toml" | "ini" | "env" => FileType::Config,
+            "json" | "jsonc" | "webmanifest" => FileType::Json,
+            "ipynb" => FileType::Notebook,
+            "md" => FileType::Markdown,
+            "mdx" => FileType::Mdx,
+            "toml" => FileType::Toml,
+            "yaml" | "yml" | "ini" | "env" | "cfg" | "conf" | "properties" | "plist"
+            | "xcconfig" | "ron" => FileType::Config,
             "c" | "h" => FileType::C,
+            "cu" | "cuh" => FileType::Cuda,
             "cpp" | "cxx" | "cc" | "hpp" | "hxx" | "hh" => FileType::Cpp,
             "rb" => FileType::Ruby,
             "php" => FileType::Php,
             "swift" => FileType::Swift,
             "kt" | "kts" => FileType::Kotlin,
-            "sh" | "bash" | "zsh" | "fish" => FileType::Bash,
+            "sh" | "bash" | "zsh" | "fish" | "ksh" | "awk" => FileType::Bash,
             "zig" => FileType::Zig,
             "lua" => FileType::Lua,
             "hs" | "lhs" => FileType::Haskell,
@@ -145,6 +220,66 @@ impl FileType {
             "ml" | "mli" => FileType::Ocaml,
             "groovy" | "gradle" => FileType::Groovy,
             "el" => FileType::Elisp,
+            "vue" => FileType::Vue,
+            "svelte" => FileType::Svelte,
+            "astro" => FileType::Astro,
+            "graphql" | "gql" => FileType::Graphql,
+            "sql" => FileType::Sql,
+            "proto" | "thrift" => FileType::Proto,
+            "dockerfile" => FileType::Dockerfile,
+            "makefile" | "mk" => FileType::Makefile,
+            "hlsl" | "wgsl" | "cg" => FileType::Shader,
+            "ptx" => FileType::NvidiaArtifact,
+            "cubin" | "fatbin" => FileType::NvidiaArtifact,
+            "nvvm" | "ll" | "bc" => FileType::Llvm,
+            "wasm" | "wat" => FileType::WebAssembly,
+            "fs" | "fsi" | "fsx" => FileType::FSharp,
+            "vb" => FileType::VisualBasic,
+            "m" | "mm" => FileType::ObjectiveC,
+            "clj" | "cljs" | "cljc" | "edn" => FileType::Clojure,
+            "lisp" | "lsp" | "cl" | "scm" | "ss" => FileType::Lisp,
+            "idr" | "lidr" => FileType::Idris,
+            "agda" => FileType::Agda,
+            "lean" => FileType::Lean,
+            "purs" => FileType::PureScript,
+            "nim" => FileType::Nim,
+            "cr" => FileType::Crystal,
+            "v" => FileType::Vlang,
+            "d" => FileType::Dlang,
+            "ps1" => FileType::PowerShell,
+            "bat" | "cmd" => FileType::Batch,
+            "asm" | "s" => FileType::Assembly,
+            "tf" | "tfvars" | "hcl" | "bicep" | "cue" | "dhall" | "rego" | "nomad" => {
+                FileType::Terraform
+            }
+            "ejs" | "pug" | "hbs" | "mustache" | "liquid" | "njk" | "marko" | "lit" => {
+                FileType::Template
+            }
+            "rst" => FileType::ReStructuredText,
+            "adoc" | "asciidoc" => FileType::AsciiDoc,
+            "tex" | "latex" | "bib" => FileType::Latex,
+            "feature" => FileType::Gherkin,
+            "csv" | "tsv" | "ndjson" | "avro" | "parquet" | "orc" | "feather" | "arrow"
+            | "duckdb" | "db" | "sqlite" | "sqlite3" => FileType::Data,
+            "npy" | "npz" | "h5" | "hdf5" | "hdf" => FileType::MlTensor,
+            "pt" | "pth" | "ckpt" => FileType::MlCheckpoint,
+            "onnx" | "pb" | "pbtxt" | "tflite" | "lite" | "keras" | "mlmodel" | "mar"
+            | "engine" | "trt" | "caffemodel" | "prototxt" | "params" | "gguf" | "ggml"
+            | "model" | "weights" => FileType::MlModel,
+            "safetensors" => FileType::MlTensor,
+            "pkl" | "pickle" | "joblib" => FileType::MlCheckpoint,
+            "tiktoken" | "spm" | "bpe" | "vocab" => FileType::MlTokenizer,
+            "o" | "obj" | "a" | "lib" | "so" | "dylib" | "dll" | "exe" | "rlib" | "class"
+            | "jar" | "war" | "ear" | "beam" | "bin" => FileType::Binary,
+            "lock" | "log" | "patch" | "diff" | "snap" | "tap" | "spec" | "hurl" | "http"
+            | "rest" | "dockerignore" | "gitignore" | "gitattributes" | "editorconfig" => {
+                FileType::ConfigLanguage
+            }
+            "plantuml" | "puml" | "mermaid" | "mmd" => FileType::Diagram,
+            "vhd" | "vhdl" | "sv" | "svh" => FileType::Hardware,
+            "matlab" | "octave" | "sas" | "stata" | "do" => FileType::Matlab,
+            "qml" | "qss" => FileType::Qml,
+            "coffee" => FileType::JavaScript,
             _ => FileType::Other,
         }
     }
@@ -160,6 +295,10 @@ impl FileType {
             FileType::Css => "CSS",
             FileType::Markup => "Markup",
             FileType::Config => "Config",
+            FileType::Json => "JSON",
+            FileType::Markdown => "Markdown",
+            FileType::Mdx => "MDX",
+            FileType::Toml => "TOML",
             FileType::C => "C",
             FileType::Cpp => "C++",
             FileType::Ruby => "Ruby",
@@ -183,6 +322,53 @@ impl FileType {
             FileType::Ocaml => "OCaml",
             FileType::Groovy => "Groovy",
             FileType::Elisp => "Elisp",
+            FileType::Vue => "Vue",
+            FileType::Svelte => "Svelte",
+            FileType::Astro => "Astro",
+            FileType::Graphql => "GraphQL",
+            FileType::Sql => "SQL",
+            FileType::Proto => "Protocol Buffers",
+            FileType::Dockerfile => "Dockerfile",
+            FileType::Makefile => "Makefile",
+            FileType::Shader => "Shader",
+            FileType::Cuda => "CUDA",
+            FileType::Llvm => "LLVM IR",
+            FileType::NvidiaArtifact => "NVIDIA Compiler Artifact",
+            FileType::WebAssembly => "WebAssembly",
+            FileType::FSharp => "F#",
+            FileType::VisualBasic => "Visual Basic",
+            FileType::ObjectiveC => "Objective-C",
+            FileType::Clojure => "Clojure",
+            FileType::Lisp => "Lisp",
+            FileType::Idris => "Idris",
+            FileType::Agda => "Agda",
+            FileType::Lean => "Lean",
+            FileType::PureScript => "PureScript",
+            FileType::Nim => "Nim",
+            FileType::Crystal => "Crystal",
+            FileType::Vlang => "V",
+            FileType::Dlang => "D",
+            FileType::PowerShell => "PowerShell",
+            FileType::Batch => "Batch",
+            FileType::Assembly => "Assembly",
+            FileType::Terraform => "Infrastructure",
+            FileType::Template => "Template",
+            FileType::ReStructuredText => "reStructuredText",
+            FileType::AsciiDoc => "AsciiDoc",
+            FileType::Latex => "LaTeX",
+            FileType::Gherkin => "Gherkin",
+            FileType::Data => "Data",
+            FileType::Notebook => "Notebook",
+            FileType::MlModel => "ML Model",
+            FileType::MlCheckpoint => "ML Checkpoint",
+            FileType::MlTensor => "ML Tensor",
+            FileType::MlTokenizer => "ML Tokenizer",
+            FileType::Binary => "Binary",
+            FileType::ConfigLanguage => "Config",
+            FileType::Diagram => "Diagram",
+            FileType::Hardware => "Hardware",
+            FileType::Matlab => "MATLAB",
+            FileType::Qml => "QML",
             FileType::Other => "Other",
         }
     }
@@ -197,6 +383,11 @@ pub struct AnalysisParser {
     java_parser: Parser,
     css_parser: Parser,
     html_parser: Parser,
+    json_parser: Parser,
+    graphql_parser: Parser,
+    make_parser: Parser,
+    hcl_parser: Parser,
+    proto_parser: Parser,
     yaml_parser: Parser,
     c_parser: Parser,
     cpp_parser: Parser,
@@ -263,6 +454,31 @@ impl AnalysisParser {
         let mut html_parser = Parser::new();
         html_parser
             .set_language(&tree_sitter_html::LANGUAGE.into())
+            .ok();
+
+        let mut json_parser = Parser::new();
+        json_parser
+            .set_language(&tree_sitter_json::LANGUAGE.into())
+            .ok();
+
+        let mut graphql_parser = Parser::new();
+        graphql_parser
+            .set_language(&tree_sitter_graphql::LANGUAGE.into())
+            .ok();
+
+        let mut make_parser = Parser::new();
+        make_parser
+            .set_language(&tree_sitter_make::LANGUAGE.into())
+            .ok();
+
+        let mut hcl_parser = Parser::new();
+        hcl_parser
+            .set_language(&tree_sitter_hcl::LANGUAGE.into())
+            .ok();
+
+        let mut proto_parser = Parser::new();
+        proto_parser
+            .set_language(&tree_sitter_proto::LANGUAGE.into())
             .ok();
 
         let mut yaml_parser = Parser::new();
@@ -390,6 +606,11 @@ impl AnalysisParser {
             java_parser,
             css_parser,
             html_parser,
+            json_parser,
+            graphql_parser,
+            make_parser,
+            hcl_parser,
+            proto_parser,
             yaml_parser,
             c_parser,
             cpp_parser,
@@ -427,8 +648,14 @@ impl AnalysisParser {
             FileType::Java => Some(&mut self.java_parser),
             FileType::Css => Some(&mut self.css_parser),
             FileType::Markup => Some(&mut self.html_parser),
+            FileType::Json => Some(&mut self.json_parser),
+            FileType::Graphql => Some(&mut self.graphql_parser),
+            FileType::Makefile => Some(&mut self.make_parser),
+            FileType::Terraform => Some(&mut self.hcl_parser),
+            FileType::Proto => Some(&mut self.proto_parser),
             FileType::Config => Some(&mut self.yaml_parser),
             FileType::C => Some(&mut self.c_parser),
+            FileType::Cuda => Some(&mut self.cpp_parser),
             FileType::Cpp => Some(&mut self.cpp_parser),
             FileType::Ruby => Some(&mut self.ruby_parser),
             FileType::Php => Some(&mut self.php_parser),
@@ -451,13 +678,56 @@ impl AnalysisParser {
             FileType::Ocaml => Some(&mut self.ocaml_parser),
             FileType::Groovy => Some(&mut self.groovy_parser),
             FileType::Elisp => Some(&mut self.elisp_parser),
-            FileType::Other => None,
+            FileType::Vue | FileType::Svelte | FileType::Astro => Some(&mut self.html_parser),
+            FileType::Toml
+            | FileType::Markdown
+            | FileType::Mdx
+            | FileType::Sql
+            | FileType::Dockerfile
+            | FileType::Shader
+            | FileType::Llvm
+            | FileType::NvidiaArtifact
+            | FileType::WebAssembly
+            | FileType::FSharp
+            | FileType::VisualBasic
+            | FileType::ObjectiveC
+            | FileType::Clojure
+            | FileType::Lisp
+            | FileType::Idris
+            | FileType::Agda
+            | FileType::Lean
+            | FileType::PureScript
+            | FileType::Nim
+            | FileType::Crystal
+            | FileType::Vlang
+            | FileType::Dlang
+            | FileType::PowerShell
+            | FileType::Batch
+            | FileType::Assembly
+            | FileType::Template
+            | FileType::ReStructuredText
+            | FileType::AsciiDoc
+            | FileType::Latex
+            | FileType::Gherkin
+            | FileType::Data
+            | FileType::Notebook
+            | FileType::MlModel
+            | FileType::MlCheckpoint
+            | FileType::MlTensor
+            | FileType::MlTokenizer
+            | FileType::Binary
+            | FileType::ConfigLanguage
+            | FileType::Diagram
+            | FileType::Hardware
+            | FileType::Matlab
+            | FileType::Qml
+            | FileType::Other => None,
         }
     }
 
     pub fn parse_file(&mut self, path: &str, content: &str) -> ParsedFile {
         let ext = path.rsplit('.').next().unwrap_or("");
-        let file_type = FileType::from_extension(ext);
+        let file_type = FileType::from_path(path);
         let lines = content.lines().count();
         let size_bytes = content.len();
         let extension = if ext.is_empty() {
@@ -496,6 +766,7 @@ impl AnalysisParser {
             external_imports: vec![],
             decorators: vec![],
             complexity: 1,
+            frontend_frameworks: self.detect_frontend_frameworks(path, content, &[]),
             is_react_component: false,
             has_unused_exports: false,
             file_type,
@@ -537,6 +808,8 @@ impl AnalysisParser {
             &mut is_react_component,
         );
 
+        let frontend_frameworks = self.detect_frontend_frameworks(path, content, &external_imports);
+
         ParsedFile {
             path: path.to_string(),
             lines,
@@ -551,6 +824,7 @@ impl AnalysisParser {
             external_imports,
             decorators,
             complexity,
+            frontend_frameworks,
             is_react_component,
             has_unused_exports: false,
             file_type,
@@ -996,6 +1270,201 @@ impl AnalysisParser {
         let start = node.start_byte();
         let end = node.end_byte();
         content[start..end].to_string()
+    }
+
+    fn detect_frontend_frameworks(
+        &self,
+        path: &str,
+        content: &str,
+        external_imports: &[String],
+    ) -> Vec<String> {
+        let mut detected = HashSet::<&'static str>::new();
+        let lower_path = path.to_lowercase();
+        let lower_content = content.to_lowercase();
+        let file_name = Path::new(path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+
+        match file_name {
+            "vite.config.ts" | "vite.config.js" | "vite.config.mts" | "vite.config.mjs" => {
+                detected.insert("Vite");
+            }
+            "next.config.ts" | "next.config.js" | "next.config.mts" | "next.config.mjs" => {
+                detected.insert("Next.js");
+                detected.insert("React");
+            }
+            "remix.config.js" | "remix.config.cjs" | "remix.config.mjs" => {
+                detected.insert("Remix");
+            }
+            "nuxt.config.ts" | "nuxt.config.js" | "nuxt.config.mjs" => {
+                detected.insert("Nuxt");
+                detected.insert("Vue");
+            }
+            "svelte.config.js" | "svelte.config.ts" => {
+                detected.insert("SvelteKit");
+                detected.insert("Svelte");
+            }
+            "angular.json" => {
+                detected.insert("Angular");
+            }
+            "astro.config.ts" | "astro.config.js" | "astro.config.mjs" => {
+                detected.insert("Astro");
+            }
+            "qwik.config.ts" | "qwik.config.js" | "qwik.config.mjs" => {
+                detected.insert("Qwik");
+            }
+            _ => {}
+        }
+
+        if lower_path.ends_with(".tsx") || lower_path.ends_with(".jsx") {
+            detected.insert("React");
+        }
+        if lower_path.ends_with(".vue") {
+            detected.insert("Vue");
+        }
+        if lower_path.ends_with(".svelte") {
+            detected.insert("Svelte");
+        }
+        if lower_path.ends_with(".astro") {
+            detected.insert("Astro");
+        }
+
+        if lower_path.ends_with("package.json") {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(content) {
+                for section in ["dependencies", "devDependencies", "peerDependencies"] {
+                    if let Some(deps) = value.get(section).and_then(|deps| deps.as_object()) {
+                        for package in deps.keys() {
+                            Self::detect_framework_from_package(package, &mut detected);
+                        }
+                    }
+                }
+            }
+        }
+
+        for import in external_imports {
+            Self::detect_framework_from_package(import, &mut detected);
+        }
+
+        for package in [
+            "@vitejs/",
+            "next",
+            "vite",
+            "@remix-run/",
+            "react-router",
+            "react",
+            "vue",
+            "nuxt",
+            "svelte",
+            "@sveltejs/kit",
+            "@angular/",
+            "astro",
+            "solid-js",
+            "solid-start",
+            "@solidjs/start",
+            "@builder.io/qwik",
+        ] {
+            if lower_content.contains(package) {
+                Self::detect_framework_from_package(package, &mut detected);
+            }
+        }
+
+        [
+            "React",
+            "Next.js",
+            "Vite",
+            "Remix",
+            "React Router",
+            "Vue",
+            "Nuxt",
+            "Svelte",
+            "SvelteKit",
+            "Angular",
+            "Astro",
+            "Solid",
+            "SolidStart",
+            "Qwik",
+        ]
+        .iter()
+        .filter(|framework| detected.contains(**framework))
+        .map(|framework| framework.to_string())
+        .collect()
+    }
+
+    fn detect_framework_from_package(package: &str, detected: &mut HashSet<&'static str>) {
+        let package = package.to_lowercase();
+        match package.as_str() {
+            "react" | "react-dom" => {
+                detected.insert("React");
+            }
+            "next" => {
+                detected.insert("Next.js");
+                detected.insert("React");
+            }
+            "vite" => {
+                detected.insert("Vite");
+            }
+            "remix" | "@remix-run/react" | "@remix-run/node" | "@remix-run/dev"
+            | "@remix-run/serve" => {
+                detected.insert("Remix");
+            }
+            "react-router" | "react-router-dom" => {
+                detected.insert("React Router");
+            }
+            "@vitejs/plugin-react" | "@vitejs/plugin-react-swc" => {
+                detected.insert("Vite");
+                detected.insert("React");
+            }
+            "vue" | "@vitejs/plugin-vue" => {
+                detected.insert("Vite");
+                detected.insert("Vue");
+            }
+            "nuxt" | "@nuxt/kit" | "@nuxt/schema" => {
+                detected.insert("Nuxt");
+                detected.insert("Vue");
+            }
+            "svelte" | "@vitejs/plugin-svelte" => {
+                detected.insert("Vite");
+                detected.insert("Svelte");
+            }
+            "@sveltejs/kit" | "@sveltejs/adapter-auto" | "@sveltejs/vite-plugin-svelte" => {
+                detected.insert("SvelteKit");
+                detected.insert("Svelte");
+            }
+            "@angular/core" | "@angular/cli" | "@angular/common" | "@angular/router" => {
+                detected.insert("Angular");
+            }
+            "astro" => {
+                detected.insert("Astro");
+            }
+            "solid-js" => {
+                detected.insert("Solid");
+            }
+            "solid-start" | "@solidjs/start" => {
+                detected.insert("SolidStart");
+                detected.insert("Solid");
+            }
+            "@builder.io/qwik" | "@builder.io/qwik-city" => {
+                detected.insert("Qwik");
+            }
+            _ if package.starts_with("@angular/") => {
+                detected.insert("Angular");
+            }
+            _ if package.starts_with("@vitejs/") => {
+                detected.insert("Vite");
+            }
+            _ if package.starts_with("@remix-run/") => {
+                detected.insert("Remix");
+            }
+            _ if package.starts_with("@nuxt/") => {
+                detected.insert("Nuxt");
+                detected.insert("Vue");
+            }
+            _ if package.starts_with("@astrojs/") => {
+                detected.insert("Astro");
+            }
+            _ => {}
+        }
     }
 }
 

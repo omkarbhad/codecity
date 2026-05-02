@@ -61,7 +61,12 @@ function normalizeProjectRecord(record: Record<string, unknown>): Project {
     filesDiscovered: Number(record.files_discovered ?? record.filesDiscovered ?? 0),
     filesParsed: Number(record.files_parsed ?? record.filesParsed ?? 0),
     error: typeof record.error === "string" ? record.error : null,
-    createdAt: String(record.created_at ?? record.createdAt ?? new Date().toISOString()),
+    createdAt: (() => {
+      const raw = record.created_at ?? record.createdAt
+      if (typeof raw === "string" && raw.trim()) return raw
+      if (typeof raw === "number" && Number.isFinite(raw)) return new Date(raw).toISOString()
+      return new Date().toISOString()
+    })(),
   }
 }
 
@@ -150,7 +155,10 @@ function formatNumber(n: number): string {
 }
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const t = new Date(dateStr).getTime()
+  if (!Number.isFinite(t)) return "—"
+  const diff = Date.now() - t
+  if (diff < 0) return "just now"
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return "just now"
   if (mins < 60) return `${mins}m ago`
@@ -158,7 +166,7 @@ function timeAgo(dateStr: string): string {
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   if (days < 30) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
+  return new Date(t).toLocaleDateString()
 }
 
 function DeleteButton({
@@ -199,20 +207,20 @@ function DeleteButton({
   if (confirmOpen) {
     return (
       <div
-        className="flex items-center gap-0.5 overflow-hidden rounded-md border border-white/[0.10] bg-white/[0.04]"
+        className="flex h-8 items-center gap-0.5 overflow-hidden rounded-md border border-white/[0.10] bg-white/[0.04]"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="px-2 py-1 text-[10px] font-medium leading-none text-zinc-400">Remove?</span>
+        <span className="px-2 text-[11px] font-medium leading-none text-neutral-300">Remove?</span>
         <IconButton
           onClick={confirm}
-          className="size-6 border-transparent bg-transparent text-zinc-500 hover:border-white/[0.10] hover:bg-white/[0.04] hover:text-zinc-200"
+          className="size-7 border-transparent bg-transparent text-rose-300 hover:border-rose-400/20 hover:bg-rose-400/[0.08] hover:text-rose-200"
           aria-label="Confirm remove"
         >
           <Check />
         </IconButton>
         <IconButton
           onClick={cancel}
-          className="size-6 border-transparent bg-transparent text-zinc-500"
+          className="size-7 border-transparent bg-transparent text-neutral-400 hover:text-neutral-200"
           aria-label="Cancel delete"
         >
           <X />
@@ -224,7 +232,7 @@ function DeleteButton({
   return (
     <IconButton
       onClick={openConfirm}
-      className="size-7 border-white/[0.07] bg-white/[0.02] text-zinc-600 hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-zinc-300"
+      className="size-8 border-white/[0.07] bg-white/[0.02] text-neutral-500 hover:border-rose-400/25 hover:bg-rose-400/[0.06] hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       aria-label="Remove project"
     >
       <Trash2 />
@@ -293,36 +301,36 @@ function ProjectCard({
   if (view === "list") {
     return (
       <div
-        className={`grid min-h-12 grid-cols-[minmax(0,1.5fr)_92px_90px_90px_92px_132px] items-center gap-3 border-b border-white/[0.05] px-3 py-2.5 transition-colors hover:bg-white/[0.025]
+        className={`grid min-h-11 grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] items-center gap-3 border-b border-white/[0.05] px-3 py-2 transition-colors hover:bg-white/[0.025]
           ${isActive ? "bg-primary/[0.025]" : ""}
           ${isQueued ? "opacity-70" : ""}
         `}
       >
         <div className="min-w-0">
-          <p className="truncate font-mono text-[10px] text-zinc-700">{owner}/</p>
-          <h3 className="truncate text-[12px] font-medium leading-tight text-zinc-200">{repo}</h3>
+          <p className="truncate font-mono text-[10px] leading-[1.4] text-neutral-500">{owner}/</p>
+          <h3 className="truncate text-[13px] font-medium leading-[1.25] text-neutral-100">{repo}</h3>
         </div>
-        <span className="font-mono text-[10px] text-zinc-600">
+        <span className="font-mono text-[11px] leading-none text-neutral-400">
           {isCompleted ? "done" : isActive ? "analyzing" : isQueued ? "queued" : "failed"}
         </span>
-        <span className="font-mono text-[10px] text-zinc-600">{isCompleted ? formatNumber(project.fileCount ?? 0) : "-"}</span>
-        <span className="font-mono text-[10px] text-zinc-600">{isCompleted ? formatNumber(project.lineCount ?? 0) : "-"}</span>
-        <span className="font-mono text-[10px] text-zinc-700">{timeAgo(project.createdAt)}</span>
+        <span className="font-mono text-[11px] leading-none text-neutral-300 tabular-nums">{isCompleted ? formatNumber(project.fileCount ?? 0) : "—"}</span>
+        <span className="font-mono text-[11px] leading-none text-neutral-300 tabular-nums">{isCompleted ? formatNumber(project.lineCount ?? 0) : "—"}</span>
+        <span className="font-mono text-[11px] leading-none text-neutral-500">{timeAgo(project.createdAt)}</span>
         <div className="flex justify-end gap-1.5">
           {isProcessing && (
             <button
               onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-              className="flex size-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-zinc-200"
+              className="flex size-8 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-neutral-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               title="Stop parsing"
               aria-label="Stop parsing"
             >
-              <HugeIcon icon={SquareIcon} className="size-3" />
+              <HugeIcon icon={SquareIcon} className="size-3.5" />
             </button>
           )}
           {isCompleted && (
             <Link
               href={`/project?id=${encodeURIComponent(project.id)}`}
-              className="flex h-7 items-center rounded-md border border-white/[0.10] bg-white/[0.05] px-2.5 text-[10px] font-medium text-zinc-200 transition-colors hover:border-white/[0.16] hover:bg-white/[0.08]"
+              className="flex h-8 items-center rounded-md border border-primary/25 bg-primary/[0.08] px-3 text-[11px] font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               Open
             </Link>
@@ -330,7 +338,7 @@ function ProjectCard({
           {isFailed && (
             <button
               onClick={(e) => { e.preventDefault(); onRetry(project) }}
-              className="flex h-7 items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-zinc-200"
+              className="flex h-8 items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[11px] font-medium text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               Retry
             </button>
@@ -343,26 +351,26 @@ function ProjectCard({
 
   return (
     <div
-      className={`relative flex ${view === "grid" ? "min-h-[232px] flex-col" : "min-h-[92px] flex-row"} overflow-hidden rounded-lg border bg-[#101012] transition-colors duration-150
-        ${isCompleted ? "border-white/[0.08] hover:border-white/[0.12]" : ""}
-        ${isActive ? "border-primary/35 bg-primary/[0.025]" : ""}
-        ${isQueued ? "border-white/[0.06] opacity-70" : ""}
-        ${isFailed ? "border-white/[0.09]" : ""}
+      className={`group/card relative flex ${view === "grid" ? "min-h-[240px] flex-col" : "min-h-[92px] flex-row"} overflow-hidden rounded-xl border p-1.5 shadow-lg shadow-black/40 backdrop-blur-xl bg-gradient-to-b from-neutral-900/95 to-neutral-950/95 transition-[border-color,background-color,transform,box-shadow] duration-200 ease-out motion-reduce:transition-none
+        ${isCompleted ? "border-white/[0.10] hover:border-primary/30 hover:from-neutral-900 hover:to-neutral-950 hover:-translate-y-px" : ""}
+        ${isActive ? "border-primary/40 from-primary/[0.07] to-primary/[0.02]" : ""}
+        ${isQueued ? "border-white/[0.08] opacity-70" : ""}
+        ${isFailed ? "border-rose-400/20" : ""}
       `}
     >
       {/* Active — scanning line */}
       {isActive && (
-        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden rounded-t-xl">
           <div className="h-full bg-primary animate-[scan_2s_ease-in-out_infinite]" />
         </div>
       )}
 
       {/* 3D city preview pane */}
       {isCompleted && view === "grid" && (
-        <div className="relative h-[124px] overflow-hidden border-b border-white/[0.06] bg-[#080809]">
+        <div className="relative h-32 overflow-hidden rounded-lg border border-white/[0.08] bg-[#080809]">
           {snapshotLoading && (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#080809]">
-              <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono text-zinc-700">
+              <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono text-neutral-500">
                 <Loader2 className="size-3 animate-spin" />
                 loading city…
               </span>
@@ -375,7 +383,7 @@ function ProjectCard({
           )}
           {!snapshotLoading && !snapshot && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#080809]">
-              <span className="text-[10px] font-mono text-zinc-700">preview unavailable</span>
+              <span className="text-[10px] font-mono text-neutral-500">preview unavailable</span>
             </div>
           )}
         </div>
@@ -386,35 +394,35 @@ function ProjectCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-1.5">
-              <HugeIcon icon={GitBranchIcon} className="h-3 w-3 shrink-0 text-zinc-700" />
-              <span className="truncate font-mono text-[11px] text-zinc-600">{owner}/</span>
+              <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-neutral-500" />
+              <span className="truncate font-mono text-[11px] leading-none text-neutral-400">{owner}/</span>
             </div>
-            <h3 className="truncate text-sm font-semibold leading-tight text-zinc-100">
+            <h3 className="truncate text-[14px] font-semibold leading-[1.25] tracking-tight text-neutral-100">
               {repo}
             </h3>
           </div>
 
           {/* Status pill */}
           {isCompleted && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] font-medium text-zinc-500">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] px-2 text-[10px] font-medium leading-none text-emerald-300">
               <Check className="size-3" />
               done
             </span>
           )}
           {isActive && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/20 bg-primary/[0.08] px-2 py-1 text-[10px] font-medium text-primary">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.10] px-2 text-[10px] font-medium leading-none text-primary">
               <Loader2 className="size-3 animate-spin" />
               analyzing
             </span>
           )}
           {isQueued && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-zinc-700/60 bg-zinc-800/60 px-2 py-1 text-[10px] font-medium text-zinc-600">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-amber-300/20 bg-amber-300/[0.06] px-2 text-[10px] font-medium leading-none text-amber-200">
               queued
             </span>
           )}
           {isFailed && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.04] px-2 py-1 text-[10px] font-medium text-zinc-400">
-              <AlertCircle className="h-2.5 w-2.5" />
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 text-[10px] font-medium leading-none text-rose-300">
+              <AlertCircle className="size-3" />
               failed
             </span>
           )}
@@ -424,34 +432,34 @@ function ProjectCard({
         {isCompleted && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <HugeIcon icon={DocumentCodeIcon} className="h-3 w-3 text-zinc-700" />
-              <span className="text-xs font-mono text-zinc-400">{formatNumber(project.fileCount ?? 0)}</span>
-              <span className="text-[10px] text-zinc-700">files</span>
+              <HugeIcon icon={DocumentCodeIcon} className="size-3.5 text-neutral-500" />
+              <span className="font-mono text-[12px] leading-none text-neutral-200 tabular-nums">{formatNumber(project.fileCount ?? 0)}</span>
+              <span className="text-[10px] leading-none text-neutral-500">files</span>
             </div>
-            <div className="h-3 w-px bg-white/[0.06]" />
+            <div className="h-3 w-px bg-white/[0.10]" />
             <div className="flex items-center gap-1.5">
-              <HugeIcon icon={CodeIcon} className="h-3 w-3 text-zinc-700" />
-              <span className="text-xs font-mono text-zinc-400">{formatNumber(project.lineCount ?? 0)}</span>
-              <span className="text-[10px] text-zinc-700">lines</span>
+              <HugeIcon icon={CodeIcon} className="size-3.5 text-neutral-500" />
+              <span className="font-mono text-[12px] leading-none text-neutral-200 tabular-nums">{formatNumber(project.lineCount ?? 0)}</span>
+              <span className="text-[10px] leading-none text-neutral-500">lines</span>
             </div>
           </div>
         )}
 
         {/* Progress — active */}
         {isActive && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-zinc-600 font-mono truncate">{currentMessage}</span>
-              <span className="text-[10px] font-mono text-zinc-500 tabular-nums ml-2 shrink-0">{currentProgress}%</span>
+              <span className="truncate font-mono text-[11px] leading-none text-neutral-400">{currentMessage}</span>
+              <span className="ml-2 shrink-0 font-mono text-[11px] leading-none text-neutral-200 tabular-nums">{currentProgress}%</span>
             </div>
-            <div className="h-1 w-full overflow-hidden rounded-sm bg-white/[0.06]">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className="h-full rounded-sm bg-primary transition-all duration-700 ease-out"
+                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
             {(project.filesDiscovered ?? 0) > 0 && (
-              <div className="flex items-center gap-2 font-mono text-[9px] text-zinc-700">
+              <div className="flex items-center gap-3 font-mono text-[10px] leading-none text-neutral-500 tabular-nums">
                 <span>{formatNumber(project.filesDiscovered ?? 0)} found</span>
                 <span>{formatNumber(project.filesParsed ?? 0)} parsed</span>
               </div>
@@ -461,28 +469,29 @@ function ProjectCard({
 
         {/* Queued message */}
         {isQueued && (
-          <p className="text-[10px] font-mono text-zinc-700">{currentMessage}</p>
+          <p className="font-mono text-[11px] leading-[1.4] text-neutral-500">{currentMessage}</p>
         )}
 
         {/* Error */}
         {isFailed && project.error && (
-          <p className="line-clamp-2 rounded-md border border-white/[0.08] bg-white/[0.025] px-2.5 py-2 font-mono text-[10px] text-zinc-500">
+          <p className="line-clamp-2 rounded-md border border-rose-400/15 bg-rose-400/[0.04] px-3 py-2 font-mono text-[11px] leading-[1.4] text-rose-200/80">
             {project.error}
           </p>
         )}
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="shrink-0 text-[10px] font-mono text-zinc-700">{timeAgo(project.createdAt)}</span>
+            <span className="shrink-0 font-mono text-[11px] leading-none text-neutral-500">{timeAgo(project.createdAt)}</span>
             {isExternal && project.repoUrl && (
               <a
                 href={project.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex size-6 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-white/[0.04] hover:text-zinc-400"
+                className="inline-flex size-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-white/[0.05] hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 title="Open on GitHub"
+                aria-label="Open repository on GitHub"
               >
                 <HugeIcon icon={GitBranchIcon} className="size-3.5" />
               </a>
@@ -494,9 +503,9 @@ function ProjectCard({
             {isFailed && (
               <button
                 onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-zinc-200"
+                className="flex h-8 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[11px] font-medium text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
-                <RefreshCw className="h-2.5 w-2.5" />
+                <RefreshCw className="size-3" />
                 Retry
               </button>
             )}
@@ -504,11 +513,11 @@ function ProjectCard({
             {isProcessing && (
               <button
                 onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-                className="flex size-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-zinc-200"
+                className="flex size-8 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-neutral-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 title="Stop parsing"
                 aria-label="Stop parsing"
               >
-                <HugeIcon icon={SquareIcon} className="size-3" />
+                <HugeIcon icon={SquareIcon} className="size-3.5" />
               </button>
             )}
 
@@ -517,10 +526,10 @@ function ProjectCard({
               <Link
                 href={`/project?id=${encodeURIComponent(project.id)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.05] px-2.5 text-[10px] font-medium text-zinc-200 transition-colors hover:border-white/[0.16] hover:bg-white/[0.08]"
+                className="flex h-8 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.08] px-3 text-[11px] font-medium leading-none text-primary transition-colors hover:border-primary/40 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 Open
-                <ExternalLink className="h-2.5 w-2.5" />
+                <ExternalLink className="size-3" />
               </Link>
             )}
 
@@ -594,15 +603,18 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-36 rounded-lg border border-white/[0.07] bg-[#101012] p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div className="space-y-2">
-                <div className="h-2 w-14 rounded-full bg-white/[0.05] animate-pulse" />
-                <div className="h-4 w-28 rounded-md bg-white/[0.06] animate-pulse" />
+          <div key={i} className="h-60 rounded-xl border border-white/[0.08] bg-neutral-900/60 p-1.5">
+            <div className="h-32 rounded-lg bg-white/[0.03] animate-pulse" />
+            <div className="space-y-3 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-2">
+                  <div className="h-2 w-16 rounded-full bg-white/[0.05] animate-pulse" />
+                  <div className="h-3.5 w-32 rounded-md bg-white/[0.06] animate-pulse" />
+                </div>
+                <div className="h-6 w-14 rounded-md bg-white/[0.05] animate-pulse" />
               </div>
-              <div className="h-5 w-14 rounded-full bg-white/[0.05] animate-pulse" />
+              <div className="h-3 w-40 rounded-md bg-white/[0.04] animate-pulse" />
             </div>
-            <div className="h-1.5 w-full rounded-full bg-white/[0.04] animate-pulse mt-6" />
           </div>
         ))}
       </div>
@@ -611,21 +623,21 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-[#101012]">
-        <div className="flex flex-col items-center text-center py-10">
-          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
-            <HugeIcon icon={Building03Icon} className="h-6 w-6 text-primary/70" />
+      <div className="flex min-h-72 items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-[#101012]">
+        <div className="flex flex-col items-center px-6 py-10 text-center">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
+            <HugeIcon icon={Building03Icon} className="size-6 text-primary/70" />
           </div>
-          <p className="text-sm font-semibold text-zinc-300">No cities yet</p>
-          <p className="text-xs text-zinc-600 mt-1.5 max-w-xs leading-relaxed">
+          <p className="text-[14px] font-semibold leading-[1.25] text-neutral-200">No cities yet</p>
+          <p className="mt-2 max-w-xs text-[12px] leading-[1.5] text-neutral-500">
             Analyze a GitHub repo to generate an interactive 3D city from its codebase.
           </p>
           <Button
             onClick={() => onCreateCity?.()}
             size="sm"
-            className="mt-5 h-8 gap-1.5 rounded-md bg-primary px-4 text-xs text-white hover:bg-primary/90"
+            className="mt-5 h-8 gap-1.5 rounded-md bg-primary px-4 text-[12px] font-medium leading-none text-white hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            <HugeIcon icon={Add01Icon} className="h-3.5 w-3.5" />
+            <HugeIcon icon={Add01Icon} className="size-3.5" />
             New City
           </Button>
         </div>
@@ -645,9 +657,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       <div className="space-y-2.5">
         <div className="flex items-center gap-2 px-0.5">
           {icon}
-          <span className="text-sm font-medium text-zinc-400">{label}</span>
+          <span className="text-[12px] font-semibold uppercase leading-none tracking-[0.08em] text-neutral-400">{label}</span>
           <div className="h-px flex-1 bg-white/[0.06]" />
-          <span className="text-[10px] font-mono text-zinc-700">{items.length}</span>
+          <span className="font-mono text-[10px] leading-none text-neutral-500 tabular-nums">{items.length}</span>
         </div>
         {renderProjectCollection(items)}
       </div>
@@ -665,7 +677,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
     return (
       <div className="overflow-hidden rounded-lg border border-white/[0.07] bg-[#101012]">
-        <div className="grid grid-cols-[minmax(0,1.5fr)_92px_90px_90px_92px_132px] gap-3 border-b border-white/[0.07] px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
+        <div className="grid grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] gap-3 border-b border-white/[0.07] px-3 py-2.5 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-neutral-500">
           <span>City</span>
           <span>Status</span>
           <span>Files</span>
@@ -705,7 +717,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         <DashboardStat tone="violet" icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
         <Button
           onClick={() => onCreateCity?.()}
-          className="col-span-2 h-[45px] self-stretch gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-xs font-semibold text-white hover:border-primary/45 hover:bg-primary/90 lg:col-span-1"
+          className="col-span-2 h-11 self-stretch gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-[12px] font-semibold leading-none text-white hover:border-primary/45 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:col-span-1"
         >
           <HugeIcon icon={Add01Icon} className="size-3.5" />
           New City
@@ -717,16 +729,20 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
           <button
             type="button"
             onClick={() => setView("grid")}
-            className={`flex size-7 items-center justify-center rounded ${view === "grid" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+            className={`flex size-8 items-center justify-center rounded transition-colors ${view === "grid" ? "bg-white/[0.08] text-neutral-100" : "text-neutral-500 hover:text-neutral-200"}`}
             title="Grid view"
+            aria-label="Grid view"
+            aria-pressed={view === "grid"}
           >
             <HugeIcon icon={GridViewIcon} className="size-3.5" />
           </button>
           <button
             type="button"
             onClick={() => setView("list")}
-            className={`flex size-7 items-center justify-center rounded ${view === "list" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+            className={`flex size-8 items-center justify-center rounded transition-colors ${view === "list" ? "bg-white/[0.08] text-neutral-100" : "text-neutral-500 hover:text-neutral-200"}`}
             title="List view"
+            aria-label="List view"
+            aria-pressed={view === "list"}
           >
             <HugeIcon icon={LayoutTable01Icon} className="size-3.5" />
           </button>
@@ -736,18 +752,18 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       {processingProjects.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 px-0.5">
-            <HugeIcon icon={WorkflowSquare01Icon} className="h-3 w-3 text-primary" />
-            <span className="text-sm font-medium text-zinc-300">Running</span>
+            <HugeIcon icon={WorkflowSquare01Icon} className="size-3 text-primary" />
+            <span className="text-[12px] font-semibold uppercase leading-none tracking-[0.08em] text-primary">Running</span>
             <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="text-[10px] font-mono text-zinc-700">{processingProjects.length}</span>
+            <span className="font-mono text-[10px] leading-none text-neutral-500 tabular-nums">{processingProjects.length}</span>
           </div>
           {renderProjectCollection(processingProjects)}
         </div>
       )}
 
-      {renderGroup("Cities", <HugeIcon icon={Building03Icon} className="h-3 w-3 text-zinc-700" />, settledProjects)}
+      {renderGroup("Cities", <HugeIcon icon={Building03Icon} className="size-3 text-neutral-500" />, settledProjects)}
       {failedProjects.length > 0 && (
-        <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 font-mono text-[10px] text-zinc-500">
+        <div className="rounded-lg border border-rose-400/15 bg-rose-400/[0.04] px-3 py-2.5 font-mono text-[11px] leading-[1.4] text-rose-200/80">
           {failedProjects.length} failed analysis {failedProjects.length === 1 ? "needs" : "need"} attention.
         </div>
       )}
@@ -774,14 +790,14 @@ function DashboardStat({
   }
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-white/[0.07] bg-[#101012] px-3 py-2.5">
+    <div className="flex h-11 items-center justify-between rounded-lg border border-white/[0.07] bg-[#101012] px-3">
       <div className="flex items-center gap-2">
-        <span className={`flex size-6 items-center justify-center rounded-md border ${tones[tone]}`}>
+        <span className={`flex size-7 items-center justify-center rounded-md border ${tones[tone]}`}>
           {icon}
         </span>
-        <span className="text-xs font-medium text-zinc-500">{label}</span>
+        <span className="text-[12px] font-medium leading-none text-neutral-400">{label}</span>
       </div>
-      <span className="font-mono text-[13px] text-zinc-200">{value}</span>
+      <span className="font-mono text-[13px] leading-none text-neutral-100 tabular-nums">{value}</span>
     </div>
   )
 }

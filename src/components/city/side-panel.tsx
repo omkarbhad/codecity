@@ -8,6 +8,11 @@ function getFileIcon(name: string): string {
   const icon = _getIconForFile(name) ?? "default_file.svg"
   return icon.includes("_light_") ? icon.replace("_light_", "_") : icon
 }
+
+function getGitHubFileUrl(repoUrl: string, filePath: string): string | null {
+  if (!/^https?:\/\/(www\.)?github\.com\//.test(repoUrl)) return null
+  return `${repoUrl.replace(/\.git$/, "")}/blob/main/${filePath}`
+}
 import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore } from "./use-city-store"
 
@@ -80,6 +85,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : ""
   const cplxColor = file.complexity <= 10 ? "text-emerald-400" : file.complexity <= 25 ? "text-yellow-400" : "text-red-400"
   const cplxLabel = file.complexity <= 10 ? "Low" : file.complexity <= 25 ? "Med" : "High"
+  const githubUrl = repoUrl ? getGitHubFileUrl(repoUrl, file.path) : null
 
   return (
       <div className="flex h-full flex-col overflow-hidden bg-[#0b0b0c]">
@@ -102,9 +108,9 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                 <button onClick={handleCopyPath} aria-label="Copy file path" className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/65" title="Copy path">
                   {copied ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                 </button>
-                {repoUrl && (
+                {githubUrl && (
                   <a
-                    href={`${repoUrl.replace(/\.git$/, "")}/blob/main/${file.path}`}
+                    href={githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/65"
