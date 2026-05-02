@@ -249,13 +249,13 @@ export function AppSidebar({
                 <SidebarMenuItem key={project.id}>
                   <SidebarMenuButton
                     asChild
-                    className="h-7 rounded-md text-[11px] text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-colors group"
+                    className="h-7 rounded-md text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors group"
                   >
                     <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
-                      <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
+                      <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-zinc-500 group-hover:text-zinc-300" />
                       <span className="truncate font-mono">
-                        <span className="text-zinc-700">{owner}/</span>
-                        <span className="text-zinc-400 group-hover:text-zinc-200">{repo}</span>
+                        <span className="text-zinc-500">{owner}/</span>
+                        <span className="text-zinc-200 group-hover:text-zinc-50">{repo}</span>
                       </span>
                     </Link>
                   </SidebarMenuButton>
@@ -281,10 +281,10 @@ export function AppSidebar({
                 const [owner, name] = repo.full_name.split("/")
                 const content = (
                   <>
-                    <HugeIcon icon={GithubIcon} className="size-3 shrink-0 text-zinc-700 group-hover:text-zinc-500" />
+                    <HugeIcon icon={GithubIcon} className="size-3 shrink-0 text-zinc-500 group-hover:text-zinc-300" />
                     <span className="min-w-0 truncate">
-                      <span className="text-zinc-700">{owner}/</span>
-                      <span className="text-zinc-500 group-hover:text-zinc-300">{name}</span>
+                      <span className="text-zinc-500">{owner}/</span>
+                      <span className="text-zinc-300 group-hover:text-zinc-100">{name}</span>
                     </span>
                   </>
                 )
@@ -295,7 +295,7 @@ export function AppSidebar({
                     type="button"
                     onClick={() => handleTrendingClick(repo)}
                     disabled={queueingTrendingId === repo.id}
-                    className="group flex h-7 w-full items-center gap-1.5 rounded px-1.5 text-left font-mono text-[11px] text-zinc-600 transition-colors hover:bg-white/[0.04] hover:text-zinc-300 disabled:opacity-60"
+                    className="group flex h-7 w-full items-center gap-1.5 rounded px-1.5 text-left font-mono text-[11px] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-60"
                   >
                     {queueingTrendingId === repo.id ? <Loader2 className="size-3 shrink-0 animate-spin text-primary" /> : content}
                   </button>
