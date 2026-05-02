@@ -124,6 +124,7 @@ function AmbientParticles({ count = 200, spread = 200 }: { count?: number; sprea
 export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneProps) {
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false)
+  const [canvasKey, setCanvasKey] = useState(0)
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
   const isProgressivelyLoading = !!buildingLoadProgress && !buildingLoadProgress.complete
   const loadedDistricts = useMemo(() => {
@@ -164,6 +165,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
 
   return (
     <Canvas
+      key={canvasKey}
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
@@ -173,15 +175,26 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
       shadows={{ type: THREE.PCFShadowMap }}
       camera={{ position: [40, 40, 40], fov: 50, near: 0.5, far: farPlane }}
       style={{ width: "100%", height: "100%" }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, invalidate }) => {
         gl.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         const canvas = gl.domElement
-        canvas.addEventListener("webglcontextlost", (e) => {
+
+        const handleContextLost = (e: Event) => {
           e.preventDefault()
-        })
-        canvas.addEventListener("webglcontextrestored", () => {
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        })
+          // Remount Canvas on next tick so R3F rebuilds the scene with a fresh context
+          setCanvasKey((k) => k + 1)
+        }
+        const handleVisibility = () => {
+          if (document.visibilityState === "visible") invalidate()
+        }
+
+        canvas.addEventListener("webglcontextlost", handleContextLost)
+        document.addEventListener("visibilitychange", handleVisibility)
+
+        return () => {
+          canvas.removeEventListener("webglcontextlost", handleContextLost)
+          document.removeEventListener("visibilitychange", handleVisibility)
+        }
       }}
     >
       <color attach="background" args={["#040408"]} />
