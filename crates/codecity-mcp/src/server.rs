@@ -300,7 +300,14 @@ impl ServerHandler for CodecityMcp {
         ServerInfo::new(
             ServerCapabilities::builder().enable_tools().build(),
         )
-        .with_server_info(Implementation::from_build_env())
+        // Identify ourselves as `codecity-mcp` rather than rmcp's default
+        // `from_build_env()` which reports `rmcp` (the SDK crate name).
+        // Clients route, cache, and display by serverInfo.name — they
+        // need to see *our* identity, not the transport library's.
+        .with_server_info(Implementation::new(
+            "codecity-mcp",
+            env!("CARGO_PKG_VERSION"),
+        ))
         .with_protocol_version(ProtocolVersion::V_2024_11_05)
         .with_instructions(format!(
             "codecity-mcp — query a code-graph snapshot of {}. \
