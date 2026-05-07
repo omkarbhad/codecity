@@ -55,6 +55,11 @@ enum Command {
         /// you genuinely want to analyze generated/vendored code.
         #[arg(long)]
         no_gitskip: bool,
+        /// Drop files matching this gitignore-style glob, in addition to
+        /// `.gitignore`. Repeatable. Patterns match the relative path from
+        /// the scan root. Example: `--exclude 'packages/**' --exclude 'vendor/**'`.
+        #[arg(long = "exclude", value_name = "GLOB")]
+        exclude: Vec<String>,
     },
 
     /// Show only the network analysis section of a fresh analysis.
@@ -75,6 +80,10 @@ enum Command {
         /// Disable `.gitignore` honoring (see `analyze` for details).
         #[arg(long)]
         no_gitskip: bool,
+        /// Drop files matching this gitignore-style glob, in addition to
+        /// `.gitignore`. Repeatable. See `analyze --exclude`.
+        #[arg(long = "exclude", value_name = "GLOB")]
+        exclude: Vec<String>,
     },
 
     /// Inspect a saved snapshot JSON without re-running analysis.
@@ -102,6 +111,7 @@ fn main() {
             pretty,
             timeout,
             no_gitskip,
+            exclude,
         } => cmd_analyze(
             &path,
             json || output.is_some(),
@@ -109,6 +119,7 @@ fn main() {
             pretty,
             timeout,
             !no_gitskip,
+            exclude,
         ),
         Command::Network {
             path,
@@ -117,7 +128,8 @@ fn main() {
             hubs,
             timeout,
             no_gitskip,
-        } => cmd_network(&path, communities, entries, hubs, timeout, !no_gitskip),
+            exclude,
+        } => cmd_network(&path, communities, entries, hubs, timeout, !no_gitskip, exclude),
         Command::Inspect { snapshot, node } => cmd_inspect(&snapshot, node.as_deref()),
     };
     if let Err(err) = result {
@@ -136,8 +148,9 @@ fn cmd_analyze(
     pretty: bool,
     timeout_secs: u64,
     respect_gitignore: bool,
+    exclude_globs: Vec<String>,
 ) -> Result<(), String> {
-    let snapshot = analyze_with_timeout(path, timeout_secs, respect_gitignore)?;
+    let snapshot = analyze_with_timeout(path, timeout_secs, respect_gitignore, exclude_globs)?;
 
     if json || output.is_some() {
         let serialized = if pretty || output.is_some() {
@@ -168,8 +181,9 @@ fn cmd_network(
     hubs: bool,
     timeout_secs: u64,
     respect_gitignore: bool,
+    exclude_globs: Vec<String>,
 ) -> Result<(), String> {
-    let snapshot = analyze_with_timeout(path, timeout_secs, respect_gitignore)?;
+    let snapshot = analyze_with_timeout(path, timeout_secs, respect_gitignore, exclude_globs)?;
     let n = &snapshot.network;
 
     let want_default = !(communities || entries || hubs);
@@ -244,15 +258,16 @@ fn analyze_with_timeout(
     dir: &Path,
     secs: u64,
     respect_gitignore: bool,
+    exclude_globs: Vec<String>,
 ) -> Result<CitySnapshot, String> {
     if secs == 0 {
-        return analyze_dir(dir, respect_gitignore);
+        return analyze_dir(dir, respect_gitignore, exclude_globs);
     }
     let dir = dir.to_path_buf();
     let (tx, rx) = mpsc::channel();
     let started = Instant::now();
     thread::spawn(move || {
-        let _ = tx.send(analyze_dir(&dir, respect_gitignore));
+        let _ = tx.send(analyze_dir(&dir, respect_gitignore, exclude_globs));
     });
     match rx.recv_timeout(Duration::from_secs(secs)) {
         Ok(result) => result,
@@ -267,12 +282,16 @@ fn analyze_with_timeout(
     }
 }
 
-fn analyze_dir(dir: &Path, respect_gitignore: bool) -> Result<CitySnapshot, String> {
+fn analyze_dir(
+    dir: &Path,
+    respect_gitignore: bool,
+    exclude_globs: Vec<String>,
+) -> Result<CitySnapshot, String> {
     if !dir.is_dir() {
         return Err(format!("not a directory: {}", dir.display()));
     }
     eprintln!("scanning {}", dir.display());
-    let files = read_local_files(dir, respect_gitignore);
+    let files = read_local_files(dir, respect_gitignore, exclude_globs);
     eprintln!("discovered {} files", files.len());
 
     if files.is_empty() {
@@ -352,10 +371,15 @@ fn print_summary(s: &CitySnapshot) {
 /// Collect text files under `base_dir`, returning `(rel_path, content)` pairs.
 /// Delegates to the shared `discovery::walk_corpus` so CLI, MCP, and the
 /// desktop pipeline all see the same files. `respect_gitignore` mirrors
-/// the `--no-gitskip` flag.
-fn read_local_files(base_dir: &Path, respect_gitignore: bool) -> Vec<(String, String)> {
+/// the `--no-gitskip` flag; `exclude_globs` carries `--exclude` patterns.
+fn read_local_files(
+    base_dir: &Path,
+    respect_gitignore: bool,
+    exclude_globs: Vec<String>,
+) -> Vec<(String, String)> {
     let opts = codecity_core::discovery::WalkOptions {
         respect_gitignore,
+        exclude_globs,
         ..Default::default()
     };
     codecity_core::discovery::walk_corpus(base_dir, opts)
