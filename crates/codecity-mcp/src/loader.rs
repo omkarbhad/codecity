@@ -113,9 +113,15 @@ fn analyze_repo_inner(repo_dir: &Path, respect_gitignore: bool) -> Result<CitySn
         .filter(|(p, _)| p.rsplit('/').next().unwrap_or(p) == "build.zig.zon")
         .cloned()
         .collect();
+    // build.zig contributes in-tree module aliases via `b.addModule("name", ...)`.
+    let build_files: Vec<(String, String)> = files
+        .iter()
+        .filter(|(p, _)| p.rsplit('/').next().unwrap_or(p) == "build.zig")
+        .cloned()
+        .collect();
 
     let aliases = TsConfigAliases::from_tsconfigs(&tsconfigs);
-    let zig_deps = ZigDeps::from_zon_files(&zon_files);
+    let zig_deps = ZigDeps::from_zon_and_build_files(&zon_files, &build_files);
 
     let mut parsed = parse_files(&files, None);
     resolve_internal_imports_full(&mut parsed, &aliases, &zig_deps);

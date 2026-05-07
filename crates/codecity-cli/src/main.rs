@@ -296,13 +296,21 @@ fn analyze_dir(dir: &Path, respect_gitignore: bool) -> Result<CitySnapshot, Stri
         .filter(|(p, _)| p.rsplit('/').next().unwrap_or(p) == "build.zig.zon")
         .map(|(p, c)| (p.clone(), c.clone()))
         .collect();
+    // build.zig is also resolver context — its `b.addModule("name", ...)` calls
+    // declare in-tree module aliases that `@import("name")` should resolve to.
+    let build_files: Vec<(String, String)> = files
+        .iter()
+        .filter(|(p, _)| p.rsplit('/').next().unwrap_or(p) == "build.zig")
+        .map(|(p, c)| (p.clone(), c.clone()))
+        .collect();
 
     let aliases = TsConfigAliases::from_tsconfigs(&tsconfigs);
-    let zig_deps = ZigDeps::from_zon_files(&zon_files);
+    let zig_deps = ZigDeps::from_zon_and_build_files(&zon_files, &build_files);
     eprintln!(
-        "tsconfig alias rules: {} | zig dep entries: {}",
+        "tsconfig alias rules: {} | zig dep entries: {} | zig build-zig modules: {}",
         aliases.rule_count(),
-        zig_deps.entry_count()
+        zig_deps.entry_count(),
+        zig_deps.module_alias_count(),
     );
 
     let t = std::time::Instant::now();

@@ -1680,6 +1680,26 @@ pub fn resolve_internal_imports_full(
                     internal.push(resolved);
                     continue;
                 }
+                // Zig semantics: `@import("foo.zig")` (no leading dot, ends in .zig)
+                // resolves relative to the importing file's directory. Same for
+                // sibling-of-sibling forms like `@import("util/helper.zig")`.
+                // We only try this for `.zig`-suffixed imports — bare names without
+                // an extension would be ambiguous with module aliases.
+                if import.ends_with(".zig") && !import.starts_with('/') {
+                    let from_dir: String = Path::new(&file.path)
+                        .parent()
+                        .map(|p| p.to_string_lossy().replace('\\', "/"))
+                        .unwrap_or_default();
+                    let candidate = if from_dir.is_empty() {
+                        import.clone()
+                    } else {
+                        normalize_relative(&format!("{}/{}", from_dir, import))
+                    };
+                    if paths.contains(&candidate) {
+                        internal.push(candidate);
+                        continue;
+                    }
+                }
                 external.push(import.split('/').next().unwrap_or(import).to_string());
                 continue;
             }
@@ -2041,17 +2061,36 @@ struct ZigDepEntry {
 #[derive(Debug, Clone)]
 pub struct ZigDeps {
     entries: Vec<ZigDepEntry>,
+    /// Named in-tree modules registered via `b.addModule("name", .{ .root_source_file = b.path("path") })`
+    /// inside a `build.zig`. Keyed by (anchor_dir, module_name) → resolved file path.
+    /// These resolve a single named module to a single file, distinct from the
+    /// directory-probe behaviour of `entries` (which targets external packages).
+    module_aliases: HashMap<(String, String), String>,
 }
 
 impl ZigDeps {
     pub fn empty() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+            module_aliases: HashMap::new(),
+        }
     }
 
     /// Parse every build.zig.zon in the corpus and extract its `dependencies`.
     /// Falls back gracefully (zero entries) if the Zig grammar isn't available
     /// or a particular zon file fails to parse.
     pub fn from_zon_files(zon_files: &[(String, String)]) -> Self {
+        Self::from_zon_and_build_files(zon_files, &[])
+    }
+
+    /// Parse both build.zig.zon (external dep paths) and build.zig (in-tree module
+    /// aliases registered with `b.addModule`). Both sources contribute to the
+    /// resolver: zon files for cross-package deps, build.zig for the
+    /// `@import("name")` aliases that point at files inside the same project.
+    pub fn from_zon_and_build_files(
+        zon_files: &[(String, String)],
+        build_files: &[(String, String)],
+    ) -> Self {
         let mut parser = Parser::new();
         if parser
             .set_language(&tree_sitter_zig::LANGUAGE.into())
@@ -2071,11 +2110,31 @@ impl ZigDeps {
             };
             extract_zon_dependencies(&tree.root_node(), content, &anchor, &mut entries);
         }
-        Self { entries }
+
+        let mut module_aliases: HashMap<(String, String), String> = HashMap::new();
+        for (path, content) in build_files {
+            let anchor = Path::new(path)
+                .parent()
+                .map(|p| p.to_string_lossy().replace('\\', "/"))
+                .unwrap_or_default();
+            let Some(tree) = parser.parse(content, None) else {
+                continue;
+            };
+            extract_build_zig_modules(&tree.root_node(), content, &anchor, &mut module_aliases);
+        }
+
+        Self {
+            entries,
+            module_aliases,
+        }
     }
 
     pub fn entry_count(&self) -> usize {
         self.entries.len()
+    }
+
+    pub fn module_alias_count(&self) -> usize {
+        self.module_aliases.len()
     }
 
     /// Resolve a Zig `@import("name")` or `@import("name/sub.zig")` call by
@@ -2093,6 +2152,34 @@ impl ZigDeps {
             Some((h, t)) => (h, Some(t)),
             None => (import, None),
         };
+
+        // 1. In-tree build.zig module aliases — `b.addModule("name", .{...})`.
+        //    A bare `@import("errors")` resolves to a single file, not a directory.
+        //    Only consult this for bare-name imports (no sub-path). Anchor-matching:
+        //    pick the longest anchor that's a prefix of the importer's path.
+        if tail.is_none() {
+            let mut best: Option<(&String, usize)> = None;
+            for ((anchor, name), file) in &self.module_aliases {
+                if name != head {
+                    continue;
+                }
+                let anchor_matches = anchor.is_empty()
+                    || from_path.starts_with(&format!("{}/", anchor))
+                    || from_path == anchor.as_str();
+                if !anchor_matches {
+                    continue;
+                }
+                let len = anchor.len();
+                if best.map(|(_, l)| len > l).unwrap_or(true) {
+                    best = Some((file, len));
+                }
+            }
+            if let Some((file, _)) = best {
+                if paths.contains(file) {
+                    return Some(file.clone());
+                }
+            }
+        }
 
         // Pick the dep entry with the longest anchor that's a prefix of from_path.
         // This handles nested workspaces where a sub-package has its own deps.
@@ -2141,6 +2228,152 @@ impl ZigDeps {
         }
         None
     }
+}
+
+/// Walk a parsed build.zig to find `b.addModule("name", .{ .root_source_file = b.path("path"), ... })`
+/// calls and register them as named-module aliases.
+///
+/// AST shape under tree-sitter-zig: a method-call expression
+/// `<expr>.addModule("name", .{...})` lands as a `call_expression` whose function
+/// is a `field_expression` ending in identifier `addModule`. The first argument
+/// is a string literal (the module name); the second is an
+/// `anonymous_struct_initializer` containing `.root_source_file = b.path("...")`.
+///
+/// We do not require the LHS receiver to be literally `b` — Zig conventions
+/// vary (`b`, `step`, `dep.builder`, etc.) and the discriminator is the
+/// method name plus the (string, struct) argument shape.
+fn extract_build_zig_modules(
+    root: &Node,
+    src: &str,
+    anchor_dir: &str,
+    out: &mut HashMap<(String, String), String>,
+) {
+    let mut stack = vec![*root];
+    while let Some(node) = stack.pop() {
+        if node.kind() == "call_expression" {
+            if let Some((name, source_path)) = parse_add_module_call(&node, src) {
+                // Resolve the source path relative to the anchor (the build.zig's directory).
+                let resolved = if anchor_dir.is_empty() || source_path.starts_with('/') {
+                    normalize_relative(&source_path)
+                } else {
+                    normalize_relative(&format!("{}/{}", anchor_dir, source_path))
+                };
+                out.insert((anchor_dir.to_string(), name), resolved);
+            }
+        }
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            stack.push(child);
+        }
+    }
+}
+
+/// If `node` is a `<expr>.addModule(NAME_STRING, .{ .root_source_file = b.path(PATH_STRING), ... })`
+/// call, return `(NAME, PATH)`. Otherwise None.
+///
+/// tree-sitter-zig flattens call arguments directly under `call_expression`
+/// (no synthetic `arguments` wrapper). Layout:
+///   call_expression
+///     ├── field_expression          (the `<receiver>.addModule` callee)
+///     ├── "("
+///     ├── string                    (name argument)
+///     ├── ","
+///     ├── anonymous_struct_initializer  (options argument)
+///     └── ")"
+fn parse_add_module_call(node: &Node, src: &str) -> Option<(String, String)> {
+    // Find the callee field_expression; verify it ends in identifier `addModule`.
+    let mut cursor = node.walk();
+    let function_node: Option<Node> = node
+        .children(&mut cursor)
+        .find(|c| c.kind() == "field_expression");
+    let function = function_node?;
+    let method_name = field_expression_tail(&function, src)?;
+    if method_name != "addModule" {
+        return None;
+    }
+
+    // Walk the call_expression's own children for the (string, struct) arguments.
+    // We pick the first string literal as the name and the first
+    // anonymous_struct_initializer as the options.
+    let mut name: Option<String> = None;
+    let mut opts: Option<Node> = None;
+    let mut acursor = node.walk();
+    for arg in node.children(&mut acursor) {
+        match arg.kind() {
+            "string" | "string_literal" if name.is_none() => {
+                name = Some(string_node_text(&arg, src));
+            }
+            "anonymous_struct_initializer" if opts.is_none() => {
+                opts = Some(arg);
+            }
+            _ => {}
+        }
+    }
+    let name = name?;
+    let opts = opts?;
+
+    // Inside the options struct, find `.root_source_file = b.path("...")` (or any
+    // call_expression whose only string argument is the path we want).
+    let init_list = first_child_of_kind(&opts, "initializer_list")?;
+    let mut icursor = init_list.walk();
+    for field in init_list.children(&mut icursor) {
+        if field.kind() != "assignment_expression" {
+            continue;
+        }
+        if assignment_lhs_field_name(&field, src) != Some("root_source_file") {
+            continue;
+        }
+        // RHS is `b.path("...")` — find the first string literal anywhere underneath.
+        if let Some(path) = first_string_literal_in_subtree(&field, src) {
+            return Some((name, path));
+        }
+    }
+    None
+}
+
+/// Return the trailing identifier of a field_expression `<expr>.<name>` — i.e. the
+/// method/field name itself. Walks the rightmost identifier child.
+fn field_expression_tail<'a>(node: &Node<'a>, src: &'a str) -> Option<&'a str> {
+    let mut last_ident: Option<&str> = None;
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "identifier" {
+            last_ident = child.utf8_text(src.as_bytes()).ok();
+        }
+    }
+    last_ident
+}
+
+/// Get the unquoted text of a `string` AST node.
+fn string_node_text(node: &Node, src: &str) -> String {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "string_content" {
+            if let Ok(s) = child.utf8_text(src.as_bytes()) {
+                return s.to_string();
+            }
+        }
+    }
+    node.utf8_text(src.as_bytes())
+        .ok()
+        .map(|s| s.trim_matches('"').trim_matches('\'').to_string())
+        .unwrap_or_default()
+}
+
+/// Find the first string literal anywhere in a subtree (DFS). Used to pull the
+/// path argument out of `b.path("…")` without caring about the `b.` receiver.
+fn first_string_literal_in_subtree(root: &Node, src: &str) -> Option<String> {
+    let mut stack = vec![*root];
+    while let Some(node) = stack.pop() {
+        if node.kind() == "string" || node.kind() == "string_literal" {
+            return Some(string_node_text(&node, src));
+        }
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            stack.push(child);
+        }
+    }
+    None
 }
 
 /// Walk a parsed build.zig.zon to find `.dependencies = .{ .<name> = .{ .path = "..." } }`
