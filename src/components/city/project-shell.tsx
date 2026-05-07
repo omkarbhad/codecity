@@ -18,6 +18,9 @@ import {
   Info,
   GitCommit,
   Keyboard,
+  Box,
+  Square,
+  Share2,
 } from "lucide-react"
 import { cn } from "@codecity/ui/lib/utils"
 import { IconButton } from "@codecity/ui/components/icon-button"
@@ -340,6 +343,8 @@ function ProjectNavbar({
   const setMode = useCityStore((s) => s.setMode)
   const layoutMode = useCityStore((s) => s.layoutMode)
   const setLayoutMode = useCityStore((s) => s.setLayoutMode)
+  const viewDimension = useCityStore((s) => s.viewDimension)
+  const setViewDimension = useCityStore((s) => s.setViewDimension)
 
   return (
     <header className="z-50 grid h-[52px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-white/[0.08] bg-[#0b0b0c]/95 px-3 shadow-[0_1px_0_rgba(255,255,255,0.02),0_14px_40px_rgba(0,0,0,0.20)] backdrop-blur">
@@ -373,6 +378,31 @@ function ProjectNavbar({
 
       {/* Center — layout + viz modes */}
       <div className="col-start-2 hidden min-w-0 items-center gap-1 overflow-x-auto scrollbar-none sm:flex">
+        <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
+          {([
+            { key: "3d" as const, label: "3D", Icon: Box },
+            { key: "2d" as const, label: "2D", Icon: Square },
+            { key: "network" as const, label: "Network", Icon: Share2 },
+          ]).map(({ key, label, Icon }) => {
+            const active = viewDimension === key
+            return (
+              <button
+                key={key}
+                onClick={() => setViewDimension(key)}
+                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors ${
+                  active ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
+                }`}
+                title={`${label} view`}
+              >
+                <Icon className="size-3.5" />
+                <span className="hidden md:inline">{label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
+
         <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
           {LAYOUTS.map((l) => {
             const Icon = l.icon

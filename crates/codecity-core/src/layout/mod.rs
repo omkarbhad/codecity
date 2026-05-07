@@ -3,6 +3,9 @@ use std::collections::{HashMap, HashSet};
 
 use super::parser::{ClassInfo, FileType, FunctionInfo, ParsedFile, SymbolInfo, TypeInfo};
 
+mod color;
+use color::{district_color, subdistrict_color};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DistrictData {
@@ -68,6 +71,29 @@ pub struct FileData {
     pub district: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sub_folder: Option<String>,
+    #[serde(default)]
+    pub in_degree: u32,
+    #[serde(default)]
+    pub out_degree: u32,
+    /// Louvain community ID; -1 means file has no internal connections.
+    #[serde(default = "default_community")]
+    pub community: i32,
+    /// Pre-computed Network-mode position (FCoSE in Rust). None when the file
+    /// has no edges in the network — frontend hides those nodes anyway.
+    /// Stored as Option to keep serde JSON-clean (NaN isn't valid JSON).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network_x: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network_y: Option<f32>,
+    /// Call sites discovered while parsing this file. Used by the network
+    /// analysis pass to emit caller→callee edges. Pre-schema snapshots
+    /// won't have this; defaults to empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calls: Vec<crate::parser::CallSite>,
+}
+
+fn default_community() -> i32 {
+    -1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,6 +138,107 @@ pub struct LanguageStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CommunitySummary {
+    /// Louvain community id (raw, not the rank).
+    pub id: u32,
+    /// Rank by size (0 = largest).
+    pub rank: u32,
+    pub size: u32,
+    /// Member file paths sorted by degree desc.
+    pub members: Vec<String>,
+    /// Top hub file paths (subset of members) for quick navigation.
+    pub hubs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EntryPoint {
+    pub path: String,
+    pub out_degree: u32,
+    /// Number of files transitively reachable via imports.
+    pub reachable: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HubRef {
+    pub path: String,
+    pub in_degree: u32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum NetworkNodeKind {
+    File,
+    Function,
+    Class,
+    Type,
+}
+
+/// A node in the dependency network. Files plus their members (functions,
+/// classes, types) — graphify-style semantic graph where shared symbols
+/// reveal structural cohesion that file-only graphs miss.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNode {
+    pub id: String,
+    pub label: String,
+    pub kind: NetworkNodeKind,
+    /// File path that owns this node. For File nodes this equals `id`.
+    pub file_path: String,
+    pub in_degree: u32,
+    pub out_degree: u32,
+    /// Louvain community id; -1 if unconnected.
+    pub community: i32,
+    /// Pre-computed FCoSE position. None when unconnected.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_x: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_y: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum NetworkEdgeKind {
+    /// File contains this function/class/type.
+    Contains,
+    /// File imports another file.
+    Imports,
+    /// Function/method calls another function/method (resolved by bare-name match).
+    Calls,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkEdge {
+    pub source: String,
+    pub target: String,
+    pub kind: NetworkEdgeKind,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkAnalysis {
+    pub communities: Vec<CommunitySummary>,
+    pub entry_points: Vec<EntryPoint>,
+    pub hubs: Vec<HubRef>,
+    /// Full set of network nodes (files + symbols). Empty on pre-schema snapshots.
+    #[serde(default)]
+    pub nodes: Vec<NetworkNode>,
+    /// Edges between network nodes. Empty on pre-schema snapshots.
+    #[serde(default)]
+    pub edges: Vec<NetworkEdge>,
+    /// File-pair edges aggregated from `edges` (every symbol-level call
+    /// between two files counted once, contains edges excluded). Cheap to
+    /// render — typically 100-3000 entries even on large repos — so the
+    /// frontend network view can use these directly without re-aggregating.
+    /// Empty on pre-schema snapshots.
+    #[serde(default)]
+    pub file_edges: Vec<NetworkEdge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CitySnapshot {
     #[serde(default = "default_schema_version")]
     pub schema_version: u32,
@@ -121,6 +248,8 @@ pub struct CitySnapshot {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub source_tree: Vec<SourceTreeEntry>,
     pub warnings: Option<Vec<String>>,
+    #[serde(default)]
+    pub network: NetworkAnalysis,
 }
 
 fn default_schema_version() -> u32 {
@@ -135,126 +264,16 @@ pub enum LayoutMode {
     Semantic,
 }
 
-const DISTRICT_COLORS: [&str; 12] = [
-    "#00e5ff", "#00e676", "#448aff", "#ffea00", "#b388ff", "#ff9100", "#ff4081", "#1de9b6",
-    "#aeea00", "#ff1744", "#8c9eff", "#ffc400",
-];
-
-const EXTENSION_COLORS: &[(&str, &str)] = &[
-    (".ts", "#3178c6"),
-    (".tsx", "#61dafb"),
-    (".js", "#f7df1e"),
-    (".jsx", "#61dafb"),
-    (".py", "#3572a5"),
-    (".css", "#264de4"),
-    (".scss", "#cd6799"),
-    (".html", "#e34c26"),
-    (".json", "#a0a0a0"),
-    (".md", "#083fa1"),
-    (".mdx", "#1f6feb"),
-    (".yaml", "#cb171e"),
-    (".yml", "#cb171e"),
-    (".toml", "#9c4221"),
-    (".rs", "#dea584"),
-    (".go", "#00add8"),
-    (".java", "#b07219"),
-    (".rb", "#cc342d"),
-    (".vue", "#42b883"),
-    (".svelte", "#ff3e00"),
-    (".astro", "#ff5d01"),
-    (".cu", "#76b900"),
-    (".cuh", "#76b900"),
-    (".ptx", "#76b900"),
-    (".cubin", "#5a8f00"),
-    (".fatbin", "#5a8f00"),
-];
-
 fn extension(path: &str) -> String {
     path.rsplit_once('.')
         .map(|(_, ext)| format!(".{}", ext.to_lowercase()))
         .unwrap_or_else(|| ".other".to_string())
 }
 
-fn district_color(index: usize, name: &str, mode: LayoutMode) -> String {
-    if matches!(mode, LayoutMode::Extension) {
-        if let Some((_, color)) = EXTENSION_COLORS.iter().find(|(ext, _)| *ext == name) {
-            return color.to_string();
-        }
-    }
-    DISTRICT_COLORS[index % DISTRICT_COLORS.len()].to_string()
-}
-
 fn building_dimensions(file: &ParsedFile) -> (f32, f32) {
     let height = (file.lines as f32 / 60.0).clamp(0.3, 50.0);
     let width = (1.0 + file.functions.len() as f32 * 0.12).clamp(1.0, 2.2);
     (width, height)
-}
-
-fn hex_to_hsl(hex: &str) -> (f32, f32, f32) {
-    let color = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0x00e5ff);
-    let r = ((color >> 16) & 0xff) as f32 / 255.0;
-    let g = ((color >> 8) & 0xff) as f32 / 255.0;
-    let b = (color & 0xff) as f32 / 255.0;
-    let max = r.max(g).max(b);
-    let min = r.min(g).min(b);
-    let l = (max + min) / 2.0;
-
-    if (max - min).abs() < f32::EPSILON {
-        return (0.0, 0.0, l);
-    }
-
-    let d = max - min;
-    let s = if l > 0.5 {
-        d / (2.0 - max - min)
-    } else {
-        d / (max + min)
-    };
-    let h = if (max - r).abs() < f32::EPSILON {
-        ((g - b) / d + if g < b { 6.0 } else { 0.0 }) / 6.0
-    } else if (max - g).abs() < f32::EPSILON {
-        ((b - r) / d + 2.0) / 6.0
-    } else {
-        ((r - g) / d + 4.0) / 6.0
-    };
-
-    (h, s, l)
-}
-
-fn hue_to_rgb(p: f32, q: f32, mut t: f32) -> f32 {
-    if t < 0.0 {
-        t += 1.0;
-    }
-    if t > 1.0 {
-        t -= 1.0;
-    }
-    if t < 1.0 / 6.0 {
-        return p + (q - p) * 6.0 * t;
-    }
-    if t < 1.0 / 2.0 {
-        return q;
-    }
-    if t < 2.0 / 3.0 {
-        return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
-    }
-    p
-}
-
-fn hsl_to_hex(h: f32, s: f32, l: f32) -> String {
-    if s == 0.0 {
-        let value = (l * 255.0).round() as u8;
-        return format!("#{value:02x}{value:02x}{value:02x}");
-    }
-
-    let q = if l < 0.5 {
-        l * (1.0 + s)
-    } else {
-        l + s - l * s
-    };
-    let p = 2.0 * l - q;
-    let r = (hue_to_rgb(p, q, h + 1.0 / 3.0) * 255.0).round() as u8;
-    let g = (hue_to_rgb(p, q, h) * 255.0).round() as u8;
-    let b = (hue_to_rgb(p, q, h - 1.0 / 3.0) * 255.0).round() as u8;
-    format!("#{r:02x}{g:02x}{b:02x}")
 }
 
 fn empty_bounds() -> Bounds {
@@ -927,21 +946,6 @@ fn block_bounds(block: &BlockLayout<'_>) -> Option<Bounds> {
     }
 }
 
-fn subdistrict_color(index: usize, total: usize, base_color: &str) -> String {
-    let (h, s, l) = hex_to_hsl(base_color);
-    let hue_shift = if total > 1 {
-        index as f32 / (total - 1) as f32 * 0.15 - 0.075
-    } else {
-        0.0
-    };
-    let lightness_shift = if index % 2 == 0 { 0.05 } else { -0.05 };
-    hsl_to_hex(
-        (h + hue_shift).rem_euclid(1.0),
-        s.clamp(0.3, 1.0),
-        (l + lightness_shift).clamp(0.25, 0.8),
-    )
-}
-
 fn compute_subdistrict_bounds(
     block: &BlockLayout<'_>,
     base_color: &str,
@@ -1147,6 +1151,12 @@ pub fn layout_city(
                 } else {
                     position.sub_folder.clone()
                 }),
+                in_degree: 0,
+                out_degree: 0,
+                community: -1,
+                network_x: None,
+                network_y: None,
+                calls: position.file.calls.clone(),
             });
         }
 
@@ -1231,7 +1241,11 @@ pub fn create_snapshot_with_mode_and_source_tree(
     mut source_tree: Vec<SourceTreeEntry>,
 ) -> CitySnapshot {
     let mut districts = compute_districts(&parsed, mode);
-    let files = layout_city(&parsed, &mut districts, mode);
+    let mut files = layout_city(&parsed, &mut districts, mode);
+
+    // Compute network analysis once on the Rust side: degree counts per file,
+    // Louvain communities, entry points, and hubs. The frontend just renders.
+    let network = super::network::compute_network_analysis(&mut files);
     let stats = compute_stats(&files);
 
     if source_tree.is_empty() {
@@ -1256,6 +1270,7 @@ pub fn create_snapshot_with_mode_and_source_tree(
         } else {
             Some(warnings)
         },
+        network,
     }
 }
 
@@ -1309,6 +1324,10 @@ fn file_to_parsed(file: &FileData, visible_paths: &HashSet<String>) -> ParsedFil
         is_react_component: file.is_react_component,
         has_unused_exports: file.has_unused_exports,
         file_type: file.file_type.clone(),
+        // Calls aren't persisted in FileData (only imports + symbol names are).
+        // On recompute the snapshot loses caller→callee edges. Acceptable for
+        // now — recompute is triggered by layout-mode toggle, not full re-analysis.
+        calls: Vec::new(),
     }
 }
 
@@ -1336,6 +1355,7 @@ pub fn recompute_snapshot(
             stats: compute_stats(&[]),
             source_tree: original.source_tree,
             warnings: original.warnings,
+            network: NetworkAnalysis::default(),
         };
     }
 

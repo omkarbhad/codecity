@@ -10,6 +10,8 @@ export type VisualizationMode =
   | "filesize"
   | "types"
 
+export type ViewDimension = "2d" | "3d" | "network"
+
 interface CodeViewerState {
   filePath: string
   functionName: string | null
@@ -21,6 +23,7 @@ interface CityState {
   hoveredFile: string | null
   hoveredIndex: number | null
   visualizationMode: VisualizationMode
+  viewDimension: ViewDimension
   layoutMode: LayoutMode
   searchQuery: string
   hiddenExtensions: Set<string>
@@ -38,6 +41,7 @@ interface CityState {
   selectFile: (path: string | null, index?: number | null) => void
   hoverFile: (path: string | null, index?: number | null) => void
   setMode: (mode: VisualizationMode) => void
+  setViewDimension: (dim: ViewDimension) => void
   setLayoutMode: (mode: LayoutMode) => void
   setSearch: (query: string) => void
   toggleExtension: (ext: string) => void
@@ -61,6 +65,7 @@ export const useCityStore = create<CityState>((set) => ({
   hoveredFile: null,
   hoveredIndex: null,
   visualizationMode: "dependencies",
+  viewDimension: "3d",
   layoutMode: "folder",
   searchQuery: "",
   hiddenExtensions: new Set<string>(),
@@ -80,6 +85,7 @@ export const useCityStore = create<CityState>((set) => ({
   hoverFile: (path, index = null) =>
     set({ hoveredFile: path, hoveredIndex: index ?? null }),
   setMode: (mode) => set({ visualizationMode: mode }),
+  setViewDimension: (dim) => set({ viewDimension: dim }),
   setLayoutMode: (mode) => set({ layoutMode: mode }),
   setSearch: (query) => set({ searchQuery: query }),
   toggleExtension: (ext) =>

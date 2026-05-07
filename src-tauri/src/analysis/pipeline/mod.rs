@@ -1,16 +1,19 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 
 use super::db::Database;
 use super::github;
-use super::layout::{CitySnapshot, SourceTreeEntry};
-use super::parser;
+use codecity_core::discovery::{
+    is_probably_binary, is_supported_extension, is_supported_filename, should_skip_dir,
+    should_skip_file,
+};
+use codecity_core::layout::{CitySnapshot, SourceTreeEntry};
+use codecity_core::parser;
 
-static CANCELLED_ANALYSES: once_cell::sync::Lazy<Mutex<HashSet<String>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HashSet::new()));
+mod cancellation;
+use cancellation::{clear as clear_cancelled, is_cancelled, mark as mark_cancelled};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,25 +31,6 @@ pub struct AnalyzeResult {
     pub project_id: Option<String>,
     pub snapshot: Option<CitySnapshot>,
     pub error: Option<String>,
-}
-
-fn mark_cancelled(project_id: &str) {
-    if let Ok(mut cancelled) = CANCELLED_ANALYSES.lock() {
-        cancelled.insert(project_id.to_string());
-    }
-}
-
-fn clear_cancelled(project_id: &str) {
-    if let Ok(mut cancelled) = CANCELLED_ANALYSES.lock() {
-        cancelled.remove(project_id);
-    }
-}
-
-fn is_cancelled(project_id: &str) -> bool {
-    CANCELLED_ANALYSES
-        .lock()
-        .map(|cancelled| cancelled.contains(project_id))
-        .unwrap_or(false)
 }
 
 fn cached_repo_dir(repo_url: &str) -> Option<PathBuf> {
@@ -68,425 +52,7 @@ pub fn cancel_analysis(db: &Database, project_id: &str) -> Result<(), String> {
     db.delete_project(project_id)
 }
 
-const SKIP_DIRS: &[&str] = &[
-    "node_modules",
-    ".git",
-    "dist",
-    ".next",
-    "build",
-    "target",
-    "__pycache__",
-    ".cache",
-    "vendor",
-    ".venv",
-    "venv",
-    "coverage",
-    ".tox",
-    ".mypy_cache",
-    ".idea",
-    ".vscode",
-];
-
-const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "ts",
-    "tsx",
-    "js",
-    "jsx",
-    "mjs",
-    "cjs",
-    "mts",
-    "cts",
-    "es",
-    "es6",
-    "vue",
-    "svelte",
-    "astro",
-    "css",
-    "scss",
-    "less",
-    "sass",
-    "html",
-    "htm",
-    "svg",
-    "md",
-    "mdx",
-    "json",
-    "jsonc",
-    "yaml",
-    "yml",
-    "toml",
-    "webmanifest",
-    "ipynb",
-    "py",
-    "pyi",
-    "pyx",
-    "pxd",
-    "pxi",
-    "go",
-    "rs",
-    "java",
-    "kt",
-    "kts",
-    "rb",
-    "php",
-    "swift",
-    "c",
-    "h",
-    "cu",
-    "cuh",
-    "cpp",
-    "cxx",
-    "cc",
-    "hpp",
-    "hxx",
-    "hh",
-    "cs",
-    "fs",
-    "fsi",
-    "fsx",
-    "vb",
-    "m",
-    "mm",
-    "zig",
-    "lua",
-    "dart",
-    "scala",
-    "groovy",
-    "r",
-    "R",
-    "jl",
-    "hs",
-    "lhs",
-    "ex",
-    "exs",
-    "erl",
-    "hrl",
-    "beam",
-    "ml",
-    "mli",
-    "clj",
-    "cljs",
-    "cljc",
-    "edn",
-    "lisp",
-    "lsp",
-    "cl",
-    "scm",
-    "ss",
-    "idr",
-    "lidr",
-    "agda",
-    "lean",
-    "purs",
-    "nim",
-    "cr",
-    "v",
-    "d",
-    "sh",
-    "bash",
-    "zsh",
-    "fish",
-    "ksh",
-    "awk",
-    "ps1",
-    "bat",
-    "cmd",
-    "asm",
-    "s",
-    "o",
-    "obj",
-    "a",
-    "lib",
-    "so",
-    "dylib",
-    "dll",
-    "exe",
-    "rlib",
-    "class",
-    "jar",
-    "war",
-    "ear",
-    "wasm",
-    "wat",
-    "xml",
-    "xsd",
-    "xsl",
-    "ini",
-    "cfg",
-    "conf",
-    "env",
-    "csv",
-    "tsv",
-    "ndjson",
-    "avro",
-    "parquet",
-    "orc",
-    "npy",
-    "npz",
-    "h5",
-    "hdf5",
-    "hdf",
-    "feather",
-    "arrow",
-    "duckdb",
-    "db",
-    "sqlite",
-    "sqlite3",
-    "pkl",
-    "pickle",
-    "joblib",
-    "model",
-    "weights",
-    "pt",
-    "pth",
-    "ckpt",
-    "safetensors",
-    "onnx",
-    "pb",
-    "pbtxt",
-    "tflite",
-    "lite",
-    "keras",
-    "mlmodel",
-    "mar",
-    "engine",
-    "trt",
-    "caffemodel",
-    "prototxt",
-    "params",
-    "bin",
-    "gguf",
-    "ggml",
-    "tiktoken",
-    "spm",
-    "bpe",
-    "vocab",
-    "proto",
-    "thrift",
-    "dockerfile",
-    "makefile",
-    "mk",
-    "gradle",
-    "bazel",
-    "bzl",
-    "tf",
-    "tfvars",
-    "hcl",
-    "nix",
-    "ejs",
-    "pug",
-    "hbs",
-    "mustache",
-    "liquid",
-    "njk",
-    "rst",
-    "adoc",
-    "asciidoc",
-    "tex",
-    "latex",
-    "bib",
-    "feature",
-    "spec",
-    "snap",
-    "tap",
-    "log",
-    "patch",
-    "diff",
-    "lock",
-    "glsl",
-    "frag",
-    "vert",
-    "comp",
-    "hlsl",
-    "wgsl",
-    "cg",
-    "ptx",
-    "cubin",
-    "fatbin",
-    "nvvm",
-    "ll",
-    "bc",
-    "coffee",
-    "lit",
-    "marko",
-    "graphql",
-    "gql",
-    "sql",
-    "dockerignore",
-    "gitignore",
-    "gitattributes",
-    "editorconfig",
-    "properties",
-    "plist",
-    "xcconfig",
-    "bicep",
-    "cue",
-    "dhall",
-    "ron",
-    "rego",
-    "nomad",
-    "hurl",
-    "http",
-    "rest",
-    "vhd",
-    "vhdl",
-    "sv",
-    "svh",
-    "matlab",
-    "octave",
-    "sas",
-    "stata",
-    "do",
-    "qml",
-    "qss",
-    "plantuml",
-    "puml",
-    "mermaid",
-    "mmd",
-];
-
-const SUPPORTED_FILENAMES: &[&str] = &[
-    ".babelrc",
-    ".browserslistrc",
-    ".dockerignore",
-    ".editorconfig",
-    ".env",
-    ".env.development",
-    ".env.example",
-    ".env.local",
-    ".env.production",
-    ".env.test",
-    ".eslintignore",
-    ".eslintrc",
-    ".gitattributes",
-    ".gitignore",
-    ".graphqlrc",
-    ".npmrc",
-    ".nvmrc",
-    ".prettierignore",
-    ".prettierrc",
-    ".stylelintrc",
-    ".yamllint",
-    "Brewfile",
-    "Containerfile",
-    "Dockerfile",
-    "Gemfile",
-    "Justfile",
-    "Makefile",
-    "Podfile",
-    "Procfile",
-    "Rakefile",
-    "Tiltfile",
-    "Vagrantfile",
-    "WORKSPACE",
-    "angular.json",
-    "bun.lock",
-    "bun.lockb",
-    "compose.yaml",
-    "compose.yml",
-    "deno.json",
-    "deno.jsonc",
-    "docker-compose.yaml",
-    "docker-compose.yml",
-    "eslint.config.cjs",
-    "eslint.config.js",
-    "eslint.config.mjs",
-    "eslint.config.ts",
-    "go.mod",
-    "go.sum",
-    "next.config.js",
-    "next.config.mjs",
-    "next.config.ts",
-    "package.json",
-    "pnpm-workspace.yaml",
-    "postcss.config.cjs",
-    "postcss.config.js",
-    "postcss.config.mjs",
-    "postcss.config.ts",
-    "prettier.config.cjs",
-    "prettier.config.js",
-    "prettier.config.mjs",
-    "pyproject.toml",
-    "remix.config.js",
-    "remix.config.mjs",
-    "requirements.txt",
-    "environment.yml",
-    "environment.yaml",
-    "conda.yaml",
-    "conda.yml",
-    "Pipfile",
-    "dvc.yaml",
-    "params.yaml",
-    "mlproject",
-    "MLproject",
-    "model-card.md",
-    "ModelCard.md",
-    "rust-toolchain",
-    "rust-toolchain.toml",
-    "svelte.config.js",
-    "svelte.config.ts",
-    "tailwind.config.cjs",
-    "tailwind.config.js",
-    "tailwind.config.mjs",
-    "tailwind.config.ts",
-    "tsconfig.json",
-    "turbo.json",
-    "vite.config.js",
-    "vite.config.mjs",
-    "vite.config.ts",
-    "vitest.config.js",
-    "vitest.config.mjs",
-    "vitest.config.ts",
-];
-
 const UNDISPLAYABLE_FILE_CONTENT: &str = "[File content cannot be shown]";
-
-const SKIP_FILES: &[&str] = &[
-    "package-lock.json",
-    "pnpm-lock.yaml",
-    "yarn.lock",
-    "bun.lock",
-    "bun.lockb",
-    "Cargo.lock",
-    "poetry.lock",
-    "Pipfile.lock",
-    "composer.lock",
-    "go.sum",
-];
-
-fn should_skip_dir(dir_name: &str) -> bool {
-    SKIP_DIRS.contains(&dir_name)
-}
-
-fn should_skip_file(path: &Path) -> bool {
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("");
-    if SKIP_FILES.contains(&file_name) {
-        return true;
-    }
-
-    let lower = file_name.to_lowercase();
-    lower.ends_with(".min.js")
-        || lower.ends_with(".min.css")
-        || lower.ends_with(".map")
-        || lower.ends_with(".snap")
-        || lower.ends_with(".generated.ts")
-        || lower.ends_with(".generated.js")
-}
-
-fn is_supported_extension(ext: &str) -> bool {
-    SUPPORTED_EXTENSIONS.contains(&ext)
-}
-
-fn is_supported_filename(file_name: &str) -> bool {
-    SUPPORTED_FILENAMES.contains(&file_name)
-}
-
-fn is_probably_binary(bytes: &[u8]) -> bool {
-    bytes.contains(&0)
-}
 
 fn relative_path(base_dir: &Path, path: &Path) -> String {
     path.strip_prefix(base_dir)
@@ -1419,6 +985,31 @@ async fn parse_and_save(
         return fail_project(db, &project.id, msg, 0, 0);
     }
 
+    // Capture tsconfig.json contents before files get consumed by grouping.
+    // Used downstream to resolve TS path aliases (`@/*`, `@trpc/*`, etc.).
+    let tsconfigs: Vec<(String, String)> = files
+        .iter()
+        .filter(|(path, _)| {
+            let name = path.rsplit('/').next().unwrap_or(path);
+            name == "tsconfig.json"
+                || name == "tsconfig.base.json"
+                || (name.starts_with("tsconfig.") && name.ends_with(".json"))
+                || name == "jsconfig.json"
+        })
+        .map(|(p, c)| (p.clone(), c.clone()))
+        .collect();
+
+    // Same trick for Zig: capture every build.zig.zon so we can resolve
+    // `@import("name")` calls against declared dependencies.
+    let zon_files: Vec<(String, String)> = files
+        .iter()
+        .filter(|(path, _)| {
+            let name = path.rsplit('/').next().unwrap_or(path);
+            name == "build.zig.zon"
+        })
+        .map(|(p, c)| (p.clone(), c.clone()))
+        .collect();
+
     let folder_batches = group_files_by_folder(files);
     let folder_count = folder_batches.len().max(1);
     let mut parsed = Vec::with_capacity(files_discovered as usize);
@@ -1468,7 +1059,23 @@ async fn parse_and_save(
         };
     }
 
-    parser::resolve_internal_imports(&mut parsed);
+    let aliases = parser::TsConfigAliases::from_tsconfigs(&tsconfigs);
+    if aliases.rule_count() > 0 {
+        log::info!(
+            "Loaded {} tsconfig path alias rule(s) from {} tsconfig file(s)",
+            aliases.rule_count(),
+            tsconfigs.len()
+        );
+    }
+    let zig_deps = parser::ZigDeps::from_zon_files(&zon_files);
+    if zig_deps.entry_count() > 0 {
+        log::info!(
+            "Loaded {} Zig dep declaration(s) from {} build.zig.zon file(s)",
+            zig_deps.entry_count(),
+            zon_files.len()
+        );
+    }
+    parser::resolve_internal_imports_full(&mut parsed, &aliases, &zig_deps);
     let files_parsed = parsed.len() as i64;
 
     report_progress(
@@ -1510,10 +1117,10 @@ async fn parse_and_save(
         };
     }
 
-    let snapshot = super::layout::create_snapshot_with_mode_and_source_tree(
+    let snapshot = codecity_core::layout::create_snapshot_with_mode_and_source_tree(
         parsed,
         vec![],
-        super::layout::LayoutMode::Folder,
+        codecity_core::layout::LayoutMode::Folder,
         source_tree,
     );
 

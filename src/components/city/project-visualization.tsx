@@ -9,6 +9,7 @@ import { getExtension } from "./extension-filter"
 import { ProjectShell } from "./project-shell"
 import { Loader } from "@/components/ui/loader"
 import type { BuildingLoadProgress } from "./instanced-buildings"
+import { LoadStrip } from "./load-strip"
 
 const CitySceneCanvas = dynamic(
   () => import("./city-scene").then((mod) => ({ default: mod.CitySceneCanvas })),
@@ -17,6 +18,30 @@ const CitySceneCanvas = dynamic(
     loading: () => (
       <div className="flex h-full w-full items-center justify-center bg-[#040408]">
         <Loader size="md" text="Constructing city..." />
+      </div>
+    ),
+  }
+)
+
+const City2DCanvas = dynamic(
+  () => import("./city-2d-canvas").then((mod) => ({ default: mod.City2DCanvas })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-[#040408]">
+        <Loader size="md" text="Laying out blocks..." />
+      </div>
+    ),
+  }
+)
+
+const CityNetworkCanvas = dynamic(
+  () => import("./city-network-canvas").then((mod) => ({ default: mod.CityNetworkCanvas })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-[#040408]">
+        <Loader size="md" text="Building network..." />
       </div>
     ),
   }
@@ -74,48 +99,18 @@ interface Props {
 }
 
 function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgress; leaving: boolean }) {
-  const totalRectangles = Math.min(28, progress.totalChunks)
-  const loadedRectangles = Math.round((progress.loadedChunks / progress.totalChunks) * totalRectangles)
-  const percent = Math.round((progress.loadedFiles / progress.totalFiles) * 100)
-
-  return (
-    <div
-      className={`pointer-events-none absolute bottom-4 left-1/2 z-40 w-[min(440px,calc(100%-32px))] -translate-x-1/2 rounded-md border border-white/[0.09] bg-[#0b0b0c]/90 px-3 py-2.5 shadow-2xl shadow-black/45 backdrop-blur-xl transition-all duration-300 ${
-        leaving ? "translate-y-1 opacity-0" : "opacity-100"
-      }`}
-    >
-      <div className="mb-2.5 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-5 shrink-0 grid-cols-2 gap-[2px] rounded border border-white/[0.08] bg-white/[0.035] p-[3px]">
-            <span className="rounded-[1px] bg-primary/70" />
-            <span className="rounded-[1px] bg-white/[0.18]" />
-            <span className="rounded-[1px] bg-white/[0.14]" />
-            <span className="rounded-[1px] bg-primary/45" />
-          </span>
-          <span className="truncate text-[11px] font-medium text-white/62">Loading city geometry</span>
-        </div>
-        <span className="shrink-0 font-mono text-[10px] tabular-nums text-white/48">
-          {percent}% · {progress.loadedFiles.toLocaleString()} / {progress.totalFiles.toLocaleString()}
-        </span>
-      </div>
-      <div className="grid h-[7px] grid-flow-col gap-[3px]">
-        {Array.from({ length: totalRectangles }).map((_, index) => (
-          <span
-            key={index}
-            className={`rounded-[2px] transition-colors duration-200 ${
-              index < loadedRectangles ? "bg-primary/75 shadow-[0_0_8px_rgba(59,130,246,0.34)]" : "bg-white/[0.07]"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  )
+  const percent = (progress.loadedFiles / progress.totalFiles) * 100
+  const detail = `${progress.loadedFiles.toLocaleString()} / ${progress.totalFiles.toLocaleString()}`
+  return <LoadStrip label="Loading city geometry" percent={percent} detail={detail} leaving={leaving} />
 }
 
 function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, repoUrl, navbarActions }: Props) {
   const [currentSnapshot, setCurrentSnapshot] = useState(originalSnapshot)
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [isBuildingLoadLeaving, setIsBuildingLoadLeaving] = useState(false)
+  // Mirrored from CityNetworkCanvas via callback so the network view shares
+  // the same bottom-center strip the city does. `null` = not stabilizing.
+  const [networkProgress, setNetworkProgress] = useState<{ percent: number; active: boolean } | null>(null)
   const originalRef = useRef(originalSnapshot)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
@@ -136,6 +131,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
     setCurrentSnapshot(originalSnapshot)
     setBuildingLoadProgress(null)
     setIsBuildingLoadLeaving(false)
+    setNetworkProgress(null)
     if (loadHideTimerRef.current) clearTimeout(loadHideTimerRef.current)
   }, [originalSnapshot, resetProjectState])
 
@@ -189,6 +185,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
   const toggleBuildingLabels = useCityStore((s) => s.toggleBuildingLabels)
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectFile = useCityStore((s) => s.selectFile)
+  const viewDimension = useCityStore((s) => s.viewDimension)
 
   useEffect(() => {
     if (!selectedFile) return
@@ -285,12 +282,25 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
         navbarActions={navbarActions}
       >
         <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
-          <SceneErrorBoundary>
-            <CitySceneCanvas snapshot={currentSnapshot} onBuildingLoadProgress={handleBuildingLoadProgress} />
+          <SceneErrorBoundary key={viewDimension}>
+            {viewDimension === "3d" && (
+              <CitySceneCanvas snapshot={currentSnapshot} onBuildingLoadProgress={handleBuildingLoadProgress} />
+            )}
+            {viewDimension === "2d" && <City2DCanvas snapshot={currentSnapshot} />}
+            {viewDimension === "network" && (
+              <CityNetworkCanvas snapshot={currentSnapshot} onStabilizationProgress={setNetworkProgress} />
+            )}
           </SceneErrorBoundary>
         </div>
 
         {buildingLoadProgress && <BuildingLoadStrip progress={buildingLoadProgress} leaving={isBuildingLoadLeaving} />}
+        {networkProgress && (
+          <LoadStrip
+            label="Stabilizing network"
+            percent={networkProgress.percent}
+            leaving={!networkProgress.active}
+          />
+        )}
 
         {/* Layout transition overlay */}
         {isTransitioning && (
