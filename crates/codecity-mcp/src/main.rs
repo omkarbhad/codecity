@@ -31,6 +31,13 @@ struct Args {
     /// commit out locally.
     #[arg(long, requires = "snapshot")]
     source_root: Option<PathBuf>,
+
+    /// Disable `.gitignore` honoring during repo analysis. Only meaningful
+    /// with `--repo`; pre-baked snapshots already reflect whatever skip
+    /// rules were active when they were created. Default: gitignore is
+    /// respected so the MCP server sees the same files `git status` would.
+    #[arg(long, requires = "repo")]
+    no_gitskip: bool,
 }
 
 #[tokio::main]
@@ -53,9 +60,13 @@ async fn main() -> Result<()> {
             )
         }
         (None, Some(p)) => {
-            log::info!("analyzing repo at {}", p.display());
+            log::info!(
+                "analyzing repo at {} (gitignore: {})",
+                p.display(),
+                if args.no_gitskip { "off" } else { "on" }
+            );
             let started = std::time::Instant::now();
-            let snap = loader::load_from_repo(p)
+            let snap = loader::load_from_repo(p, !args.no_gitskip)
                 .with_context(|| format!("repo analysis failed: {}", p.display()))?;
             log::info!(
                 "analyzed {} files in {:.2}s",
