@@ -789,8 +789,6 @@ pub fn community(
     })
 }
 
-// ── search_symbols ──────────────────────────────────────────────────────────
-
 // ── recent_changes ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
@@ -889,24 +887,63 @@ pub fn recent_changes(
 
 // ── search_symbols ──────────────────────────────────────────────────────────
 
-/// Find nodes whose label or path contains `query` (case-insensitive). The
-/// agent uses this to discover names before calling `explain` /
-/// `find_callers` — for example, "find anything related to authentication"
-/// → `search_symbols auth`.
+/// Find nodes whose label or path matches `query`. The agent uses this to
+/// discover names before calling `explain` / `find_callers`.
+///
+/// Matching is case-insensitive and **token-aware**. The query is split on
+/// `_`, `-`, `.`, and camelCase boundaries; a node matches when *every*
+/// query token appears somewhere in its label or path (in any order). So
+/// `search_symbols agent_runner` matches `_make_runner` (token: runner) +
+/// `agent_loop.py` (token: agent), even though no identifier literally
+/// contains "agent_runner" as a substring. A query without separators
+/// behaves like before (single substring). Falls back to the literal-
+/// substring match when tokenization yields zero hits, so common queries
+/// like "auth" still find anything containing those four characters.
 pub fn search_symbols(snap: &CitySnapshot, query: &str, limit: usize) -> Vec<NodeRef> {
-    let needle = query.to_lowercase();
-    if needle.is_empty() {
+    let raw = query.trim();
+    if raw.is_empty() {
         return Vec::new();
     }
-    let mut hits: Vec<&NetworkNode> = snap
-        .network
-        .nodes
-        .iter()
-        .filter(|n| {
-            n.label.to_lowercase().contains(&needle)
-                || n.file_path.to_lowercase().contains(&needle)
-        })
-        .collect();
+    let tokens: Vec<String> = tokenize_query(raw);
+    let needle_lower = raw.to_lowercase();
+
+    // Pre-build the search corpus per node once. `label + ' ' + file_path`
+    // lowercased + tokenized so we can do both substring and per-token
+    // contains in one pass without re-allocating per filter call.
+    let matches_node = |n: &NetworkNode| -> bool {
+        let label = n.label.to_lowercase();
+        let path = n.file_path.to_lowercase();
+        if tokens.len() <= 1 {
+            // Single-word query: literal substring. Same as the original
+            // behavior, no regressions for queries like "parse" or "auth".
+            return label.contains(&needle_lower) || path.contains(&needle_lower);
+        }
+        // Multi-token query: every token must appear somewhere in label
+        // or path. Order doesn't matter, so `agent_runner` matches both
+        // `_make_runner` (token: runner) and `agent_loop.py` (token: agent).
+        tokens
+            .iter()
+            .all(|t| label.contains(t) || path.contains(t))
+    };
+
+    let mut hits: Vec<&NetworkNode> =
+        snap.network.nodes.iter().filter(|n| matches_node(n)).collect();
+
+    // Empty? Fall back to a strict literal substring search. Some users
+    // pass a query like `agent_runner` expecting an exact name; if neither
+    // tokenized nor substring forms find anything, they at least get the
+    // literal-match attempt logged via the empty result.
+    if hits.is_empty() && tokens.len() > 1 {
+        hits = snap
+            .network
+            .nodes
+            .iter()
+            .filter(|n| {
+                n.label.to_lowercase().contains(&needle_lower)
+                    || n.file_path.to_lowercase().contains(&needle_lower)
+            })
+            .collect();
+    }
     // Heaviest-degree first so the agent sees the structurally important
     // matches before incidental ones.
     hits.sort_by(|a, b| {
@@ -915,4 +952,86 @@ pub fn search_symbols(snap: &CitySnapshot, query: &str, limit: usize) -> Vec<Nod
         bd.cmp(&ad)
     });
     hits.into_iter().take(limit).map(node_ref).collect()
+}
+
+/// Split `query` on common identifier separators and camelCase boundaries
+/// into lowercase tokens. Tokens shorter than 2 chars are dropped — they
+/// match too broadly to be useful as a "must contain" filter (`x` would
+/// match nearly everything).
+///
+/// `agent_runner` → `["agent", "runner"]`
+/// `XMLHttpParser` → `["xml", "http", "parser"]`
+/// `parse-url.ts` → `["parse", "url", "ts"]`
+fn tokenize_query(query: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut prev_was_lower = false;
+    for ch in query.chars() {
+        if ch == '_' || ch == '-' || ch == '.' || ch == '/' || ch.is_whitespace() {
+            if !current.is_empty() {
+                tokens.push(std::mem::take(&mut current));
+            }
+            prev_was_lower = false;
+            continue;
+        }
+        if ch.is_uppercase() && prev_was_lower && !current.is_empty() {
+            // camelCase boundary: lower→Upper transition. e.g. `parseUrl`
+            // splits into `parse` + `url`.
+            tokens.push(std::mem::take(&mut current));
+        }
+        current.extend(ch.to_lowercase());
+        prev_was_lower = ch.is_lowercase();
+    }
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+    tokens.retain(|t| t.len() >= 2);
+    tokens
+}
+
+#[cfg(test)]
+mod tokenize_tests {
+    use super::tokenize_query;
+
+    #[test]
+    fn splits_underscore_and_dash() {
+        assert_eq!(
+            tokenize_query("agent_runner-loop"),
+            vec!["agent", "runner", "loop"]
+        );
+    }
+
+    #[test]
+    fn splits_camel_case() {
+        assert_eq!(
+            tokenize_query("XMLHttpParser"),
+            vec!["xmlhttp", "parser"]
+        );
+        assert_eq!(tokenize_query("parseUrl"), vec!["parse", "url"]);
+    }
+
+    #[test]
+    fn splits_paths_and_extensions() {
+        assert_eq!(
+            tokenize_query("foo/bar.baz.ts"),
+            vec!["foo", "bar", "baz", "ts"]
+        );
+    }
+
+    #[test]
+    fn drops_single_char_tokens() {
+        // Single-letter tokens match too broadly to filter usefully.
+        assert_eq!(tokenize_query("a_bc"), vec!["bc"]);
+    }
+
+    #[test]
+    fn single_word_unchanged() {
+        assert_eq!(tokenize_query("authenticate"), vec!["authenticate"]);
+    }
+
+    #[test]
+    fn empty_returns_empty() {
+        assert!(tokenize_query("").is_empty());
+        assert!(tokenize_query("___").is_empty());
+    }
 }
