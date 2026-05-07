@@ -1,0 +1,26 @@
+{
+  "/Users/omkarbhad/Workspace/Code/codecity/crates/codecity-core/src/discovery.rs": {
+    "mtime": 1778117286.3000493,
+    "hash": "df0333af8846468b6e0486e284c69e8b"
+  },
+  "/Users/omkarbhad/Workspace/Code/codecity/crates/codecity-core/src/lib.rs": {
+    "mtime": 1778117291.876618,
+    "hash": "fc7550e5b423d1b97b8c50e6db4387c3"
+  },
+  "/Users/omkarbhad/Workspace/Code/codecity/crates/codecity-core/src/network.rs": {
+    "mtime": 1778121288.9795623,
+    "hash": "00d89625d6f25302d7b10818115bd69a"
+  },
+  "/Users/omkarbhad/Workspace/Code/codecity/crates/codecity-core/src/parser.rs": {
+    "mtime": 1778119945.2397137,
+    "hash": "b57af19b868b2e627bd4f687e8268eff"
+  },
+  "/Users/omkarbhad/Workspace/Code/codecity/crates/codecity-core/src/layout/color.rs": {
+    "mtime": 1778117064.7256627,
+    "hash": "8ee08a3608ba03c1e6d32241dddb2b77"
+  },
+  "/Users/omkarbhad/Workspace/Code/codecity/crates/codecity-core/src/layout/mod.rs": {
+    "mtime": 1778121260.7924726,
+    "hash": "10d98a1e43573772b99b423c1ddfe227"
+  }
+}

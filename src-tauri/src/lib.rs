@@ -3,7 +3,11 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use tauri::{Manager, State};
 
-mod analysis;
+use codecity_core::{
+    create_snapshot, parse_files, recompute_snapshot, AnalysisParser, CitySnapshot, LayoutMode,
+};
+
+pub mod analysis;
 
 pub struct AppState {
     db: analysis::Database,
@@ -66,10 +70,10 @@ struct RefreshAnalysisParams {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RecomputeSnapshotParams {
-    snapshot: analysis::CitySnapshot,
+    snapshot: CitySnapshot,
     hidden_paths: Vec<String>,
     hidden_extensions: Vec<String>,
-    layout_mode: analysis::LayoutMode,
+    layout_mode: LayoutMode,
 }
 
 #[derive(Debug, Deserialize)]
@@ -210,22 +214,22 @@ async fn dispatch_rpc(
         }
         "analysis.analyzeCode" => {
             let params: AnalyzeCodeParams = parse_params(params)?;
-            let parsed = analysis::parse_files(&params.files, None);
+            let parsed = parse_files(&params.files, None);
             to_value(analysis::AnalyzeResult {
                 success: true,
                 project_id: None,
-                snapshot: Some(analysis::create_snapshot(parsed, vec![])),
+                snapshot: Some(create_snapshot(parsed, vec![])),
                 error: None,
             })
         }
         "analysis.parseFile" => {
             let params: ParseFileParams = parse_params(params)?;
-            let mut parser = analysis::AnalysisParser::new();
+            let mut parser = AnalysisParser::new();
             to_value(parser.parse_file(&params.path, &params.content))
         }
         "analysis.recomputeSnapshot" => {
             let params: RecomputeSnapshotParams = parse_params(params)?;
-            to_value(analysis::recompute_snapshot(
+            to_value(recompute_snapshot(
                 params.snapshot,
                 params.hidden_paths,
                 params.hidden_extensions,
@@ -259,7 +263,19 @@ async fn dispatch_rpc(
         }
         "projects.getSnapshot" => {
             let params: ProjectIdParams = parse_params(params)?;
-            to_value(state.db.get_snapshot(&params.project_id).ok().flatten())
+            // Don't swallow errors — schema mismatches and serde failures here
+            // surface as silent "Snapshot not found" on the frontend, which is
+            // brutal to debug. Log + propagate so the failure is visible.
+            match state.db.get_snapshot(&params.project_id) {
+                Ok(snap) => to_value(snap),
+                Err(e) => {
+                    log::error!(
+                        "get_snapshot failed for project {}: {}",
+                        params.project_id, e
+                    );
+                    Err(internal_error(format!("snapshot load failed: {}", e)))
+                }
+            }
         }
         "projects.getParsedFiles" => {
             let params: ProjectIdParams = parse_params(params)?;

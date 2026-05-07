@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use super::layout::CitySnapshot;
-use super::parser::ParsedFile;
+use codecity_core::layout::CitySnapshot;
+use codecity_core::parser::ParsedFile;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectRecord {

@@ -48,3 +48,4 @@ src-tauri/target/
 *.local.db
 *.sqlite
 *.sqlite3
+

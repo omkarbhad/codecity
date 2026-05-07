@@ -1,0 +1,18 @@
+[package]
+name = "codecity-cli"
+description = "Command-line interface for the codecity-core analysis engine."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "codecity"
+path = "src/main.rs"
+
+[dependencies]
+codecity-core = { path = "../codecity-core" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+env_logger.workspace = true
