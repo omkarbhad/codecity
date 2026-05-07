@@ -298,15 +298,29 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
     }
 
     // ── 3. Adjacency for analysis ────────────────────────────────────────
+    //
+    // `undirected` is the input to Louvain and must be **deterministic** —
+    // `HashSet<usize>` iteration order is randomized per process, which
+    // caused community counts to drift run-to-run on the same input
+    // (Codex: "1552, 1548, 1535, and 413 for scoped src/ runs"). Build
+    // sorted-deduped Vecs so neighbor enumeration is reproducible.
     let mut out_adj: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut in_adj: Vec<Vec<usize>> = vec![Vec::new(); n];
-    let mut undirected: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+    let mut undirected_sets: Vec<HashSet<usize>> = vec![HashSet::new(); n];
     for &(s, t, _) in &edges {
         out_adj[s].push(t);
         in_adj[t].push(s);
-        undirected[s].insert(t);
-        undirected[t].insert(s);
+        undirected_sets[s].insert(t);
+        undirected_sets[t].insert(s);
     }
+    let undirected: Vec<Vec<usize>> = undirected_sets
+        .into_iter()
+        .map(|set| {
+            let mut v: Vec<usize> = set.into_iter().collect();
+            v.sort_unstable();
+            v
+        })
+        .collect();
 
     // ── 4. Per-node degrees ──────────────────────────────────────────────
     let in_degrees: Vec<u32> = (0..n).map(|i| in_adj[i].len() as u32).collect();
@@ -574,7 +588,7 @@ fn bfs_reach_files(adj: &[Vec<usize>], nodes_build: &[NodeBuild], start: usize) 
 // the same kinds of communities graphify gets. Each edge is unit-weight so
 // modularity reduces to 1/(2m) * Σ [A_ij - (k_i*k_j)/(2m)] * δ(c_i,c_j).
 // ────────────────────────────────────────────────────────────────────────────
-fn louvain(undirected: &[HashSet<usize>]) -> Vec<u32> {
+fn louvain(undirected: &[Vec<usize>]) -> Vec<u32> {
     let n = undirected.len();
     let mut community: Vec<u32> = (0..n as u32).collect();
     if n == 0 {
@@ -601,8 +615,13 @@ fn louvain(undirected: &[HashSet<usize>]) -> Vec<u32> {
                 continue;
             }
 
-            // Tally weight from i to each neighboring community (own community excluded)
-            let mut weight_to: HashMap<u32, f64> = HashMap::new();
+            // Tally weight from i to each neighboring community (own community excluded).
+            // BTreeMap (vs HashMap) so the candidate-community iteration order is
+            // deterministic — equal-gain ties resolve to the lowest community id
+            // every run, which is what makes the final community labeling
+            // reproducible.
+            let mut weight_to: std::collections::BTreeMap<u32, f64> =
+                std::collections::BTreeMap::new();
             let mut weight_to_self = 0.0;
             let own = community[i];
             for &j in &undirected[i] {
