@@ -7,6 +7,9 @@
 #
 # `codecity-cli`  — thin CLI wrapper (`codecity analyze ...`).
 #
+# `codecity-mcp`  — MCP server exposing snapshot queries to LLM agents.
+#   Same data shape graphify uses; talks rmcp over stdio.
+#
 # `src-tauri`     — desktop app. Owns DB/HTTP/RPC, depends on codecity-core.
 
 [workspace]
@@ -14,6 +17,7 @@ resolver = "2"
 members = [
     "crates/codecity-core",
     "crates/codecity-cli",
+    "crates/codecity-mcp",
     "src-tauri",
 ]
 default-members = ["src-tauri"]
@@ -82,3 +86,9 @@ tree-sitter-proto = "0.4"
 # CLI
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"
+
+# MCP — official Rust SDK from modelcontextprotocol/rust-sdk
+rmcp = { version = "1.6", features = ["default", "transport-io"] }
+schemars = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
+anyhow = "1"

@@ -23,11 +23,6 @@ struct NodeBuild {
     file_idx: usize,
 }
 
-impl NodeBuild {
-    fn is_file(&self) -> bool {
-        matches!(self.kind, NetworkNodeKind::File)
-    }
-}
 
 /// Build the symbol-rich network graph (graphify-style) and run Louvain +
 /// FCoSE on it. Mutates `files` to stamp file-level degree/community/position
@@ -256,6 +251,27 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
             // We also drop intra-file edges entirely; the file node already
             // visually contains its symbols, so caller→callee within one file
             // adds no architectural information.
+            //
+            // KNOWN BUG (openclaw audit, 2026-05-07): the "unique cross-file
+            // match" path still produces false positives across language
+            // boundaries on polyglot monorepos. Concrete example:
+            //   - openclaw has `private fun JsonObject.string(key)` in a
+            //     Kotlin file (extension method on JsonObject).
+            //   - The parser stores it as a bare name `string` with no
+            //     receiver type — indistinguishable from a global `string`.
+            //   - That single Kotlin definition becomes the unique cross-file
+            //     match for any TypeScript call site invoking `.string(key)`
+            //     on an unrelated object → hundreds of bogus TS→Kotlin edges.
+            // Two fixes worth landing together:
+            //   (a) Skip cross-language edges by default. Real polyglot
+            //       calls (FFI, RPC, JSI, JNI) are rare and would be better
+            //       modeled as explicit edges via interop config.
+            //   (b) Mark extension methods at parse time (Kotlin `fun X.foo`,
+            //       Swift `extension X { func foo }`, Rust `impl X { fn foo }`,
+            //       Python methods) and exclude them from the bare-name
+            //       index — they're never callable as `foo()` from elsewhere
+            //       without resolving the receiver type first.
+            // Tracking in docs/TODO.md (#cross-lang-call-fp).
             let cross_file_targets: Vec<usize> = targets
                 .iter()
                 .copied()
@@ -514,26 +530,37 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
     }
 }
 
-/// BFS from `start` through `adj` (directed), counting only how many distinct
-/// FILE nodes are reachable. Used for entry-point reach which should reflect
-/// "files this entry pulls in", not "every symbol".
+/// BFS from `start` through `adj` (directed), counting how many distinct
+/// **owning files** are transitively reachable. Used for entry-point reach
+/// which should reflect "files this entry pulls in" regardless of whether the
+/// path goes file→file (via Imports) or file→symbol→symbol→…→symbol-in-file
+/// (via Contains + Calls).
+///
+/// Previous implementation counted only nodes whose `kind == File`, but the
+/// pruned call graph rarely produces direct file→file edges in non-import-
+/// heavy languages (Rust, Go, Zig) — the BFS would walk file→its-symbols and
+/// stop, returning `reachable: 0` for every entry point. We now map each
+/// visited node back to its `file_idx` and count distinct files; the start
+/// file is excluded so a self-only entry point counts 0.
 fn bfs_reach_files(adj: &[Vec<usize>], nodes_build: &[NodeBuild], start: usize) -> u32 {
-    let mut visited = HashSet::new();
-    visited.insert(start);
+    let start_file = nodes_build[start].file_idx;
+    let mut visited_nodes = HashSet::new();
+    visited_nodes.insert(start);
+    let mut visited_files = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back(start);
-    let mut file_count = 0u32;
     while let Some(cur) = queue.pop_front() {
-        if cur != start && nodes_build[cur].is_file() {
-            file_count += 1;
+        let cur_file = nodes_build[cur].file_idx;
+        if cur_file != start_file {
+            visited_files.insert(cur_file);
         }
         for &next in &adj[cur] {
-            if visited.insert(next) {
+            if visited_nodes.insert(next) {
                 queue.push_back(next);
             }
         }
     }
-    file_count
+    visited_files.len() as u32
 }
 
 // ────────────────────────────────────────────────────────────────────────────
