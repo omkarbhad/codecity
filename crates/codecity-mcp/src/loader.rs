@@ -68,16 +68,16 @@ pub fn load_from_file(path: &Path) -> Result<CitySnapshot> {
 /// uncommitted changes), we look in the user's cache dir for a snapshot
 /// keyed on `(absolute_repo_path, HEAD_sha)`. Hit → load instantly. Miss
 /// → analyze and write back. Set `CODECITY_MCP_NO_CACHE=1` to disable.
-pub fn load_from_repo(repo_dir: &Path) -> Result<CitySnapshot> {
+pub fn load_from_repo(repo_dir: &Path, respect_gitignore: bool) -> Result<CitySnapshot> {
     if std::env::var("CODECITY_MCP_NO_CACHE").is_err() {
-        if let Some(cached) = try_load_cached(repo_dir) {
+        if let Some(cached) = try_load_cached(repo_dir, respect_gitignore) {
             log::info!("snapshot cache hit for {}", repo_dir.display());
             return Ok(cached);
         }
     }
-    let snap = analyze_repo_inner(repo_dir)?;
+    let snap = analyze_repo_inner(repo_dir, respect_gitignore)?;
     if std::env::var("CODECITY_MCP_NO_CACHE").is_err() {
-        if let Err(e) = try_save_cached(repo_dir, &snap) {
+        if let Err(e) = try_save_cached(repo_dir, &snap, respect_gitignore) {
             // Cache write failures are non-fatal — log and continue.
             log::warn!("snapshot cache write failed: {e}");
         }
@@ -85,8 +85,8 @@ pub fn load_from_repo(repo_dir: &Path) -> Result<CitySnapshot> {
     Ok(snap)
 }
 
-fn analyze_repo_inner(repo_dir: &Path) -> Result<CitySnapshot> {
-    let files = collect_files(repo_dir)?;
+fn analyze_repo_inner(repo_dir: &Path, respect_gitignore: bool) -> Result<CitySnapshot> {
+    let files = collect_files(repo_dir, respect_gitignore)?;
     if files.is_empty() {
         anyhow::bail!(
             "no analyzable source files found under {}",
@@ -122,62 +122,17 @@ fn analyze_repo_inner(repo_dir: &Path) -> Result<CitySnapshot> {
     Ok(create_snapshot(parsed, vec![]))
 }
 
-/// Walk `repo_dir` collecting `(relative_path, content)` pairs for every
-/// supported source file. Hidden directories (dot-prefixed) are skipped at
-/// the directory level alongside the shared discovery skip list, matching
-/// the CLI's behavior.
-fn collect_files(repo_dir: &Path) -> Result<Vec<(String, String)>> {
-    use codecity_core::discovery::{is_probably_binary, should_skip_dir, should_skip_file};
-
-    let mut out = Vec::new();
-    let mut stack = vec![repo_dir.to_path_buf()];
-    while let Some(dir) = stack.pop() {
-        let entries = match fs::read_dir(&dir) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = entry.file_name();
-            let name = name.to_string_lossy();
-
-            if path.is_dir() {
-                if name.starts_with('.') {
-                    continue;
-                }
-                if should_skip_dir(name.as_ref()) {
-                    continue;
-                }
-                stack.push(path);
-                continue;
-            }
-
-            if !path.is_file() || should_skip_file(&path) {
-                continue;
-            }
-
-            // Read + UTF-8 check + binary heuristic. The discovery filter
-            // already excludes most binary extensions; this catches files
-            // with text extensions that happen to contain NUL bytes.
-            let bytes = match fs::read(&path) {
-                Ok(b) => b,
-                Err(_) => continue,
-            };
-            if is_probably_binary(&bytes) {
-                continue;
-            }
-            let content = match String::from_utf8(bytes) {
-                Ok(s) if !s.is_empty() => s,
-                _ => continue,
-            };
-            let rel = path
-                .strip_prefix(repo_dir)
-                .map(|p| p.to_string_lossy().replace('\\', "/").to_string())
-                .unwrap_or_else(|_| path.to_string_lossy().to_string());
-            out.push((rel, content));
-        }
-    }
-    Ok(out)
+/// Collect `(relative_path, content)` pairs via the shared corpus walker.
+/// `respect_gitignore` mirrors `--no-gitskip` on the CLI; default true.
+fn collect_files(repo_dir: &Path, respect_gitignore: bool) -> Result<Vec<(String, String)>> {
+    let opts = codecity_core::discovery::WalkOptions {
+        respect_gitignore,
+        ..Default::default()
+    };
+    Ok(codecity_core::discovery::walk_corpus(repo_dir, opts)
+        .into_iter()
+        .map(|f| (f.rel_path, f.content))
+        .collect())
 }
 
 // ── Snapshot cache ─────────────────────────────────────────────────────────
@@ -201,7 +156,7 @@ fn cache_dir() -> Option<PathBuf> {
 /// Compute the cache key for a repo: lowercase the absolute path then hash
 /// it together with the HEAD sha. Returns None if the repo isn't a git
 /// repo or the working tree is dirty (don't cache stale views).
-fn cache_key(repo_dir: &Path) -> Option<String> {
+fn cache_key(repo_dir: &Path, respect_gitignore: bool) -> Option<String> {
     use std::process::Command;
 
     let abs = std::fs::canonicalize(repo_dir).ok()?;
@@ -236,16 +191,24 @@ fn cache_key(repo_dir: &Path) -> Option<String> {
     }
 
     // Hash the absolute path so two checkouts of the same repo on the same
-    // machine don't collide.
+    // machine don't collide. Include `respect_gitignore` in the suffix so
+    // toggling `--no-gitskip` produces a different cache slot — same
+    // commit + different filter scope = different snapshot.
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();
     abs.to_string_lossy().to_lowercase().hash(&mut hasher);
-    Some(format!("{:016x}-{}.json", hasher.finish(), &sha[..sha.len().min(12)]))
+    let scope = if respect_gitignore { "gi" } else { "all" };
+    Some(format!(
+        "{:016x}-{}-{}.json",
+        hasher.finish(),
+        &sha[..sha.len().min(12)],
+        scope
+    ))
 }
 
-fn try_load_cached(repo_dir: &Path) -> Option<CitySnapshot> {
-    let key = cache_key(repo_dir)?;
+fn try_load_cached(repo_dir: &Path, respect_gitignore: bool) -> Option<CitySnapshot> {
+    let key = cache_key(repo_dir, respect_gitignore)?;
     let path = cache_dir()?.join(key);
     if !path.exists() {
         return None;
@@ -254,8 +217,12 @@ fn try_load_cached(repo_dir: &Path) -> Option<CitySnapshot> {
     serde_json::from_slice(&bytes).ok()
 }
 
-fn try_save_cached(repo_dir: &Path, snap: &CitySnapshot) -> Result<()> {
-    let Some(key) = cache_key(repo_dir) else {
+fn try_save_cached(
+    repo_dir: &Path,
+    snap: &CitySnapshot,
+    respect_gitignore: bool,
+) -> Result<()> {
+    let Some(key) = cache_key(repo_dir, respect_gitignore) else {
         return Ok(()); // dirty tree or non-git repo — silently skip
     };
     let dir = cache_dir().context("no cache dir available")?;

@@ -10,6 +10,7 @@ name = "codecity_core"
 path = "src/lib.rs"
 
 [dependencies]
+ignore.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

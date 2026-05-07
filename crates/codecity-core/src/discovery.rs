@@ -214,6 +214,128 @@ pub fn is_probably_binary(bytes: &[u8]) -> bool {
     bytes.contains(&0)
 }
 
+// ── Shared corpus walker ───────────────────────────────────────────────────
+//
+// Every consumer (CLI, MCP `--repo` mode, desktop pipeline) needs the same
+// answer to "which files are part of this codebase?". They used to walk
+// independently and drift — the CLI was missing entries the desktop had,
+// `graphify-out/cache/*.json` showed up because nobody respected the
+// project's own `.gitignore`. One shared walker means one source of truth.
+//
+// The hardcoded `SKIP_DIRS` / `SKIP_FILES` lists above are the safety net:
+// they always apply, so a repo that forgot to gitignore `node_modules` or
+// `target` still gets sane defaults. Gitignore is the user's project-
+// specific layer on top.
+
+use std::fs;
+use std::path::PathBuf;
+
+/// How the corpus walker should behave.
+#[derive(Debug, Clone, Copy)]
+pub struct WalkOptions {
+    /// Honor the repo's `.gitignore` (and `.git/info/exclude`, parent
+    /// gitignores, the global `core.excludesFile`). Default true — users
+    /// almost always mean "what would `git status` see?". Pass false via
+    /// the CLI/MCP `--no-gitskip` flag when you genuinely want to analyze
+    /// generated/vendored code.
+    pub respect_gitignore: bool,
+    /// When true (default), files matching `should_skip_file` semantics
+    /// — lockfiles, source maps, minified bundles, *.generated.* — are
+    /// dropped. The CLI's old hand-rolled walker didn't do this; the
+    /// desktop pipeline did. Now everyone does.
+    pub apply_skip_files: bool,
+    /// Drop content that fails the binary-byte heuristic (`is_probably_binary`).
+    /// True by default; set false if you genuinely need to feed binary
+    /// content to a downstream consumer (almost never).
+    pub skip_binary: bool,
+}
+
+impl Default for WalkOptions {
+    fn default() -> Self {
+        Self {
+            respect_gitignore: true,
+            apply_skip_files: true,
+            skip_binary: true,
+        }
+    }
+}
+
+/// One discovered file. `rel_path` is forward-slash-normalized so snapshot
+/// keys are stable across platforms.
+#[derive(Debug, Clone)]
+pub struct WalkedFile {
+    pub abs_path: PathBuf,
+    pub rel_path: String,
+    pub content: String,
+}
+
+/// Walk `root` and return every analyzable source file, honoring the
+/// shared discovery rules and (by default) the repo's `.gitignore`.
+///
+/// Returns a deterministic order (lexicographic by `rel_path`) so
+/// snapshots and analyses are reproducible across runs — Codex flagged
+/// non-deterministic community counts that traced back to filesystem
+/// iteration order; sorting here removes one source of variance.
+pub fn walk_corpus(root: &Path, opts: WalkOptions) -> Vec<WalkedFile> {
+    let mut out = Vec::new();
+    let mut builder = ignore::WalkBuilder::new(root);
+    builder
+        .standard_filters(opts.respect_gitignore)
+        .git_global(opts.respect_gitignore)
+        .git_ignore(opts.respect_gitignore)
+        .git_exclude(opts.respect_gitignore)
+        // `hidden(true)` (default) skips dotfiles. Our hardcoded SKIP_DIRS
+        // already covers `.git`, `.next`, etc., so we only need this when
+        // gitignore is off — it preserves the CLI's prior dotfile-skip
+        // semantics. Turn it off when respecting gitignore so the user can
+        // *explicitly* whitelist a `.config` directory if they want.
+        .hidden(!opts.respect_gitignore)
+        // Apply our hardcoded SKIP_DIRS as a `.gitignore`-style filter so
+        // they're respected even when `--no-gitskip` is set.
+        .filter_entry(|entry| {
+            let name = entry.file_name().to_string_lossy();
+            !should_skip_dir(name.as_ref())
+        });
+
+    for result in builder.build() {
+        let entry = match result {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        if opts.apply_skip_files && should_skip_file(path) {
+            continue;
+        }
+        let bytes = match fs::read(path) {
+            Ok(b) => b,
+            Err(_) => continue,
+        };
+        if opts.skip_binary && is_probably_binary(&bytes) {
+            continue;
+        }
+        let content = match String::from_utf8(bytes) {
+            Ok(s) if !s.is_empty() => s,
+            _ => continue,
+        };
+        let rel = path
+            .strip_prefix(root)
+            .map(|p| p.to_string_lossy().replace('\\', "/").to_string())
+            .unwrap_or_else(|_| path.to_string_lossy().to_string());
+        out.push(WalkedFile {
+            abs_path: path.to_path_buf(),
+            rel_path: rel,
+            content,
+        });
+    }
+
+    // Deterministic order — see doc comment above.
+    out.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,6 +348,7 @@ mod tests {
         assert!(should_skip_dir("zig-cache"));
         assert!(!should_skip_dir("src"));
     }
+
 
     #[test]
     fn skip_file_lockfiles() {

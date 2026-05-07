@@ -32,6 +32,7 @@ license = "MIT"
 [workspace.dependencies]
 # Pure analysis deps
 serde = { version = "1", features = ["derive"] }
+ignore = "0.4"  # ripgrep's gitignore-aware filesystem walker
 serde_json = "1"
 thiserror = "2"
 log = "0.4"

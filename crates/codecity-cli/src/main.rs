@@ -50,6 +50,11 @@ enum Command {
         /// Pass 0 to disable.
         #[arg(long, default_value_t = 60)]
         timeout: u64,
+        /// Disable `.gitignore` honoring. Default: gitignore is respected so
+        /// codecity sees the same files `git status` would. Pass this when
+        /// you genuinely want to analyze generated/vendored code.
+        #[arg(long)]
+        no_gitskip: bool,
     },
 
     /// Show only the network analysis section of a fresh analysis.
@@ -67,6 +72,9 @@ enum Command {
         /// Abort if analysis takes longer than this many seconds. Default 60s.
         #[arg(long, default_value_t = 60)]
         timeout: u64,
+        /// Disable `.gitignore` honoring (see `analyze` for details).
+        #[arg(long)]
+        no_gitskip: bool,
     },
 
     /// Inspect a saved snapshot JSON without re-running analysis.
@@ -93,14 +101,23 @@ fn main() {
             output,
             pretty,
             timeout,
-        } => cmd_analyze(&path, json || output.is_some(), output, pretty, timeout),
+            no_gitskip,
+        } => cmd_analyze(
+            &path,
+            json || output.is_some(),
+            output,
+            pretty,
+            timeout,
+            !no_gitskip,
+        ),
         Command::Network {
             path,
             communities,
             entries,
             hubs,
             timeout,
-        } => cmd_network(&path, communities, entries, hubs, timeout),
+            no_gitskip,
+        } => cmd_network(&path, communities, entries, hubs, timeout, !no_gitskip),
         Command::Inspect { snapshot, node } => cmd_inspect(&snapshot, node.as_deref()),
     };
     if let Err(err) = result {
@@ -118,8 +135,9 @@ fn cmd_analyze(
     output: Option<PathBuf>,
     pretty: bool,
     timeout_secs: u64,
+    respect_gitignore: bool,
 ) -> Result<(), String> {
-    let snapshot = analyze_with_timeout(path, timeout_secs)?;
+    let snapshot = analyze_with_timeout(path, timeout_secs, respect_gitignore)?;
 
     if json || output.is_some() {
         let serialized = if pretty || output.is_some() {
@@ -149,8 +167,9 @@ fn cmd_network(
     entries: bool,
     hubs: bool,
     timeout_secs: u64,
+    respect_gitignore: bool,
 ) -> Result<(), String> {
-    let snapshot = analyze_with_timeout(path, timeout_secs)?;
+    let snapshot = analyze_with_timeout(path, timeout_secs, respect_gitignore)?;
     let n = &snapshot.network;
 
     let want_default = !(communities || entries || hubs);
@@ -221,15 +240,19 @@ fn cmd_inspect(snapshot_path: &Path, node: Option<&str>) -> Result<(), String> {
 /// `secs == 0` disables the timeout. On timeout we leak the worker thread
 /// (it's about to be killed when main exits anyway) and return an error
 /// with how long the user waited and what stage we got stuck in.
-fn analyze_with_timeout(dir: &Path, secs: u64) -> Result<CitySnapshot, String> {
+fn analyze_with_timeout(
+    dir: &Path,
+    secs: u64,
+    respect_gitignore: bool,
+) -> Result<CitySnapshot, String> {
     if secs == 0 {
-        return analyze_dir(dir);
+        return analyze_dir(dir, respect_gitignore);
     }
     let dir = dir.to_path_buf();
     let (tx, rx) = mpsc::channel();
     let started = Instant::now();
     thread::spawn(move || {
-        let _ = tx.send(analyze_dir(&dir));
+        let _ = tx.send(analyze_dir(&dir, respect_gitignore));
     });
     match rx.recv_timeout(Duration::from_secs(secs)) {
         Ok(result) => result,
@@ -244,12 +267,12 @@ fn analyze_with_timeout(dir: &Path, secs: u64) -> Result<CitySnapshot, String> {
     }
 }
 
-fn analyze_dir(dir: &Path) -> Result<CitySnapshot, String> {
+fn analyze_dir(dir: &Path, respect_gitignore: bool) -> Result<CitySnapshot, String> {
     if !dir.is_dir() {
         return Err(format!("not a directory: {}", dir.display()));
     }
     eprintln!("scanning {}", dir.display());
-    let files = read_local_files(dir);
+    let files = read_local_files(dir, respect_gitignore);
     eprintln!("discovered {} files", files.len());
 
     if files.is_empty() {
@@ -318,49 +341,17 @@ fn print_summary(s: &CitySnapshot) {
     println!("Hubs:        {}", s.network.hubs.len());
 }
 
-/// Recursively collect text files under `base_dir`, returning `(rel_path, content)` pairs.
-/// Skips obvious noise dirs and binary files.
-fn read_local_files(base_dir: &Path) -> Vec<(String, String)> {
-    let mut paths = Vec::new();
-    collect_recursive(base_dir, &mut paths);
-    let mut out = Vec::with_capacity(paths.len());
-    for path in paths {
-        let rel = path
-            .strip_prefix(base_dir)
-            .map(|p| p.to_string_lossy().replace('\\', "/").to_string())
-            .unwrap_or_else(|_| path.to_string_lossy().to_string());
-        if let Ok(bytes) = fs::read(&path) {
-            if let Ok(content) = String::from_utf8(bytes) {
-                if !content.is_empty() {
-                    out.push((rel, content));
-                }
-            }
-        }
-    }
-    out
-}
-
-fn collect_recursive(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
+/// Collect text files under `base_dir`, returning `(rel_path, content)` pairs.
+/// Delegates to the shared `discovery::walk_corpus` so CLI, MCP, and the
+/// desktop pipeline all see the same files. `respect_gitignore` mirrors
+/// the `--no-gitskip` flag.
+fn read_local_files(base_dir: &Path, respect_gitignore: bool) -> Vec<(String, String)> {
+    let opts = codecity_core::discovery::WalkOptions {
+        respect_gitignore,
+        ..Default::default()
     };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        // CLI is conservative about dotfiles to avoid pulling in editor caches
-        // and CI configs that bloat the corpus without adding signal. The
-        // shared skip list catches the rest.
-        if name.starts_with('.') {
-            continue;
-        }
-        if codecity_core::discovery::should_skip_dir(name.as_ref()) {
-            continue;
-        }
-        if path.is_dir() {
-            collect_recursive(&path, out);
-        } else if path.is_file() {
-            out.push(path);
-        }
-    }
+    codecity_core::discovery::walk_corpus(base_dir, opts)
+        .into_iter()
+        .map(|f| (f.rel_path, f.content))
+        .collect()
 }
