@@ -3,6 +3,7 @@
 // FCoSE layout. Everything is pre-computed in Rust so the frontend just
 // renders the result.
 
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::layout::{
@@ -31,6 +32,25 @@ struct NodeBuild {
 pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
     if files.is_empty() {
         return NetworkAnalysis::default();
+    }
+
+    // Per-phase timing, opt-in via CODECITY_TIMING=1. Off by default so
+    // we don't spam stderr in production; on for benchmarking + profiling
+    // before deciding what to parallelize. Cheap when off (one env lookup
+    // per `phase!()` call).
+    let timing = std::env::var("CODECITY_TIMING").is_ok();
+    let mut phase_start = std::time::Instant::now();
+    macro_rules! phase {
+        ($label:expr) => {
+            if timing {
+                eprintln!(
+                    "  [network] {:<24} {:>7.1}ms",
+                    $label,
+                    phase_start.elapsed().as_secs_f64() * 1000.0
+                );
+                phase_start = std::time::Instant::now();
+            }
+        };
     }
 
     // ── 1. Build node universe ───────────────────────────────────────────
@@ -152,6 +172,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
 
     let n = nodes_build.len();
 
+    phase!("1.nodes");
     // ── 2. Build edges ───────────────────────────────────────────────────
     // file → imported file (kind: imports)
     // file → owned symbol     (kind: contains)
@@ -200,6 +221,30 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         }
     }
 
+    // Pre-build per-file caller indices ONCE rather than rebuilding per
+    // file. The old code was O(F · N) where F = file count, N = node count
+    // — on openclaw (42k files, 115k nodes) that's ~5B comparisons and
+    // dominated the network pipeline (~1s of phase 2). Single pass over
+    // `nodes_build` now gives us the same lookup table in O(N).
+    let mut local_callers_per_file: Vec<HashMap<String, usize>> =
+        vec![HashMap::new(); files.len()];
+    for (idx, node) in nodes_build.iter().enumerate() {
+        if matches!(node.kind, NetworkNodeKind::File) {
+            continue;
+        }
+        let key = node
+            .label
+            .trim_end_matches("()")
+            .trim_start_matches('.')
+            .to_lowercase();
+        if key.is_empty() {
+            continue;
+        }
+        local_callers_per_file[node.file_idx]
+            .entry(key)
+            .or_insert(idx);
+    }
+
     // Per-file: locate the caller node (by file + function name) and emit
     // edges to every label_index hit for the callee.
     let mut emitted_call_pairs: HashSet<(usize, usize)> = HashSet::new();
@@ -207,23 +252,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         if file.calls.is_empty() {
             continue;
         }
-        // Build a per-file caller-name → node-idx lookup once.
-        let mut local_callers: HashMap<String, usize> = HashMap::new();
-        for (idx, node) in nodes_build.iter().enumerate() {
-            if node.file_idx != file_idx {
-                continue;
-            }
-            if matches!(node.kind, NetworkNodeKind::File) {
-                continue;
-            }
-            // Same key normalisation as the global label index.
-            let key = node
-                .label
-                .trim_end_matches("()")
-                .trim_start_matches('.')
-                .to_lowercase();
-            local_callers.entry(key).or_insert(idx);
-        }
+        let local_callers = &local_callers_per_file[file_idx];
         // Module-level calls (caller name empty) attach to the file node itself.
         let file_node = file_node_idx[file_idx];
 
@@ -297,6 +326,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         }
     }
 
+    phase!("2.edges");
     // ── 3. Adjacency for analysis ────────────────────────────────────────
     //
     // `undirected` is the input to Louvain and must be **deterministic** —
@@ -322,6 +352,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         })
         .collect();
 
+    phase!("3.adjacency");
     // ── 4. Per-node degrees ──────────────────────────────────────────────
     let in_degrees: Vec<u32> = (0..n).map(|i| in_adj[i].len() as u32).collect();
     let out_degrees: Vec<u32> = (0..n).map(|i| out_adj[i].len() as u32).collect();
@@ -362,6 +393,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         file.out_degree = file_out[i];
     }
 
+    phase!("4.degrees");
     // ── 5. Louvain on the full graph ─────────────────────────────────────
     let communities = louvain(&undirected);
 
@@ -376,6 +408,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         };
     }
 
+    phase!("5.louvain");
     // ── 6. No baked positions ────────────────────────────────────────────
     // Layout happens in the browser via vis-network's ForceAtlas2 — same
     // approach graphify uses. The earlier deterministic community-grid
@@ -399,9 +432,13 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         }
     }
 
+    phase!("6/7.nodes");
     // ── 7. Build the public NetworkNode list ─────────────────────────────
+    // Pure per-node map — rayon `par_iter().enumerate()` preserves input
+    // order on collect, so the resulting Vec is identical to the
+    // sequential version. Small phase (4-10ms typical) but free.
     let network_nodes: Vec<NetworkNode> = nodes_build
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(idx, nb)| {
             let file_path = files[nb.file_idx].path.clone();
@@ -426,6 +463,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         })
         .collect();
 
+    phase!("7.public_nodes");
     // ── 8. Public edges ──────────────────────────────────────────────────
     let network_edges: Vec<NetworkEdge> = edges
         .iter()
@@ -436,6 +474,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         })
         .collect();
 
+    phase!("8.public_edges");
     // ── 9. Communities ───────────────────────────────────────────────────
     let mut community_members: HashMap<i32, Vec<usize>> = HashMap::new();
     for (idx, _) in nodes_build.iter().enumerate() {
@@ -474,12 +513,22 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         });
     }
 
+    phase!("9.communities");
     // ── 10. Entry points (file-only): in-degree 0 file nodes that import ≥2 files ──
     // Use file-level import counts so we don't surface "files that aren't imported
     // but contain symbols" — those are always in-degree 0 in the symbol model.
-    let mut entry_with_reach: Vec<(usize, u32)> = (0..files.len())
+    // Each candidate entry point gets its own BFS over the (read-only)
+    // adjacency list — embarrassingly parallel. Used to be the network
+    // pipeline's hottest phase by ~2× on hermes-agent (251ms / 530ms total)
+    // because we ran hundreds of BFS calls sequentially. Rayon gives a clean
+    // win: BFS state is per-task, results are independent integers, and the
+    // post-sort imposes determinism regardless of which thread finishes first.
+    let candidates: Vec<usize> = (0..files.len())
         .filter(|&i| files[i].in_degree == 0 && files[i].out_degree >= 2)
-        .map(|i| {
+        .collect();
+    let mut entry_with_reach: Vec<(usize, u32)> = candidates
+        .par_iter()
+        .map(|&i| {
             let node_idx = file_node_idx[i];
             // Reach: BFS through file→file out edges only (skip contains edges to keep
             // semantics close to "what does this entry pull in by import").
@@ -490,6 +539,10 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
     entry_with_reach.sort_by(|a, b| {
         b.1.cmp(&a.1)
             .then(files[b.0].out_degree.cmp(&files[a.0].out_degree))
+            // Final tiebreak by file index — without it, two candidates
+            // with identical (reach, out_degree) could swap in the parallel
+            // collect order. Cheap, only kicks in on ties.
+            .then(a.0.cmp(&b.0))
     });
     let entry_points: Vec<EntryPoint> = entry_with_reach
         .into_iter()
@@ -501,6 +554,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
         })
         .collect();
 
+    phase!("10.entry_points");
     // ── 11. Hubs (file-only): top files by file→file in-degree ───────────
     let mut hub_candidates: Vec<usize> =
         (0..files.len()).filter(|&i| files[i].in_degree >= 3).collect();
@@ -533,6 +587,7 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
     }
     // Stable order for diffable snapshots.
     file_edges.sort_by(|a, b| a.source.cmp(&b.source).then(a.target.cmp(&b.target)));
+    phase!("11.hubs+file_edges");
 
     NetworkAnalysis {
         communities: community_summaries,
