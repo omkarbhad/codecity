@@ -231,7 +231,7 @@ use std::fs;
 use std::path::PathBuf;
 
 /// How the corpus walker should behave.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct WalkOptions {
     /// Honor the repo's `.gitignore` (and `.git/info/exclude`, parent
     /// gitignores, the global `core.excludesFile`). Default true — users
@@ -248,6 +248,12 @@ pub struct WalkOptions {
     /// True by default; set false if you genuinely need to feed binary
     /// content to a downstream consumer (almost never).
     pub skip_binary: bool,
+    /// Caller-supplied gitignore-style globs to drop after the walker
+    /// produced its candidate list. Patterns are matched against the
+    /// `rel_path` (forward-slash, relative to the scan root). Useful for
+    /// excluding vendored trees like `packages/` or `vendor/` without
+    /// editing `.gitignore`. Empty by default; one match drops the file.
+    pub exclude_globs: Vec<String>,
 }
 
 impl Default for WalkOptions {
@@ -256,6 +262,7 @@ impl Default for WalkOptions {
             respect_gitignore: true,
             apply_skip_files: true,
             skip_binary: true,
+            exclude_globs: Vec::new(),
         }
     }
 }
@@ -278,6 +285,25 @@ pub struct WalkedFile {
 /// iteration order; sorting here removes one source of variance.
 pub fn walk_corpus(root: &Path, opts: WalkOptions) -> Vec<WalkedFile> {
     let mut out = Vec::new();
+    // Compile user-supplied excludes once. A bad pattern is dropped from the
+    // set with a `log::warn!` rather than aborting the walk — the user
+    // probably meant it but a typo shouldn't kill the whole analysis.
+    let exclude_set: Option<globset::GlobSet> = if opts.exclude_globs.is_empty() {
+        None
+    } else {
+        let mut builder = globset::GlobSetBuilder::new();
+        for pat in &opts.exclude_globs {
+            match globset::Glob::new(pat) {
+                Ok(g) => {
+                    builder.add(g);
+                }
+                Err(e) => {
+                    log::warn!("ignoring malformed --exclude pattern {:?}: {}", pat, e);
+                }
+            }
+        }
+        builder.build().ok()
+    };
     let mut builder = ignore::WalkBuilder::new(root);
     builder
         .standard_filters(opts.respect_gitignore)
@@ -324,6 +350,14 @@ pub fn walk_corpus(root: &Path, opts: WalkOptions) -> Vec<WalkedFile> {
             .strip_prefix(root)
             .map(|p| p.to_string_lossy().replace('\\', "/").to_string())
             .unwrap_or_else(|_| path.to_string_lossy().to_string());
+        // Caller-supplied excludes apply against the forward-slash-normalized
+        // relative path so patterns like `packages/**` work consistently
+        // across platforms.
+        if let Some(set) = &exclude_set {
+            if set.is_match(&rel) {
+                continue;
+            }
+        }
         out.push(WalkedFile {
             abs_path: path.to_path_buf(),
             rel_path: rel,
