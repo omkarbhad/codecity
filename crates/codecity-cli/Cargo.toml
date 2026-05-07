@@ -6,7 +6,12 @@ edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "codecity"
+# Distinct binary name: the desktop app's binary is also `codecity` (and
+# wins on `cargo run` without `-p`), which led to people running the wrong
+# binary during development. The CLI's own crate is already `codecity-cli`,
+# so the tool is too. Codex flagged the collision after `target/debug/codecity --help`
+# was ambiguous.
+name = "codecity-cli"
 path = "src/main.rs"
 
 [dependencies]

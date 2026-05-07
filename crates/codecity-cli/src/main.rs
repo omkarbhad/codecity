@@ -25,7 +25,7 @@ use codecity_core::{
 };
 
 #[derive(Parser)]
-#[command(name = "codecity", version, about = "Analyze a codebase as a 3D city / dependency network.")]
+#[command(name = "codecity-cli", version, about = "Analyze a codebase as a 3D city / dependency network.")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
