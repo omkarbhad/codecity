@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { X, AlertTriangle, AlertCircle, Info, ShieldCheck, Loader2 } from "lucide-react"
+import { useState } from "react"
+import { X, AlertTriangle, AlertCircle, Info, ShieldCheck, Loader2, Copy, Check, ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@codecity/ui/lib/utils"
 import type { SecurityScanResult, SecurityFinding, Severity } from "@/lib/tauri"
 
@@ -37,26 +37,65 @@ function FindingRow({ finding }: { finding: SecurityFinding }) {
   const cfg = SEVERITY_CONFIG[finding.severity]
   const Icon = cfg.icon
   const fileName = finding.file_path.split("/").pop() ?? finding.file_path
+  const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation()
+    const text = `${finding.severity}: ${finding.message}\n${finding.file_path}:${finding.start_line}\nRule: ${finding.rule_id}${finding.snippet ? `\n\n${finding.snippet.trim()}` : ""}`
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const Chevron = expanded ? ChevronDown : ChevronRight
 
   return (
-    <div className="group rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 transition-colors hover:bg-white/[0.04]">
+    <div
+      className="group cursor-pointer rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 transition-colors hover:bg-white/[0.04]"
+      onClick={() => setExpanded((v) => !v)}
+    >
       <div className="flex items-start gap-2">
         <Icon className={cn("mt-0.5 size-3.5 shrink-0", cfg.className)} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] text-white/80">{finding.message}</p>
+          <div className="flex items-start justify-between gap-1">
+            <p className={cn("text-[11px] text-white/80", expanded ? "whitespace-normal break-words" : "truncate")}>
+              {finding.message}
+            </p>
+            <div className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                onClick={handleCopy}
+                aria-label="Copy finding"
+                title="Copy"
+                className="rounded p-0.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+              >
+                {copied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+              </button>
+              <Chevron className="size-3 text-white/30" />
+            </div>
+          </div>
           <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-            <span className="truncate text-[10px] text-white/45" title={finding.file_path}>
-              {fileName}:{finding.start_line}
+            <span
+              className={cn("text-[10px] text-white/45", expanded ? "break-all" : "truncate")}
+              title={finding.file_path}
+            >
+              {expanded ? finding.file_path : fileName}:{finding.start_line}
+              {expanded && finding.end_line !== finding.start_line && `–${finding.end_line}`}
             </span>
             <span className={cn("rounded border px-1 py-px text-[9px] font-medium", cfg.badgeClass)}>
-              {finding.rule_id.split(".").slice(-2).join(".")}
+              {expanded ? finding.rule_id : finding.rule_id.split(".").slice(-2).join(".")}
             </span>
           </div>
-          {finding.snippet && (
-            <pre className="mt-1.5 max-h-16 overflow-hidden rounded bg-white/[0.03] p-1.5 text-[9px] text-white/55 leading-relaxed">
+          {finding.snippet && (expanded ? (
+            <pre className="mt-1.5 overflow-x-auto rounded bg-white/[0.03] p-1.5 text-[9px] text-white/55 leading-relaxed">
               {finding.snippet.trim()}
             </pre>
-          )}
+          ) : (
+            <pre className="mt-1.5 max-h-10 overflow-hidden rounded bg-white/[0.03] p-1.5 text-[9px] text-white/55 leading-relaxed">
+              {finding.snippet.trim()}
+            </pre>
+          ))}
         </div>
       </div>
     </div>
@@ -88,12 +127,7 @@ function SeveritySection({ severity, findings }: { severity: Severity; findings:
 }
 
 export function SecuritySidebar({ result, loading, error, onClose }: SecuritySidebarProps) {
-  const prevLoadingRef = useRef(loading)
-
-  useEffect(() => {
-    prevLoadingRef.current = loading
-  }, [loading])
-
+  const [copied, setCopied] = useState(false)
   const scan = result?.scan
   const findings = result?.findings ?? []
 
@@ -104,6 +138,17 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
   const isRunning = loading || scan?.status === "RUNNING"
   const isFailed = scan?.status === "FAILED"
   const totalFindings = findings.length
+
+  function handleCopyAll() {
+    if (findings.length === 0) return
+    const lines = findings.map((f) =>
+      `[${f.severity}] ${f.file_path}:${f.start_line} — ${f.message} (${f.rule_id})`
+    )
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#0b0b0c]">
@@ -120,13 +165,26 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
             )}
             <span className="text-[13px] font-semibold text-white/80">Security Scan</span>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close security panel"
-            className="rounded-md border border-transparent p-1 text-white/45 transition-colors hover:border-white/[0.06] hover:bg-white/[0.06] hover:text-white/75"
-          >
-            <X className="size-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {totalFindings > 0 && (
+              <button
+                onClick={handleCopyAll}
+                aria-label="Copy all findings"
+                title="Copy all findings"
+                className="flex items-center gap-1 rounded-md border border-transparent px-1.5 py-1 text-[10px] text-white/40 transition-colors hover:border-white/[0.06] hover:bg-white/[0.06] hover:text-white/70"
+              >
+                {copied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+                <span>{copied ? "Copied" : "Copy all"}</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close security panel"
+              className="rounded-md border border-transparent p-1 text-white/45 transition-colors hover:border-white/[0.06] hover:bg-white/[0.06] hover:text-white/75"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
         </div>
 
         {scan && (
