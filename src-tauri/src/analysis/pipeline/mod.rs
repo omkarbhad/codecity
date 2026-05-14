@@ -16,6 +16,7 @@ pub mod cancellation;
 use cancellation::{clear as clear_cancelled, is_cancelled, mark as mark_cancelled};
 
 mod security;
+pub use security::run_security_scan;
 mod security_types;
 
 #[allow(dead_code)]
@@ -749,6 +750,90 @@ pub fn enqueue_refresh(
         snapshot: None,
         error: None,
     }
+}
+
+/// Return the path to the bundled opengrep sidecar binary.
+///
+/// Tauri places sidecar binaries next to the main executable with a
+/// target-triple suffix (e.g. `opengrep-aarch64-apple-darwin`). We strip the
+/// suffix to get the platform-agnostic stem that Tauri resolves at runtime.
+fn opengrep_binary_path() -> Result<std::path::PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| format!("Cannot locate exe: {}", e))?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "Executable has no parent directory".to_string())?;
+
+    // Tauri appends the target triple as a suffix; try with the current triple
+    // first, then fall back to the plain name for dev builds.
+    let triple = env!("TAURI_ENV_TARGET_TRIPLE");
+    let with_triple = dir.join(format!("opengrep-{}", triple));
+    if with_triple.exists() {
+        return Ok(with_triple);
+    }
+
+    let plain = dir.join("opengrep");
+    if plain.exists() {
+        return Ok(plain);
+    }
+
+    Err(format!(
+        "opengrep binary not found next to executable at {}",
+        dir.display()
+    ))
+}
+
+/// Kick off a background security scan for `project_id`.
+///
+/// - Deletes any prior scans for the project (replace-on-rescan).
+/// - Inserts a new scan row with status RUNNING.
+/// - Spawns a Tokio task that calls `run_security_scan`.
+///
+/// Returns the new `scan_id` on success.
+pub fn enqueue_security_scan(
+    db: &Database,
+    project_id: &str,
+    project_root: &str,
+    _app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    let opengrep_bin = opengrep_binary_path()?;
+
+    // Replace-on-rescan: remove old results first.
+    db.delete_security_scans_for_project(project_id)?;
+
+    let scan_id = uuid::Uuid::new_v4().to_string();
+    db.insert_security_scan(&scan_id, project_id, "auto")?;
+
+    let scan_id_clone = scan_id.clone();
+    let project_id_owned = project_id.to_string();
+    let project_root_buf = PathBuf::from(project_root);
+
+    tokio::spawn(async move {
+        let worker_db = match Database::new() {
+            Ok(db) => db,
+            Err(e) => {
+                log::error!("Failed to open DB for security scan {}: {}", scan_id_clone, e);
+                return;
+            }
+        };
+        run_security_scan(
+            &worker_db,
+            &scan_id_clone,
+            &project_id_owned,
+            &project_root_buf,
+            &opengrep_bin,
+        )
+        .await;
+        cancellation::clear(&scan_id_clone);
+    });
+
+    Ok(scan_id)
+}
+
+/// Cancel an in-flight security scan by marking its id in the cancellation
+/// registry. The scanner checks before spawning; if it has already started,
+/// the CANCELLED status is applied after the run finishes.
+pub fn cancel_security_scan(scan_id: &str) {
+    cancellation::mark(scan_id);
 }
 
 enum QueuedSource {
