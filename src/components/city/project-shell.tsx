@@ -21,16 +21,21 @@ import {
   Box,
   Square,
   Share2,
+  ShieldAlert,
 } from "lucide-react"
 import { cn } from "@codecity/ui/lib/utils"
 import { IconButton } from "@codecity/ui/components/icon-button"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
+import type { SecurityScanResult } from "@/lib/tauri"
+import { startSecurityScan, cancelSecurityScan, isTauri } from "@/lib/tauri"
+import { pollSecurityScan } from "@/lib/security"
 import { useCityStore, type VisualizationMode } from "./use-city-store"
 import { FileTree } from "./file-tree"
 import { ExtensionFilter } from "./extension-filter"
 import { DistrictLegend } from "./district-legend"
 import { Minimap } from "./minimap"
 import { SidePanel } from "./side-panel"
+import { SecuritySidebar } from "./security-sidebar"
 import { BottomBar } from "./bottom-bar"
 import { CityTooltip } from "./city-tooltip"
 import { CommitTimeline } from "./commit-timeline"
@@ -122,6 +127,8 @@ interface ProjectShellProps {
   snapshot: CitySnapshot
   explorerSnapshot?: CitySnapshot
   projectName: string
+  projectId?: string
+  projectRoot?: string
   repoUrl?: string
   navbarActions?: ReactNode
   children: ReactNode
@@ -332,11 +339,17 @@ function ProjectNavbar({
   repoUrl,
   snapshot,
   actions,
+  onSecurityClick,
+  securityActive,
+  securityEnabled,
 }: {
   projectName: string
   repoUrl?: string
   snapshot: CitySnapshot
   actions?: ReactNode
+  onSecurityClick?: () => void
+  securityActive?: boolean
+  securityEnabled?: boolean
 }) {
   const router = useRouter()
   const visualizationMode = useCityStore((s) => s.visualizationMode)
@@ -453,6 +466,22 @@ function ProjectNavbar({
           </span>
         </div>
         {actions}
+        {securityEnabled && onSecurityClick && (
+          <button
+            onClick={onSecurityClick}
+            title="Security scan"
+            aria-label="Security scan"
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium font-sans transition-colors",
+              securityActive
+                ? "border-primary/25 bg-primary/10 text-primary"
+                : "border-white/[0.08] bg-white/[0.025] text-white/55 hover:bg-white/[0.06] hover:text-white/80"
+            )}
+          >
+            <ShieldAlert className="size-3.5" />
+            <span className="hidden sm:inline">Security</span>
+          </button>
+        )}
       </div>
 
       {/* Mobile center — tap to cycle */}
@@ -488,11 +517,64 @@ function ProjectNavbar({
 const MIN_PANEL = 180
 const MAX_PANEL = 480
 
-export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectName, repoUrl, navbarActions, children }: ProjectShellProps) {
+export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectName, projectId, projectRoot, repoUrl, navbarActions, children }: ProjectShellProps) {
   const [activeView, setActiveView] = useState<PrimaryView | null>("explorer")
   const [primaryWidth, setPrimaryWidth] = useState(240)
   const [secondaryWidth, setSecondaryWidth] = useState(280)
   const selectedFile = useCityStore((s) => s.selectedFile)
+
+  // Security scan state
+  const [securityOpen, setSecurityOpen] = useState(false)
+  const [securityResult, setSecurityResult] = useState<SecurityScanResult | null>(null)
+  const [securityLoading, setSecurityLoading] = useState(false)
+  const [securityError, setSecurityError] = useState<string | null>(null)
+  const [activeScanId, setActiveScanId] = useState<string | null>(null)
+  const stopPollRef = useRef<(() => void) | null>(null)
+
+  const isDesktop = isTauri()
+  const canScan = isDesktop && !!projectId && !!projectRoot
+
+  const handleSecurityClick = useCallback(async () => {
+    if (securityOpen && !securityLoading) {
+      setSecurityOpen(false)
+      return
+    }
+    setSecurityOpen(true)
+
+    if (!canScan || !projectId || !projectRoot) return
+
+    // If already running, just open the panel
+    if (securityLoading) return
+
+    // Cancel any previous poll
+    stopPollRef.current?.()
+    setSecurityLoading(true)
+    setSecurityError(null)
+
+    try {
+      const { scanId } = await startSecurityScan(projectId, projectRoot)
+      setActiveScanId(scanId)
+
+      stopPollRef.current = pollSecurityScan(
+        projectId,
+        (result) => setSecurityResult(result),
+        (result) => { setSecurityResult(result); setSecurityLoading(false) },
+        (err) => { setSecurityError(err.message); setSecurityLoading(false) }
+      )
+    } catch (err) {
+      setSecurityError(err instanceof Error ? err.message : String(err))
+      setSecurityLoading(false)
+    }
+  }, [securityOpen, securityLoading, canScan, projectId, projectRoot])
+
+  const handleSecurityClose = useCallback(() => {
+    setSecurityOpen(false)
+  }, [])
+
+  // Cleanup poll on unmount
+  useEffect(() => {
+    return () => { stopPollRef.current?.() }
+  }, [])
 
   const handleViewChange = useCallback((view: PrimaryView) => {
     setActiveView((prev) => (prev === view ? null : view))
@@ -529,10 +611,20 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [handleViewChange])
 
+  const showSecurityPanel = securityOpen && canScan
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#050506]">
       {/* Top navbar — full width */}
-      <ProjectNavbar projectName={projectName} repoUrl={repoUrl} snapshot={snapshot} actions={navbarActions} />
+      <ProjectNavbar
+        projectName={projectName}
+        repoUrl={repoUrl}
+        snapshot={snapshot}
+        actions={navbarActions}
+        onSecurityClick={handleSecurityClick}
+        securityActive={securityOpen}
+        securityEnabled={canScan}
+      />
 
       {/* Main area: activity bar + panel + canvas + secondary */}
       <div className="flex flex-1 overflow-hidden border-t border-black/30">
@@ -565,6 +657,21 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
 
         {/* Secondary panel (file details) */}
         <SecondaryPanel snapshot={snapshot} width={secondaryWidth} onResize={handleSecondaryResize} />
+
+        {/* Security panel */}
+        {showSecurityPanel && (
+          <>
+            <ResizeHandle side="right" onResize={handleSecondaryResize} />
+            <div style={{ width: secondaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#0b0b0c] shadow-[-20px_0_60px_rgba(0,0,0,0.20)] md:flex">
+              <SecuritySidebar
+                result={securityResult}
+                loading={securityLoading}
+                error={securityError}
+                onClose={handleSecurityClose}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

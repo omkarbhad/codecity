@@ -230,6 +230,8 @@ function ProjectContent() {
       <ProjectVisualization
         snapshot={snapshot}
         projectName={projectName}
+        projectId={id}
+        projectRoot={repoUrl}
         repoUrl={repoUrl}
         navbarActions={
           <ProjectRefreshControl
