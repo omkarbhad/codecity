@@ -16,4 +16,8 @@ pub use github::{
     fetch_commit_files, fetch_commits, fetch_file_content, fetch_repositories,
     fetch_trending_repositories, parse_github_url, CommitSummary,
 };
-pub use pipeline::{analyze, cancel_analysis, enqueue_analyze, enqueue_refresh, AnalyzeResult};
+pub use pipeline::{
+    analyze, cancel_analysis, cancel_security_scan, enqueue_analyze, enqueue_refresh,
+    enqueue_security_scan, AnalyzeResult,
+};
+pub use db::{FindingRecord, SecurityScanRecord};

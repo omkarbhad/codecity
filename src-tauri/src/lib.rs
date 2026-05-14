@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::PathBuf;
-use tauri::{Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 use codecity_core::{
     create_snapshot, parse_files, recompute_snapshot, AnalysisParser, CitySnapshot, LayoutMode,
@@ -11,6 +11,7 @@ pub mod analysis;
 
 pub struct AppState {
     db: analysis::Database,
+    app_handle: AppHandle,
 }
 
 #[derive(Debug, Deserialize)]
@@ -141,6 +142,19 @@ struct AnalyzeCodeParams {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct SecurityScanParams {
+    project_id: String,
+    project_root: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ScanIdParams {
+    scan_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ParseFileParams {
     path: String,
     content: String,
@@ -162,7 +176,7 @@ async fn rpc(state: State<'_, AppState>, request: Value) -> Result<JsonRpcRespon
         ));
     }
 
-    let response = match dispatch_rpc(&state, &parsed.method, parsed.params).await {
+    let response = match dispatch_rpc(&state, &state.app_handle.clone(), &parsed.method, parsed.params).await {
         Ok(result) => rpc_result(parsed.id, result),
         Err(error) => rpc_error(parsed.id, error.code, error.message),
     };
@@ -172,6 +186,7 @@ async fn rpc(state: State<'_, AppState>, request: Value) -> Result<JsonRpcRespon
 
 async fn dispatch_rpc(
     state: &State<'_, AppState>,
+    app_handle: &AppHandle,
     method: &str,
     params: Value,
 ) -> Result<Value, JsonRpcError> {
@@ -380,6 +395,42 @@ async fn dispatch_rpc(
             Ok(Value::Null)
         }
         "user.current" => to_value(state.db.get_setting("github_user_login").ok().flatten()),
+
+        // Security scanning
+        "security.scan" => {
+            let params: SecurityScanParams = parse_params(params)?;
+            let scan_id = analysis::enqueue_security_scan(
+                &state.db,
+                &params.project_id,
+                &params.project_root,
+                app_handle.clone(),
+            )
+            .map_err(internal_error)?;
+            Ok(json!({ "scanId": scan_id }))
+        }
+        "security.get" => {
+            let params: ProjectIdParams = parse_params(params)?;
+            let scan = state
+                .db
+                .get_latest_security_scan(&params.project_id)
+                .map_err(internal_error)?;
+            match scan {
+                None => Ok(Value::Null),
+                Some(s) => {
+                    let findings = state
+                        .db
+                        .get_security_findings_for_scan(&s.id)
+                        .map_err(internal_error)?;
+                    to_value(json!({ "scan": s, "findings": findings }))
+                }
+            }
+        }
+        "security.cancel" => {
+            let params: ScanIdParams = parse_params(params)?;
+            analysis::cancel_security_scan(&params.scan_id);
+            Ok(Value::Null)
+        }
+
         _ => Err(JsonRpcError {
             code: -32601,
             message: format!("Method not found: {method}"),
@@ -640,9 +691,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .manage(AppState { db })
-        .invoke_handler(tauri::generate_handler![rpc])
         .setup(|app| {
+            let handle = app.handle().clone();
+            app.manage(AppState { db, app_handle: handle });
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
@@ -650,6 +701,7 @@ pub fn run() {
             }
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![rpc])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
