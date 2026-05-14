@@ -1,11 +1,64 @@
 use rusqlite::Row;
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use codecity_core::layout::CitySnapshot;
 use codecity_core::parser::ParsedFile;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SecurityScanRecord {
+    pub id: String,
+    pub project_id: String,
+    pub status: String,
+    pub ruleset: String,
+    pub total_findings: i64,
+    pub error: Option<String>,
+    pub started_at: String,
+    pub finished_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FindingRecord {
+    pub id: String,
+    pub scan_id: String,
+    pub project_id: String,
+    pub severity: String,
+    pub rule_id: String,
+    pub file_path: String,
+    pub start_line: i64,
+    pub end_line: i64,
+    pub message: String,
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewFinding {
+    pub id: String,
+    pub scan_id: String,
+    pub project_id: String,
+    pub severity: String,
+    pub rule_id: String,
+    pub file_path: String,
+    pub start_line: i64,
+    pub end_line: i64,
+    pub message: String,
+    pub snippet: Option<String>,
+}
+
+fn row_to_scan(r: &Row) -> SqlResult<SecurityScanRecord> {
+    Ok(SecurityScanRecord {
+        id: r.get(0)?,
+        project_id: r.get(1)?,
+        status: r.get(2)?,
+        ruleset: r.get(3)?,
+        total_findings: r.get(4)?,
+        error: r.get(5)?,
+        started_at: r.get(6)?,
+        finished_at: r.get(7)?,
+    })
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectRecord {
@@ -502,6 +555,169 @@ impl Database {
         Ok(())
     }
 
+    // ---- security scans ----
+
+    pub fn insert_security_scan(
+        &self,
+        id: &str,
+        project_id: &str,
+        ruleset: &str,
+    ) -> Result<String, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO security_scans (id, project_id, ruleset, status)
+             VALUES (?1, ?2, ?3, 'PENDING')",
+            params![id, project_id, ruleset],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(id.to_string())
+    }
+
+    pub fn update_security_scan_status(
+        &self,
+        scan_id: &str,
+        status: &str,
+        total_findings: Option<i64>,
+        error: Option<&str>,
+    ) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let finished = matches!(status, "COMPLETED" | "FAILED" | "CANCELLED");
+        conn.execute(
+            "UPDATE security_scans
+                SET status = ?1,
+                    total_findings = COALESCE(?2, total_findings),
+                    error = COALESCE(?3, error),
+                    finished_at = CASE WHEN ?4 THEN datetime('now') ELSE finished_at END
+              WHERE id = ?5",
+            params![status, total_findings, error, finished as i64, scan_id],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_latest_security_scan(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<SecurityScanRecord>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, project_id, status, ruleset, total_findings, error, started_at, finished_at
+                   FROM security_scans
+                  WHERE project_id = ?1
+                  ORDER BY started_at DESC
+                  LIMIT 1",
+            )
+            .map_err(|e| e.to_string())?;
+        stmt.query_row(params![project_id], row_to_scan)
+            .optional()
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn get_security_scan_by_id(
+        &self,
+        scan_id: &str,
+    ) -> Result<Option<SecurityScanRecord>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, project_id, status, ruleset, total_findings, error, started_at, finished_at
+                   FROM security_scans
+                  WHERE id = ?1",
+            )
+            .map_err(|e| e.to_string())?;
+        stmt.query_row(params![scan_id], row_to_scan)
+            .optional()
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn bulk_insert_security_findings(&self, findings: &[NewFinding]) -> Result<(), String> {
+        if findings.is_empty() {
+            return Ok(());
+        }
+        let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        {
+            let mut stmt = tx
+                .prepare(
+                    "INSERT INTO security_findings
+                       (id, scan_id, project_id, severity, rule_id, file_path,
+                        start_line, end_line, message, snippet)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                )
+                .map_err(|e| e.to_string())?;
+            for f in findings {
+                stmt.execute(params![
+                    f.id,
+                    f.scan_id,
+                    f.project_id,
+                    f.severity,
+                    f.rule_id,
+                    f.file_path,
+                    f.start_line,
+                    f.end_line,
+                    f.message,
+                    f.snippet,
+                ])
+                .map_err(|e| e.to_string())?;
+            }
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_security_findings_for_scan(
+        &self,
+        scan_id: &str,
+    ) -> Result<Vec<FindingRecord>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, scan_id, project_id, severity, rule_id, file_path,
+                        start_line, end_line, message, snippet
+                   FROM security_findings
+                  WHERE scan_id = ?1
+                  ORDER BY CASE severity
+                             WHEN 'ERROR' THEN 0
+                             WHEN 'WARNING' THEN 1
+                             WHEN 'INFO' THEN 2
+                             ELSE 3
+                           END,
+                           file_path,
+                           start_line",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![scan_id], |r| {
+                Ok(FindingRecord {
+                    id: r.get(0)?,
+                    scan_id: r.get(1)?,
+                    project_id: r.get(2)?,
+                    severity: r.get(3)?,
+                    rule_id: r.get(4)?,
+                    file_path: r.get(5)?,
+                    start_line: r.get(6)?,
+                    end_line: r.get(7)?,
+                    message: r.get(8)?,
+                    snippet: r.get(9)?,
+                })
+            })
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        Ok(rows)
+    }
+
+    pub fn delete_security_scans_for_project(&self, project_id: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "DELETE FROM security_scans WHERE project_id = ?1",
+            params![project_id],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     #[cfg(test)]
     pub fn new_in_memory() -> Result<Self, String> {
         let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
@@ -541,5 +757,107 @@ mod security_schema_tests {
             db.has_table("security_findings").unwrap(),
             "security_findings table missing"
         );
+    }
+}
+
+#[cfg(test)]
+mod security_db_tests {
+    use super::*;
+
+    fn seed_project(db: &Database) -> ProjectRecord {
+        db.create_project("p", "local:/tmp", "PRIVATE", "COMPLETED", "local")
+            .unwrap()
+    }
+
+    #[test]
+    fn insert_then_get_latest_scan_round_trips() {
+        let db = Database::new_in_memory().unwrap();
+        let proj = seed_project(&db);
+        let scan_id = db
+            .insert_security_scan("scan1", &proj.id, "auto")
+            .expect("insert");
+        assert_eq!(scan_id, "scan1");
+        let scan = db.get_latest_security_scan(&proj.id).unwrap().unwrap();
+        assert_eq!(scan.id, "scan1");
+        assert_eq!(scan.status, "PENDING");
+        assert_eq!(scan.ruleset, "auto");
+    }
+
+    #[test]
+    fn update_status_moves_to_completed_and_sets_total() {
+        let db = Database::new_in_memory().unwrap();
+        let proj = seed_project(&db);
+        db.insert_security_scan("scan1", &proj.id, "auto").unwrap();
+        db.update_security_scan_status("scan1", "COMPLETED", Some(7), None)
+            .unwrap();
+        let scan = db.get_latest_security_scan(&proj.id).unwrap().unwrap();
+        assert_eq!(scan.status, "COMPLETED");
+        assert_eq!(scan.total_findings, 7);
+        assert!(scan.finished_at.is_some());
+    }
+
+    #[test]
+    fn bulk_insert_findings_and_query_by_scan() {
+        let db = Database::new_in_memory().unwrap();
+        let proj = seed_project(&db);
+        db.insert_security_scan("scan1", &proj.id, "auto").unwrap();
+        let findings = vec![
+            NewFinding {
+                id: "f1".into(),
+                scan_id: "scan1".into(),
+                project_id: proj.id.clone(),
+                severity: "ERROR".into(),
+                rule_id: "rule.a".into(),
+                file_path: "src/a.ts".into(),
+                start_line: 12,
+                end_line: 12,
+                message: "boom".into(),
+                snippet: Some("x".into()),
+            },
+            NewFinding {
+                id: "f2".into(),
+                scan_id: "scan1".into(),
+                project_id: proj.id.clone(),
+                severity: "WARNING".into(),
+                rule_id: "rule.b".into(),
+                file_path: "src/b.ts".into(),
+                start_line: 30,
+                end_line: 35,
+                message: "meh".into(),
+                snippet: None,
+            },
+        ];
+        db.bulk_insert_security_findings(&findings).unwrap();
+        let rows = db.get_security_findings_for_scan("scan1").unwrap();
+        assert_eq!(rows.len(), 2);
+        assert!(rows
+            .iter()
+            .any(|r| r.severity == "ERROR" && r.rule_id == "rule.a"));
+    }
+
+    #[test]
+    fn delete_for_project_clears_scans_and_findings() {
+        let db = Database::new_in_memory().unwrap();
+        let proj = seed_project(&db);
+        db.insert_security_scan("scan1", &proj.id, "auto").unwrap();
+        db.bulk_insert_security_findings(&[NewFinding {
+            id: "f1".into(),
+            scan_id: "scan1".into(),
+            project_id: proj.id.clone(),
+            severity: "INFO".into(),
+            rule_id: "rule.c".into(),
+            file_path: "x".into(),
+            start_line: 1,
+            end_line: 1,
+            message: "x".into(),
+            snippet: None,
+        }])
+        .unwrap();
+        db.delete_security_scans_for_project(&proj.id).unwrap();
+        assert!(db.get_latest_security_scan(&proj.id).unwrap().is_none());
+        assert!(db
+            .get_security_findings_for_scan("scan1")
+            .unwrap()
+            .is_empty());
     }
 }
