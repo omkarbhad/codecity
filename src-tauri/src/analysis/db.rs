@@ -101,6 +101,37 @@ impl Database {
                 value TEXT NOT NULL,
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS security_scans (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                status TEXT NOT NULL DEFAULT 'PENDING',
+                ruleset TEXT NOT NULL DEFAULT 'auto',
+                total_findings INTEGER NOT NULL DEFAULT 0,
+                error TEXT,
+                started_at TEXT NOT NULL DEFAULT (datetime('now')),
+                finished_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS security_findings (
+                id TEXT PRIMARY KEY,
+                scan_id TEXT NOT NULL REFERENCES security_scans(id) ON DELETE CASCADE,
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                severity TEXT NOT NULL,
+                rule_id TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                start_line INTEGER NOT NULL,
+                end_line INTEGER NOT NULL,
+                message TEXT NOT NULL,
+                snippet TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_security_scans_project_id
+                ON security_scans(project_id);
+            CREATE INDEX IF NOT EXISTS idx_security_findings_scan_id
+                ON security_findings(scan_id);
+            CREATE INDEX IF NOT EXISTS idx_security_findings_project_severity
+                ON security_findings(project_id, severity);
             ",
         )?;
         Self::add_column_if_missing(&conn, "projects", "progress", "REAL NOT NULL DEFAULT 0")?;
@@ -469,5 +500,46 @@ impl Database {
         conn.execute("DELETE FROM settings WHERE key = ?1", params![key])
             .map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn new_in_memory() -> Result<Self, String> {
+        let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
+        let db = Self {
+            conn: Mutex::new(conn),
+        };
+        db.migrate().map_err(|e| e.to_string())?;
+        Ok(db)
+    }
+
+    #[cfg(test)]
+    pub fn has_table(&self, name: &str) -> Result<bool, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?1",
+                params![name],
+                |r| r.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+        Ok(count == 1)
+    }
+}
+
+#[cfg(test)]
+mod security_schema_tests {
+    use super::*;
+
+    #[test]
+    fn migration_creates_security_scans_and_findings_tables() {
+        let db = Database::new_in_memory().expect("in-memory db");
+        assert!(
+            db.has_table("security_scans").unwrap(),
+            "security_scans table missing"
+        );
+        assert!(
+            db.has_table("security_findings").unwrap(),
+            "security_findings table missing"
+        );
     }
 }
