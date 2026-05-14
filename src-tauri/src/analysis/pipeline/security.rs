@@ -5,9 +5,11 @@
 //! Once opengrep is running it always runs to completion; a cancelled scan
 //! discards its output and marks the row `CANCELLED`.
 
+use std::path::Path;
 use uuid::Uuid;
 
-use super::super::db::NewFinding;
+use super::super::db::{Database, NewFinding};
+use super::cancellation::is_cancelled;
 use super::security_types::{OpengrepRun, RawFinding};
 
 /// Normalize an opengrep severity string into one of `ERROR | WARNING | INFO`.
@@ -18,6 +20,106 @@ fn normalize_severity(raw: Option<&str>) -> &'static str {
         Some("WARNING") | Some("MEDIUM") => "WARNING",
         _ => "INFO",
     }
+}
+
+/// Run opengrep against `project_root` and persist results for `scan_id`.
+///
+/// Status transitions:
+///   RUNNING → COMPLETED (findings saved)
+///   RUNNING → CANCELLED  (cancelled before spawn)
+///   RUNNING → FAILED     (binary error or parse failure)
+///
+/// The scan row must already exist in the database with status RUNNING before
+/// this is called — the RPC layer inserts it.
+pub async fn run_security_scan(
+    db: &Database,
+    scan_id: &str,
+    project_id: &str,
+    project_root: &Path,
+    opengrep_bin: &Path,
+) {
+    if is_cancelled(scan_id) {
+        if let Err(e) = db.update_security_scan_status(scan_id, "CANCELLED", None, None) {
+            log::error!("Failed to mark scan {} cancelled: {}", scan_id, e);
+        }
+        return;
+    }
+
+    log::info!(
+        "Starting security scan {} on {}",
+        scan_id,
+        project_root.display()
+    );
+
+    let output = tokio::process::Command::new(opengrep_bin)
+        .args([
+            "scan",
+            "--config",
+            "auto",
+            "--json",
+            project_root.to_str().unwrap_or("."),
+        ])
+        .output()
+        .await;
+
+    let output = match output {
+        Ok(o) => o,
+        Err(e) => {
+            let msg = format!("Failed to spawn opengrep: {}", e);
+            log::error!("{}", msg);
+            let _ = db.update_security_scan_status(scan_id, "FAILED", None, Some(&msg));
+            return;
+        }
+    };
+
+    // opengrep exits non-zero when findings are present — that is expected.
+    // Only treat it as an error when stdout is empty (no JSON produced).
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if stdout.trim().is_empty() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let msg = format!("opengrep produced no output: {}", stderr.trim());
+        log::error!("{}", msg);
+        let _ = db.update_security_scan_status(scan_id, "FAILED", None, Some(&msg));
+        return;
+    }
+
+    let run: OpengrepRun = match serde_json::from_str(&stdout) {
+        Ok(r) => r,
+        Err(e) => {
+            let msg = format!("Failed to parse opengrep JSON: {}", e);
+            log::error!("{}", msg);
+            let _ = db.update_security_scan_status(scan_id, "FAILED", None, Some(&msg));
+            return;
+        }
+    };
+
+    if !run.errors.is_empty() {
+        for err in &run.errors {
+            log::warn!("opengrep error: {}", err.message);
+        }
+    }
+
+    let findings = map_findings(scan_id, project_id, &run);
+    let finding_count = findings.len() as i64;
+
+    if let Err(e) = db.bulk_insert_security_findings(&findings) {
+        let msg = format!("Failed to save findings: {}", e);
+        log::error!("{}", msg);
+        let _ = db.update_security_scan_status(scan_id, "FAILED", None, Some(&msg));
+        return;
+    }
+
+    if let Err(e) =
+        db.update_security_scan_status(scan_id, "COMPLETED", Some(finding_count), None)
+    {
+        log::error!("Failed to mark scan {} complete: {}", scan_id, e);
+    }
+
+    log::info!(
+        "Security scan {} completed: {} findings",
+        scan_id,
+        finding_count
+    );
 }
 
 pub fn map_findings(scan_id: &str, project_id: &str, run: &OpengrepRun) -> Vec<NewFinding> {
