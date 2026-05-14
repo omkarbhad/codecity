@@ -15,6 +15,7 @@ use codecity_core::parser;
 pub mod cancellation;
 use cancellation::{clear as clear_cancelled, is_cancelled, mark as mark_cancelled};
 
+mod security;
 mod security_types;
 
 #[allow(dead_code)]
