@@ -131,3 +131,7 @@ You can also run the workflow manually from GitHub Actions. The workflow creates
 - Clone fallback uses shallow, single-branch, no-tag clones to reduce transfer size.
 - Local folder analysis works offline after the app is installed.
 - If a local folder was moved or deleted, refresh/reanalysis will report that directly.
+
+## Third-party licenses
+
+The security scan feature bundles [opengrep](https://github.com/opengrep/opengrep), which is licensed under LGPL-2.1. CodeCity invokes it as a separate sidecar process; the LGPL boundary is respected. The full license text ships with the app at `licenses/LICENSE.opengrep`.
