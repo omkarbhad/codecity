@@ -8,6 +8,10 @@
     "shell:allow-open",
     "dialog:allow-open",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [{ "name": "binaries/opengrep", "sidecar": true, "args": true }]
+    }
   ]
 }
