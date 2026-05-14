@@ -94,6 +94,8 @@ class SceneErrorBoundary extends Component<
 interface Props {
   snapshot: CitySnapshot
   projectName: string
+  projectId?: string
+  projectRoot?: string
   repoUrl?: string
   navbarActions?: ReactNode
 }
@@ -104,7 +106,7 @@ function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgre
   return <LoadStrip label="Loading city geometry" percent={percent} detail={detail} leaving={leaving} />
 }
 
-function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, repoUrl, navbarActions }: Props) {
+function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, projectId, projectRoot, repoUrl, navbarActions }: Props) {
   const [currentSnapshot, setCurrentSnapshot] = useState(originalSnapshot)
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [isBuildingLoadLeaving, setIsBuildingLoadLeaving] = useState(false)
@@ -278,6 +280,8 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
         snapshot={currentSnapshot}
         explorerSnapshot={originalRef.current}
         projectName={projectName}
+        projectId={projectId}
+        projectRoot={projectRoot}
         repoUrl={repoUrl}
         navbarActions={navbarActions}
       >
@@ -318,3 +322,5 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, re
 export function ProjectVisualization(props: Props) {
   return <ProjectVisualizationInner {...props} />
 }
+
+export type { Props as ProjectVisualizationProps }
