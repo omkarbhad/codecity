@@ -329,3 +329,53 @@ export async function logoutGithub(): Promise<void> {
 export async function getCurrentUser(): Promise<string | null> {
   return rpc<string | null>("user.current").catch(emptyWhenBackendUnavailable(null))
 }
+
+// ── Security ──
+
+export type Severity = "ERROR" | "WARNING" | "INFO"
+
+export interface SecurityFinding {
+  id: string
+  scan_id: string
+  project_id: string
+  severity: Severity
+  rule_id: string
+  file_path: string
+  start_line: number
+  end_line: number
+  message: string
+  snippet: string | null
+}
+
+export interface SecurityScanRecord {
+  id: string
+  project_id: string
+  status: "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED"
+  ruleset: string
+  total_findings: number
+  error: string | null
+  started_at: string
+  finished_at: string | null
+}
+
+export interface SecurityScanResult {
+  scan: SecurityScanRecord
+  findings: SecurityFinding[]
+}
+
+export async function startSecurityScan(
+  projectId: string,
+  projectRoot: string
+): Promise<{ scanId: string }> {
+  return rpc<{ scanId: string }>("security.scan", { projectId, projectRoot })
+}
+
+export async function getSecurityScan(projectId: string): Promise<SecurityScanResult | null> {
+  return rpc<SecurityScanResult | null>("security.get", { projectId }).catch(
+    emptyWhenBackendUnavailable(null)
+  )
+}
+
+export async function cancelSecurityScan(scanId: string): Promise<void> {
+  await rpc<null>("security.cancel", { scanId })
+}
