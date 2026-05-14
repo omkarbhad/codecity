@@ -467,20 +467,21 @@ function ProjectNavbar({
         </div>
         {actions}
         {securityEnabled && onSecurityClick && (
-          <button
-            onClick={onSecurityClick}
-            title="Security scan"
-            aria-label="Security scan"
-            className={cn(
-              "flex h-7 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium font-sans transition-colors",
-              securityActive
-                ? "border-primary/25 bg-primary/10 text-primary"
-                : "border-white/[0.08] bg-white/[0.025] text-white/55 hover:bg-white/[0.06] hover:text-white/80"
-            )}
-          >
-            <ShieldAlert className="size-3.5" />
-            <span className="hidden sm:inline">Security</span>
-          </button>
+          <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
+            <button
+              onClick={onSecurityClick}
+              title="Security scan"
+              aria-label="Security scan"
+              className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium font-sans transition-colors ${
+                securityActive
+                  ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
+              }`}
+            >
+              <ShieldAlert className="size-3.5" />
+              <span className="hidden sm:inline">Security</span>
+            </button>
+          </div>
         )}
       </div>
 
