@@ -12,8 +12,10 @@ use codecity_core::discovery::{
 use codecity_core::layout::{CitySnapshot, SourceTreeEntry};
 use codecity_core::parser;
 
-mod cancellation;
+pub mod cancellation;
 use cancellation::{clear as clear_cancelled, is_cancelled, mark as mark_cancelled};
+
+mod security_types;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
