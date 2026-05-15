@@ -73,25 +73,30 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
   ).length
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-3 py-1.5 flex items-center justify-end gap-1 shrink-0">
+    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
+      {/* Section header */}
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
+        <span className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
+          Ext
+        </span>
         <button
           onClick={showAllExtensions}
           disabled={noneHidden}
-          className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
+          className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
         >
-          All
+          ALL
         </button>
-        <span className="text-white/10 text-[9px]">|</span>
+        <span className="font-mono text-(--very-dim)">·</span>
         <button
           onClick={() => hideAllExtensions(allExts)}
           disabled={allHidden}
-          className="text-[9px] font-sans text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors px-1"
+          className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
         >
-          None
+          NONE
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+
+      <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
         {extensionData.map(({ ext, count }) => {
           const isHidden = hiddenExtensions.has(ext)
           const icon = EXT_ICONS[ext] ?? ext.replace(".", "").slice(0, 2).toUpperCase()
@@ -101,40 +106,40 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
             <button
               key={ext}
               onClick={() => toggleExtension(ext)}
-              className={`flex items-center gap-2 w-full text-left px-3 py-1.5
-                font-sans text-[11px] transition-all duration-150 cursor-pointer
+              className={`flex w-full items-center gap-2 border-b border-dashed border-(--border-pixel) px-2 py-1.5 text-left font-mono text-[11px] transition-colors
                 ${isHidden
-                  ? "text-white/20 hover:text-white/40 hover:bg-white/[0.02]"
-                  : "text-white/60 hover:text-white/80 hover:bg-white/[0.04]"
+                  ? "text-(--dim) hover:bg-(--bg-deep)"
+                  : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
                 }`}
             >
               {isHidden ? (
-                <EyeOff className="w-3 h-3 shrink-0 text-white/15" />
+                <EyeOff className="size-3 shrink-0 text-(--very-dim)" />
               ) : (
-                <Eye className="w-3 h-3 shrink-0 text-white/40" />
+                <Eye className="size-3 shrink-0 text-(--lime)" />
               )}
               <span
-                className={`inline-block w-5 text-center text-[9px] font-bold rounded px-0.5 shrink-0 ${
-                  isHidden ? "opacity-30" : ""
+                className={`inline-block w-6 shrink-0 border-2 px-0.5 py-px text-center font-mono text-[9px] font-bold uppercase tracking-[0.04em] ${
+                  isHidden ? "border-(--very-dim) opacity-30" : "border-(--border-pixel)"
                 }`}
                 style={{ color }}
               >
                 {icon}
               </span>
-              <span className={`truncate flex-1 ${isHidden ? "line-through opacity-40" : ""}`}>
+              <span className={`flex-1 truncate ${isHidden ? "line-through opacity-50" : ""}`}>
                 {ext}
               </span>
-              <span className={`text-[10px] shrink-0 ml-1 ${isHidden ? "text-white/10" : "text-white/25"}`}>
+              <span className={`ml-1 shrink-0 font-mono text-[10px] tabular-nums ${isHidden ? "text-(--very-dim)" : "text-(--muted)"}`}>
                 {count}
               </span>
             </button>
           )
         })}
       </div>
+
       {hiddenExtensions.size > 0 && (
-        <div className="px-3 py-1.5 border-t border-white/[0.06]">
-          <span className="font-sans text-[9px] text-white/30">
-            Showing {visibleCount}/{snapshot.files.length} files
+        <div className="border-t-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1">
+          <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--muted)">
+            <span className="text-(--dim)">{">"}</span> <span className="text-(--cream-dark) tabular-nums">{visibleCount}</span>/<span className="text-(--cream-dark) tabular-nums">{snapshot.files.length}</span> shown
           </span>
         </div>
       )}

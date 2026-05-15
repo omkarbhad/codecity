@@ -39,8 +39,18 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-0.5">
+    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
+      {/* Section header */}
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
+        <span className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
+          Districts
+        </span>
+        <span className="font-mono text-[10px] tabular-nums text-(--muted)">
+          {snapshot.districts.length}
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
         {snapshot.districts.map((district) => {
           const stats = districtStats.get(district.name)
           const isActive = selectedDistrict === district.name
@@ -49,27 +59,21 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
             <button
               key={district.name}
               onClick={() => handleDistrictClick(district.name)}
-              className={`flex items-center gap-2 w-full text-left px-3 py-1.5
-                font-sans text-[11px] transition-all duration-150 cursor-pointer
+              className={`flex w-full items-center gap-2 border-b border-dashed border-(--border-pixel) px-2 py-1.5 text-left font-mono text-[11px] transition-colors
                 ${isActive
-                  ? "text-white/90 bg-white/[0.06]"
-                  : "text-white/50 hover:text-white/80 hover:bg-white/[0.03]"
+                  ? "bg-(--bg-raised) text-(--cream)"
+                  : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
                 }`}
             >
               <span
-                className="inline-block w-2.5 h-2.5 rounded-sm shrink-0 transition-shadow"
-                style={{
-                  backgroundColor: district.color,
-                  boxShadow: isActive
-                    ? `0 0 8px ${district.color}60`
-                    : `0 0 4px ${district.color}30`,
-                }}
+                className={`inline-block size-2.5 shrink-0 border ${isActive ? "border-(--cream)" : "border-(--border-strong)"}`}
+                style={{ backgroundColor: district.color }}
               />
-              <span className="truncate flex-1">{district.name}</span>
-              <span className="text-white/15 text-[9px] shrink-0 mr-1">
+              <span className="flex-1 truncate">{district.name}</span>
+              <span className="shrink-0 font-mono text-[9px] tabular-nums text-(--muted)">
                 {stats ? `${(stats.lines / 1000).toFixed(1)}k` : ""}
               </span>
-              <span className="text-white/25 text-[10px] shrink-0 bg-white/[0.04] px-1.5 py-0.5 rounded">
+              <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] tabular-nums text-(--cream-dark)">
                 {district.files.length}
               </span>
             </button>

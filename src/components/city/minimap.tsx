@@ -236,10 +236,19 @@ export function Minimap({ snapshot }: MinimapProps) {
   }, [snapshot, selectedFile, bounds, hiddenExtensions, hiddenPaths, fileMap])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
+      {/* Section header */}
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
+        <span className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
+          Minimap
+        </span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--muted)">
+          click to nav
+        </span>
+      </div>
       <canvas
         ref={canvasRef}
-        className="w-full flex-1 cursor-crosshair"
+        className="w-full flex-1 cursor-crosshair bg-(--bg-deep)"
         style={{ minHeight: 200 }}
         onClick={handleClick}
       />
