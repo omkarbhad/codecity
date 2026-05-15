@@ -1,0 +1,48 @@
+---
+// Base layout — fonts, design tokens, meta tags.
+export interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'CodeCity — See your codebase as a city',
+  description = 'CodeCity turns any repository into a 3D city. Folders become districts, files become buildings, complexity becomes skyline. Open source, local-first, 45+ languages.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{title}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content={description} />
+  <link rel="icon" href="/assets/logo-app-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <slot />
+  <style is:global>
+    @import '../styles/global.css';
+
+    /* Page-specific extras — design tokens live in global.css */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Smoothly handle the accent CSS var for the React island */
+    :root {
+      --accent: var(--lime);
+      --accent-shadow: var(--lime-shadow);
+      --primary: var(--accent);
+    }
+  </style>
+</body>
+</html>
