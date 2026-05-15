@@ -351,26 +351,26 @@ function ProjectCard({
 
   return (
     <div
-      className={`group/card relative flex ${view === "grid" ? "min-h-[240px] flex-col" : "min-h-[92px] flex-row"} overflow-hidden rounded-xl border p-1.5 shadow-lg shadow-black/40 backdrop-blur-xl bg-gradient-to-b from-neutral-900/95 to-neutral-950/95 transition-[border-color,background-color,transform,box-shadow] duration-200 ease-out motion-reduce:transition-none
-        ${isCompleted ? "border-white/[0.10] hover:border-primary/30 hover:from-neutral-900 hover:to-neutral-950 hover:-translate-y-px" : ""}
-        ${isActive ? "border-primary/40 from-primary/[0.07] to-primary/[0.02]" : ""}
-        ${isQueued ? "border-white/[0.08] opacity-70" : ""}
-        ${isFailed ? "border-rose-400/20" : ""}
+      className={`group/card pixel-shadow relative flex ${view === "grid" ? "min-h-[240px] flex-col" : "min-h-[92px] flex-row"} overflow-hidden border-2 p-1.5 bg-card transition-[border-color,background-color,transform] duration-150 ease-out motion-reduce:transition-none
+        ${isCompleted ? "border-[var(--border-light)] hover:border-primary hover:-translate-y-px" : ""}
+        ${isActive ? "border-primary bg-[color-mix(in_srgb,var(--lime)_4%,var(--bg-card))]" : ""}
+        ${isQueued ? "border-[var(--border-pixel)] opacity-70" : ""}
+        ${isFailed ? "border-[var(--sev-high)]" : ""}
       `}
     >
       {/* Active — scanning line */}
       {isActive && (
-        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden rounded-t-xl">
+        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
           <div className="h-full bg-primary animate-[scan_2s_ease-in-out_infinite]" />
         </div>
       )}
 
       {/* 3D city preview pane */}
       {isCompleted && view === "grid" && (
-        <div className="relative h-32 overflow-hidden rounded-lg border border-white/[0.08] bg-[#080809]">
+        <div className="relative h-32 overflow-hidden border-2 border-[var(--border-pixel)] bg-[var(--bg-deep)]">
           {snapshotLoading && (
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#080809]">
-              <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono text-neutral-500">
+            <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[var(--bg-deep)]">
+              <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--muted)]">
                 <Loader2 className="size-3 animate-spin" />
                 loading city…
               </span>
@@ -382,8 +382,8 @@ function ProjectCard({
             </div>
           )}
           {!snapshotLoading && !snapshot && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#080809]">
-              <span className="text-[10px] font-mono text-neutral-500">preview unavailable</span>
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-deep)]">
+              <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--muted)]">preview unavailable</span>
             </div>
           )}
         </div>
@@ -603,17 +603,17 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-60 rounded-xl border border-white/[0.08] bg-neutral-900/60 p-1.5">
-            <div className="h-32 rounded-lg bg-white/[0.03] animate-pulse" />
+          <div key={i} className="pixel-shadow-sm h-60 border-2 border-[var(--border-light)] bg-card p-1.5">
+            <div className="h-32 bg-[var(--bg-raised)] animate-pulse" />
             <div className="space-y-3 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-2">
-                  <div className="h-2 w-16 rounded-full bg-white/[0.05] animate-pulse" />
-                  <div className="h-3.5 w-32 rounded-md bg-white/[0.06] animate-pulse" />
+                  <div className="h-2 w-16 bg-[var(--border-light)] animate-pulse" />
+                  <div className="h-3.5 w-32 bg-[var(--border-light)] animate-pulse" />
                 </div>
-                <div className="h-6 w-14 rounded-md bg-white/[0.05] animate-pulse" />
+                <div className="h-6 w-14 bg-[var(--border-light)] animate-pulse" />
               </div>
-              <div className="h-3 w-40 rounded-md bg-white/[0.04] animate-pulse" />
+              <div className="h-3 w-40 bg-[var(--border-light)] animate-pulse" />
             </div>
           </div>
         ))}
@@ -623,19 +623,19 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex min-h-72 items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-[#101012]">
+      <div className="flex min-h-72 items-center justify-center border-2 border-dashed border-[var(--border-light)] bg-card">
         <div className="flex flex-col items-center px-6 py-10 text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
-            <HugeIcon icon={Building03Icon} className="size-6 text-primary/70" />
+          <div className="pixel-shadow-sm mb-4 flex size-12 items-center justify-center border-2 border-[var(--border-light)] bg-[var(--bg-raised)]">
+            <HugeIcon icon={Building03Icon} className="size-6 text-primary" />
           </div>
-          <p className="text-[14px] font-semibold leading-[1.25] text-neutral-200">No cities yet</p>
-          <p className="mt-2 max-w-xs text-[12px] leading-[1.5] text-neutral-500">
+          <p className="text-[14px] font-semibold leading-[1.25] text-[var(--cream)] uppercase tracking-[0.05em]">No cities yet</p>
+          <p className="mt-2 max-w-xs text-[12px] leading-[1.5] text-[var(--cream-dark)]">
             Analyze a GitHub repo to generate an interactive 3D city from its codebase.
           </p>
           <Button
             onClick={() => onCreateCity?.()}
             size="sm"
-            className="mt-5 h-8 gap-1.5 rounded-md bg-primary px-4 text-[12px] font-medium leading-none text-white hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="pixel-shadow-accent btn-press mt-5 h-9 gap-2 rounded-none border-2 border-[#0d0d0f] bg-primary px-4 text-[12px] font-medium uppercase leading-none tracking-[0.05em] text-[#0d0d0f] hover:bg-primary focus-visible:outline-none"
           >
             <HugeIcon icon={Add01Icon} className="size-3.5" />
             New City
@@ -717,7 +717,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         <DashboardStat tone="violet" icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
         <Button
           onClick={() => onCreateCity?.()}
-          className="col-span-2 h-11 self-stretch gap-1.5 rounded-lg border border-primary/30 bg-primary px-4 text-[12px] font-semibold leading-none text-white hover:border-primary/45 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:col-span-1"
+          className="pixel-shadow-accent btn-press col-span-2 h-11 self-stretch gap-2 rounded-none border-2 border-[#0d0d0f] bg-primary px-4 text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#0d0d0f] hover:bg-primary focus-visible:outline-none lg:col-span-1"
         >
           <HugeIcon icon={Add01Icon} className="size-3.5" />
           New City
@@ -725,11 +725,11 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       </div>
 
       <div className="flex justify-end">
-        <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+        <div className="flex items-center gap-0 border-2 border-[var(--border-pixel)] bg-card p-0.5">
           <button
             type="button"
             onClick={() => setView("grid")}
-            className={`flex size-8 items-center justify-center rounded transition-colors ${view === "grid" ? "bg-white/[0.08] text-neutral-100" : "text-neutral-500 hover:text-neutral-200"}`}
+            className={`flex size-8 items-center justify-center transition-colors ${view === "grid" ? "bg-[var(--bg-raised)] text-[var(--cream)]" : "text-[var(--muted)] hover:text-[var(--cream)]"}`}
             title="Grid view"
             aria-label="Grid view"
             aria-pressed={view === "grid"}
@@ -739,7 +739,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
           <button
             type="button"
             onClick={() => setView("list")}
-            className={`flex size-8 items-center justify-center rounded transition-colors ${view === "list" ? "bg-white/[0.08] text-neutral-100" : "text-neutral-500 hover:text-neutral-200"}`}
+            className={`flex size-8 items-center justify-center transition-colors ${view === "list" ? "bg-[var(--bg-raised)] text-[var(--cream)]" : "text-[var(--muted)] hover:text-[var(--cream)]"}`}
             title="List view"
             aria-label="List view"
             aria-pressed={view === "list"}
@@ -783,21 +783,21 @@ function DashboardStat({
   tone: "blue" | "amber" | "emerald" | "violet"
 }) {
   const tones = {
-    blue: "border-sky-400/18 bg-sky-400/[0.055] text-sky-300",
-    amber: "border-amber-300/18 bg-amber-300/[0.055] text-amber-200",
-    emerald: "border-emerald-300/18 bg-emerald-300/[0.055] text-emerald-200",
-    violet: "border-violet-300/18 bg-violet-300/[0.055] text-violet-200",
+    blue: "border-[var(--sev-low)] bg-[color-mix(in_srgb,var(--sev-low)_8%,transparent)] text-[var(--sev-low)]",
+    amber: "border-[var(--sev-med)] bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] text-[var(--sev-med)]",
+    emerald: "border-[var(--lime)] bg-[color-mix(in_srgb,var(--lime)_10%,transparent)] text-[var(--lime)]",
+    violet: "border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] text-[var(--sev-high)]",
   }
 
   return (
-    <div className="flex h-11 items-center justify-between rounded-lg border border-white/[0.07] bg-[#101012] px-3">
+    <div className="pixel-shadow-sm flex h-11 items-center justify-between border-2 border-[var(--border-light)] bg-card px-3">
       <div className="flex items-center gap-2">
-        <span className={`flex size-7 items-center justify-center rounded-md border ${tones[tone]}`}>
+        <span className={`flex size-7 items-center justify-center border-2 ${tones[tone]}`}>
           {icon}
         </span>
-        <span className="text-[12px] font-medium leading-none text-neutral-400">{label}</span>
+        <span className="text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--muted)]">{label}</span>
       </div>
-      <span className="font-mono text-[13px] leading-none text-neutral-100 tabular-nums">{value}</span>
+      <span className="font-mono text-[13px] leading-none text-[var(--cream)] tabular-nums">{value}</span>
     </div>
   )
 }
