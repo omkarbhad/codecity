@@ -182,17 +182,17 @@ export function AppSidebar({
   return (
     <Sidebar {...props}>
       {/* Header */}
-      <SidebarHeader className="border-b border-white/[0.07] bg-[#0b0b0c]">
+      <SidebarHeader className="border-b-2 border-[var(--border-pixel)] bg-[var(--bg-deep)]">
         <div className="flex items-center justify-between px-2 py-2.5">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <img src="/logo.png" alt="CodeCity" className="size-6 shrink-0 rounded-sm" />
-            <span className="text-[13px] font-semibold text-zinc-100 tracking-tight truncate">CodeCity</span>
+            <img src="/logo.png" alt="CodeCity" className="size-6 shrink-0 rounded-none border-2 border-[var(--border-pixel)]" />
+            <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--cream)] truncate">CodeCity</span>
           </Link>
           <UpdateButton />
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="gap-0 bg-[#0b0b0c] pt-2">
+      <SidebarContent className="gap-0 bg-[var(--bg-deep)] pt-2">
         {/* Nav */}
         <SidebarGroup className="px-2 pb-2">
           <SidebarMenu className="gap-0.5">
@@ -200,7 +200,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 asChild
                 isActive={isDashboard}
-                className="h-8 rounded-md text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.07] transition-colors"
+                className="h-8 rounded-none border-2 border-transparent text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] data-[active=true]:text-[#0d0d0f] data-[active=true]:bg-primary data-[active=true]:border-[#0d0d0f] data-[active=true]:hover:bg-primary data-[active=true]:hover:text-[#0d0d0f] transition-colors"
               >
                 <Link href="/dashboard">
                   <HugeIcon icon={FolderGitTwoIcon} className="size-3.5" />
@@ -212,7 +212,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 asChild
                 isActive={isRepos}
-                className="h-8 rounded-md text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] data-[active=true]:text-zinc-100 data-[active=true]:bg-white/[0.07] transition-colors"
+                className="h-8 rounded-none border-2 border-transparent text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] data-[active=true]:text-[#0d0d0f] data-[active=true]:bg-primary data-[active=true]:border-[#0d0d0f] data-[active=true]:hover:bg-primary data-[active=true]:hover:text-[#0d0d0f] transition-colors"
               >
                 <Link href="/repos">
                   <HugeIcon icon={GithubIcon} className="size-3.5" />
@@ -224,17 +224,17 @@ export function AppSidebar({
         </SidebarGroup>
 
         {/* Divider */}
-        <div className="mx-3 border-t border-white/[0.07] mb-2" />
+        <div className="mx-3 mb-2 border-t-2 border-dashed border-[var(--border-pixel)]" />
 
         {/* Recent Cities */}
         <SidebarGroup className="px-2 pb-2">
           <div className="flex items-center justify-between px-1 mb-1.5">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-              <HugeIcon icon={Clock03Icon} className="size-3 text-zinc-600" />
+            <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+              <HugeIcon icon={Clock03Icon} className="size-3 text-[var(--dim)]" />
               Recent
             </span>
             {activeCount > 0 && (
-              <span className="flex items-center gap-1 text-[10px] text-zinc-500">
+              <span className="flex items-center gap-1 text-[10px] font-mono text-[var(--muted)]">
                 <Loader2 className="size-3 animate-spin text-primary" />
                 {activeCount} running
               </span>
@@ -249,13 +249,13 @@ export function AppSidebar({
                 <SidebarMenuItem key={project.id}>
                   <SidebarMenuButton
                     asChild
-                    className="h-7 rounded-md text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors group"
+                    className="h-7 rounded-none text-[11px] text-[var(--cream-dark)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] transition-colors group"
                   >
                     <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
-                      <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-zinc-500 group-hover:text-zinc-300" />
+                      <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-[var(--muted)] group-hover:text-primary" />
                       <span className="truncate font-mono">
-                        <span className="text-zinc-500">{owner}/</span>
-                        <span className="text-zinc-200 group-hover:text-zinc-50">{repo}</span>
+                        <span className="text-[var(--muted)]">{owner}/</span>
+                        <span className="text-[var(--cream)]">{repo}</span>
                       </span>
                     </Link>
                   </SidebarMenuButton>
@@ -264,7 +264,7 @@ export function AppSidebar({
             })}
             {completedProjects.length === 0 && (
               <div className="px-2 py-3 text-center">
-                <p className="text-[10px] font-mono text-zinc-700">no cities yet</p>
+                <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--dim)]">no cities yet</p>
               </div>
             )}
           </SidebarMenu>
@@ -272,8 +272,8 @@ export function AppSidebar({
 
         {trendingRepos.length > 0 && (
           <SidebarGroup className="px-2 pb-2">
-            <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-medium text-zinc-500">
-              <HugeIcon icon={StarIcon} className="size-3 text-amber-300/70" />
+            <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+              <HugeIcon icon={StarIcon} className="size-3 text-[var(--sev-med)]" />
               Trending
             </div>
             <div className="space-y-0.5">
@@ -281,10 +281,10 @@ export function AppSidebar({
                 const [owner, name] = repo.full_name.split("/")
                 const content = (
                   <>
-                    <HugeIcon icon={GithubIcon} className="size-3 shrink-0 text-zinc-500 group-hover:text-zinc-300" />
+                    <HugeIcon icon={GithubIcon} className="size-3 shrink-0 text-[var(--muted)] group-hover:text-primary" />
                     <span className="min-w-0 truncate">
-                      <span className="text-zinc-500">{owner}/</span>
-                      <span className="text-zinc-300 group-hover:text-zinc-100">{name}</span>
+                      <span className="text-[var(--muted)]">{owner}/</span>
+                      <span className="text-[var(--cream-dark)] group-hover:text-[var(--cream)]">{name}</span>
                     </span>
                   </>
                 )
@@ -295,7 +295,7 @@ export function AppSidebar({
                     type="button"
                     onClick={() => handleTrendingClick(repo)}
                     disabled={queueingTrendingId === repo.id}
-                    className="group flex h-7 w-full items-center gap-1.5 rounded px-1.5 text-left font-mono text-[11px] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-60"
+                    className="group flex h-7 w-full items-center gap-1.5 rounded-none px-1.5 text-left font-mono text-[11px] text-[var(--cream-dark)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--cream)] disabled:opacity-60"
                   >
                     {queueingTrendingId === repo.id ? <Loader2 className="size-3 shrink-0 animate-spin text-primary" /> : content}
                   </button>
@@ -307,37 +307,37 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-white/[0.07] bg-[#0b0b0c] p-2">
+      <SidebarFooter className="border-t-2 border-[var(--border-pixel)] bg-[var(--bg-deep)] p-2">
         {authCode && (
-          <div className="mb-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-2">
-            <p className="text-[10px] text-zinc-600">GitHub code</p>
-            <p className="mt-1 text-[13px] font-mono font-semibold tracking-[0.2em] text-zinc-200">{authCode}</p>
+          <div className="pixel-shadow-sm mb-2 rounded-none border-2 border-[var(--border-light)] bg-[var(--bg-card)] px-2 py-2">
+            <p className="text-[9px] font-mono uppercase tracking-[0.08em] text-[var(--muted)]">GitHub code</p>
+            <p className="mt-1 font-mono text-[13px] font-semibold tracking-[0.2em] text-primary">{authCode}</p>
           </div>
         )}
         {authError && (
-          <p className="mb-2 px-2 text-[10px] leading-4 text-primary/80">{authError}</p>
+          <p className="mb-2 px-2 text-[10px] leading-4 text-[var(--sev-high)]">{authError}</p>
         )}
         <div className="flex items-center gap-2 px-2 py-1.5">
           {activeUser?.image ? (
-            <img src={activeUser.image} alt={activeUser.name ?? "User avatar"} className="h-6 w-6 rounded-full ring-1 ring-white/[0.08] shrink-0" />
+            <img src={activeUser.image} alt={activeUser.name ?? "User avatar"} className="h-6 w-6 rounded-none border-2 border-[var(--border-pixel)] shrink-0" />
           ) : (
-            <div className="h-6 w-6 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
-              <HugeIcon icon={UserIcon} className="h-3 w-3 text-zinc-600" />
+            <div className="h-6 w-6 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] flex items-center justify-center shrink-0">
+              <HugeIcon icon={UserIcon} className="h-3 w-3 text-[var(--muted)]" />
             </div>
           )}
-          <div className="flex flex-col min-w-0 flex-1 gap-0">
-            <span className="text-[11px] font-medium text-zinc-400 truncate">
+          <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+            <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--cream)] truncate">
               {activeUser?.name ?? (user?.email ? user.email.split("@")[0] : "—")}
             </span>
-            <span className="text-[9px] font-mono text-zinc-700 truncate">
-              {activeUser?.name ? "GitHub connected" : "GitHub not connected"}
+            <span className="text-[9px] font-mono uppercase tracking-[0.08em] text-[var(--dim)] truncate">
+              {activeUser?.name ? "GitHub connected" : "Not connected"}
             </span>
           </div>
           {activeUser?.name ? (
             <IconButton
               onClick={handleLogout}
               title="Sign out"
-              className="size-6 border-transparent bg-transparent text-zinc-700 hover:border-white/[0.08]"
+              className="size-6 rounded-none border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)]"
             >
               <HugeIcon icon={Logout03Icon} />
             </IconButton>
@@ -346,7 +346,7 @@ export function AppSidebar({
               onClick={handleGithubLogin}
               disabled={isSigningIn}
               title="Connect GitHub"
-              className="size-6 border-transparent bg-transparent text-zinc-600 hover:border-white/[0.08]"
+              className="size-6 rounded-none border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)]"
             >
               {isSigningIn ? <Loader2 className="animate-spin" /> : <HugeIcon icon={GithubIcon} />}
             </IconButton>

@@ -85,14 +85,14 @@ export function UpdateButton() {
         disabled={disabled}
         title={message}
         aria-label={message}
-        className="flex size-7 items-center justify-center rounded-md border border-transparent bg-transparent text-zinc-700 transition-colors hover:border-white/[0.08] hover:bg-white/[0.03] hover:text-zinc-300 disabled:cursor-wait disabled:opacity-70"
+        className="flex size-7 items-center justify-center rounded-none border-2 border-transparent bg-transparent text-[var(--muted)] transition-colors hover:border-[var(--border-pixel)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)] disabled:cursor-wait disabled:opacity-70"
       >
-        <Icon className={`size-3.5 shrink-0 ${disabled ? "animate-spin text-primary" : "text-zinc-600"}`} />
+        <Icon className={`size-3.5 shrink-0 ${disabled ? "animate-spin text-primary" : ""}`} />
       </button>
       {state === "downloading" && (
-        <div className="absolute -bottom-1 left-0 right-0 h-0.5 overflow-hidden rounded-sm bg-white/[0.08]">
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 overflow-hidden rounded-none bg-[var(--border-pixel)]">
           <div
-            className="h-full rounded-sm bg-primary transition-all duration-300"
+            className="h-full rounded-none bg-primary transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
