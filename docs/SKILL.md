@@ -144,4 +144,4 @@ Synthesize: name the dominant language, top entry, top 2-3 hubs, observation abo
 - Tool source: `crates/codecity-mcp/src/server.rs`
 - Query implementations: `crates/codecity-mcp/src/query.rs`
 - Snapshot loader (`--snapshot` / `--repo` / cache): `crates/codecity-mcp/src/loader.rs`
-- Snapshot data model: `docs/schemas/network.yaml`, `docs/schemas/city.yaml`
+- Snapshot data model (`CitySnapshot`, `Network`, file/symbol types): `crates/codecity-core/src/lib.rs`
