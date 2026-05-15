@@ -1,0 +1,299 @@
+/* ============================================================
+   CodeCity Design System — Colors & Typography
+   ============================================================
+   The CodeCity pixel theme: a retro arcade aesthetic for a
+   modern dev tool. Sharp corners, hard offset shadows,
+   Silkscreen pixel font, warm cream + electric lime palette.
+
+   Source of truth — load this file before anything else.
+   ============================================================ */
+
+/* Webfonts — Inter for UI, JetBrains Mono for code */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+:root {
+  /* ── Type families ─────────────────────────────────────── */
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif; /* headings, UI labels */
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;     /* code, data, paths */
+  --font-sans:    "Inter", ui-sans-serif, system-ui, sans-serif; /* body */
+
+  /* ── Backgrounds ───────────────────────────────────────── */
+  --bg:           #0d0d0f;   /* page */
+  --bg-raised:    #161618;   /* one step up */
+  --bg-card:      #1c1c20;   /* card surface */
+  --bg-deep:      #06060b;   /* below page — terminals, viewers */
+
+  /* ── Borders ───────────────────────────────────────────── */
+  --border:        #2a2a30;
+  --border-light:  #3a3a44;
+  --border-strong: #0d0d0f;  /* the heavy 2px button border */
+
+  /* ── Text ramp (warm cream → dim) ──────────────────────── */
+  --cream:        #e8dcc8;   /* fg-1 · headlines, primary UI */
+  --cream-dark:   #c8b89c;   /* fg-2 · secondary body */
+  --warm:         #d4cfc4;   /* fg-3 · body default */
+  --muted:        #8c8c9c;   /* fg-4 · labels, metadata */
+  --dim:          #5c5c6c;   /* fg-5 · hints, dim mono */
+  --very-dim:     #3a3a44;   /* fg-6 · dividers, disabled */
+
+  /* Convenience aliases mirroring zinc-style ramp */
+  --fg-1: var(--cream);
+  --fg-2: var(--warm);
+  --fg-3: var(--cream-dark);
+  --fg-4: var(--muted);
+  --fg-5: var(--dim);
+  --fg-6: var(--very-dim);
+
+  /* ── Brand / accent — the electric lime ────────────────── */
+  --lime:         #c8e64a;
+  --lime-dark:    #8aaa1a;
+  --lime-shadow:  #5a7a00;   /* pixel-shadow color for lime buttons */
+
+  /* Accent (themeable — defaults to lime) */
+  --accent:        var(--lime);
+  --accent-shadow: var(--lime-shadow);
+  --primary:       var(--accent);
+
+  /* Alternate accent palette (Tweaks panel) */
+  --pal-lime:     #c8e64a; --pal-lime-shadow:    #5a7a00;
+  --pal-amber:    #ff8a3d; --pal-amber-shadow:   #7a3a00;
+  --pal-sky:      #3dd4ff; --pal-sky-shadow:     #005a7a;
+  --pal-magenta:  #ff3d8a; --pal-magenta-shadow: #7a005a;
+
+  /* ── Severity (Opengrep findings, status pills) ────────── */
+  --sev-high:     #ff3d8a;  --sev-high-shadow:    #7a005a;
+  --sev-med:      #ff8a3d;  --sev-med-shadow:     #7a3a00;
+  --sev-low:      #3dd4ff;  --sev-low-shadow:     #005a7a;
+  --sev-ok:       #c8e64a;  --sev-ok-shadow:      #5a7a00;
+
+  /* ── Language / district palette ───────────────────────── */
+  --lang-ts:      #3dd4ff;
+  --lang-js:      #ffea00;
+  --lang-py:      #00e676;
+  --lang-rs:      #ff8a3d;
+  --lang-go:      #00e5ff;
+  --lang-java:    #b388ff;
+  --lang-kt:      #ff3d8a;
+  --lang-swift:   #ff3d3d;
+  --lang-c:       #1de9b6;
+  --lang-rb:      #ff1744;
+  --lang-php:     #8c9eff;
+  --lang-elixir:  #aeea00;
+
+  /* ── Shadows — hard pixel offsets, NO blur ─────────────── */
+  --shadow-sm:    2px 2px 0 0 rgba(0,0,0,0.6);
+  --shadow:       4px 4px 0 0 rgba(0,0,0,0.6);
+  --shadow-lg:    6px 6px 0 0 rgba(0,0,0,0.6);
+  --shadow-accent: 4px 4px 0 0 var(--accent-shadow);
+
+  /* ── Borders + radius ─────────────────────────────────── */
+  --br: 2px solid var(--border);
+  --br-light: 2px solid var(--border-light);
+  --br-strong: 2px solid var(--border-strong);
+  --radius: 0;            /* always sharp */
+  --radius-card: 0;
+  --radius-pixel-only: 0;
+
+  /* ── Spacing (4px base grid) ──────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ── Type scale (Silkscreen is chunky — keep sizes tight) */
+  --fs-9:   9px;     /* HUD micro labels */
+  --fs-10:  10px;    /* eyebrows, kbd, status pills */
+  --fs-11:  11px;    /* nav, captions, metadata */
+  --fs-12:  12px;    /* body small, list items */
+  --fs-13:  13px;    /* body default */
+  --fs-14:  14px;    /* body large, button (big) */
+  --fs-16:  16px;
+  --fs-18:  18px;    /* h5 */
+  --fs-20:  20px;    /* h4 */
+  --fs-24:  24px;    /* h3 small */
+  --fs-28:  28px;    /* h3 */
+  --fs-32:  32px;    /* h2 small */
+  --fs-38:  38px;    /* h2 */
+  --fs-48:  48px;    /* section h2 */
+  --fs-64:  64px;
+  --fs-72:  72px;    /* hero */
+  --fs-84:  84px;
+
+  --tracking-tight:  0em;
+  --tracking-normal: 0.02em;
+  --tracking-wide:   0.08em;
+  --tracking-extra:  0.15em;
+  --tracking-mono:   0.01em;
+}
+
+/* ============================================================
+   Base — apply to <html> and <body>
+   ============================================================ */
+html, body {
+  background: var(--bg);
+  color: var(--warm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  line-height: 1.55;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+
+/* ============================================================
+   Element styles
+   ============================================================ */
+h1, h2, h3, h4, h5, h6, .display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--cream);
+}
+h1, .h1 { letter-spacing: -0.035em; font-weight: 800; }
+h2, .h2 { letter-spacing: -0.03em;  font-weight: 700; }
+
+h1, .h1 { font-size: var(--fs-72); }
+h2, .h2 { font-size: var(--fs-48); }
+h3, .h3 { font-size: var(--fs-28); }
+h4, .h4 { font-size: var(--fs-20); }
+h5, .h5 { font-size: var(--fs-18); }
+h6, .h6 { font-size: var(--fs-14); letter-spacing: var(--tracking-wide); }
+
+p, .body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  color: var(--cream-dark);
+  line-height: 1.6;
+  margin: 0 0 var(--space-3);
+}
+.body-lg { font-size: var(--fs-14); }
+.body-sm { font-size: var(--fs-12); }
+
+code, kbd, samp, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: var(--tracking-mono);
+}
+
+.eyebrow, .overline {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.caption {
+  font-size: var(--fs-10);
+  color: var(--muted);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+/* The signature CodeCity gradient — used sparingly on hero lines */
+.cc-pixel-shadow-text {
+  color: var(--accent);
+  text-shadow: 4px 4px 0 var(--accent-shadow);
+}
+
+::selection { background: rgba(200,230,74,0.35); color: var(--cream); }
+
+a { color: inherit; }
+button { font-family: inherit; }
+
+/* ============================================================
+   Common building blocks
+   ============================================================ */
+
+/* Pixel shadow utilities — hard offsets, NO blur ever */
+.pixel-shadow-sm { box-shadow: var(--shadow-sm); }
+.pixel-shadow    { box-shadow: var(--shadow); }
+.pixel-shadow-lg { box-shadow: var(--shadow-lg); }
+.pixel-shadow-lime,
+.pixel-shadow-accent { box-shadow: var(--shadow-accent); }
+
+/* Press behavior — slide on hover, sink on active */
+.btn-press {
+  transition: transform 80ms steps(2), box-shadow 80ms steps(2);
+}
+.btn-press:hover { transform: translate(2px, 2px); }
+.btn-press:hover.pixel-shadow      { box-shadow: var(--shadow-sm); }
+.btn-press:hover.pixel-shadow-lime,
+.btn-press:hover.pixel-shadow-accent { box-shadow: 2px 2px 0 0 var(--accent-shadow); }
+.btn-press:active { transform: translate(4px, 4px); box-shadow: none !important; }
+
+/* Card */
+.cc-card {
+  background: var(--bg-card);
+  border: var(--br-light);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+}
+
+/* Terminal-style frame (used for viewers, findings, hero) */
+.cc-frame {
+  background: var(--bg-deep);
+  border: var(--br-light);
+  position: relative;
+  overflow: hidden;
+}
+.cc-frame-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border-bottom: var(--br);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--cream-dark);
+}
+.cc-frame-footer {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-card);
+  border-top: var(--br);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  color: var(--muted);
+}
+
+/* Scanline overlay — subtle CRT effect */
+.scanlines { position: relative; }
+.scanlines::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg,
+    transparent 0, transparent 2px,
+    rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 3px);
+  mix-blend-mode: overlay;
+}
+
+/* The signature CodeCity "live" pulse — pixelated steps, not smooth */
+@keyframes blink-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.blink-dot { animation: blink-dot 1s steps(1) infinite; }
+
+@keyframes pixel-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent); }
+  50%      { box-shadow: 0 0 0 4px transparent; }
+}
+.pixel-pulse { animation: pixel-pulse 1.6s steps(8) infinite; }
+
+/* Pixel-grid background — drop on a body or hero */
+.cc-pixel-grid {
+  background-image: radial-gradient(circle, rgba(58,58,68,0.4) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Divider — dashed for the retro feel */
+.cc-divider-bar {
+  width: 24px; height: 4px;
+  background: var(--accent);
+  display: inline-block;
+}
+.cc-dashed { border-top: 1px dashed var(--border-light); }
