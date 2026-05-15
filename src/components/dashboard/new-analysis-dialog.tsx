@@ -101,17 +101,17 @@ export function NewAnalysisDialog({
         }
       }}
     >
-      <DialogContent className="overflow-hidden rounded-lg border border-white/[0.10] bg-[#101012] p-0 shadow-lg sm:max-w-[440px]">
+      <DialogContent className="pixel-shadow-lg overflow-hidden rounded-none border-2 border-[var(--border-light)] bg-card p-0 sm:max-w-[440px]">
         <div className="relative p-5">
           {/* Header */}
           <DialogHeader className="mb-5">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="CodeCity" className="size-9 shrink-0 rounded-md" />
+              <img src="/logo.png" alt="CodeCity" className="size-9 shrink-0 rounded-none border-2 border-[var(--border-pixel)]" />
               <div>
-                <DialogTitle className="text-[15px] font-semibold text-zinc-100 leading-none">
+                <DialogTitle className="text-[15px] font-semibold uppercase tracking-[0.05em] text-[var(--cream)] leading-none">
                   New City
                 </DialogTitle>
-                <DialogDescription className="mt-1 text-xs leading-none text-zinc-500">
+                <DialogDescription className="mt-1.5 text-xs leading-none text-[var(--cream-dark)]">
                   {sourceMode === "local" ? "Analyze files from this computer" : "Download a GitHub repo and build a city"}
                 </DialogDescription>
               </div>
@@ -135,10 +135,10 @@ export function NewAnalysisDialog({
                         setUrl("")
                         setError(null)
                       }}
-                      className={`flex h-10 items-center justify-center gap-2 rounded-md border text-[12px] font-medium transition-colors ${
+                      className={`flex h-10 items-center justify-center gap-2 rounded-none border-2 text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${
                         active
-                          ? "border-primary/35 bg-primary/[0.07] text-zinc-100"
-                          : "border-white/[0.07] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-zinc-300"
+                          ? "pixel-shadow-sm border-primary bg-[color-mix(in_srgb,var(--lime)_10%,var(--bg-card))] text-[var(--cream)]"
+                          : "border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--cream-dark)] hover:border-[var(--border-light)] hover:text-[var(--cream)]"
                       }`}
                     >
                       <HugeIcon icon={item.icon} className="size-3.5" />
@@ -151,15 +151,15 @@ export function NewAnalysisDialog({
 
             {/* URL input */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-zinc-400">
+              <label className="block text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
                 {sourceMode === "local" ? "Folder path" : "Repository URL"}
               </label>
               <div className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
                 {sourceMode === "local" || (isTauri() && (url.startsWith("/") || url.startsWith("~"))) ? (
-                  <HugeIcon icon={FolderOpenIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-zinc-600 pointer-events-none" />
+                  <HugeIcon icon={FolderOpenIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
                 ) : (
-                  <HugeIcon icon={GitBranchIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-zinc-600 pointer-events-none" />
+                  <HugeIcon icon={GitBranchIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
                 )}
                 <Input
                   type={isTauri() ? "text" : "url"}
@@ -167,7 +167,7 @@ export function NewAnalysisDialog({
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   disabled={submitting}
-                  className="h-10 rounded-md border-white/[0.10] bg-[#0b0b0c] pl-9 font-mono text-[12px] text-zinc-200 transition-colors placeholder:text-zinc-700 focus-visible:border-primary/50 focus-visible:ring-0"
+                  className="h-10 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-deep)] pl-9 font-mono text-[12px] text-[var(--cream)] transition-colors placeholder:text-[var(--dim)] focus-visible:border-primary focus-visible:ring-0"
                   required
                 />
                 </div>
@@ -176,7 +176,7 @@ export function NewAnalysisDialog({
                     type="button"
                     variant="outline"
                     onClick={handleBrowseFolder}
-                    className="h-10 shrink-0 rounded-md border-white/[0.10] bg-white/[0.02] px-3 text-[12px] text-zinc-400 hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-zinc-200"
+                    className="pixel-shadow-sm btn-press h-10 shrink-0 rounded-none border-2 border-[var(--border-light)] bg-[var(--bg-raised)] px-3 text-[11px] uppercase tracking-[0.05em] text-[var(--cream-dark)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
                   >
                     Browse
                   </Button>
@@ -185,16 +185,16 @@ export function NewAnalysisDialog({
 
               {/* Quick picks */}
               {!submitting && sourceMode === "github" && (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                <div className="flex flex-wrap gap-1.5 pt-1">
                   {QUICK_REPOS.map((repo) => (
                     <button
                       key={repo.url}
                       type="button"
                       onClick={() => setUrl(repo.url)}
-                      className={`rounded-md border px-2 py-1 font-mono text-[10px] transition-colors ${
+                      className={`rounded-none border-2 px-2 py-1 font-mono text-[10px] transition-colors ${
                         url === repo.url
-                          ? "border-primary/40 bg-primary/[0.08] text-primary"
-                          : "border-white/[0.07] bg-white/[0.02] text-zinc-600 hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-zinc-300"
+                          ? "border-primary bg-[color-mix(in_srgb,var(--lime)_12%,transparent)] text-primary"
+                          : "border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--cream-dark)] hover:border-[var(--border-light)] hover:text-[var(--cream)]"
                       }`}
                     >
                       {repo.label}
@@ -206,10 +206,10 @@ export function NewAnalysisDialog({
 
             {/* Submitting state */}
             {submitting && (
-              <div className="rounded-md border border-primary/15 bg-primary/[0.04] px-4 py-4 text-center">
+              <div className="rounded-none border-2 border-primary bg-[color-mix(in_srgb,var(--lime)_6%,var(--bg-card))] px-4 py-4 text-center">
                 <div className="flex items-center justify-center gap-2.5">
                   <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-                  <span className="text-[12px] font-mono text-zinc-300">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream)]">
                     Adding city to queue…
                   </span>
                 </div>
@@ -218,19 +218,19 @@ export function NewAnalysisDialog({
 
             {/* Error */}
             {error && (
-              <div className="rounded-md border border-red-500/20 bg-red-500/[0.05] px-3 py-2.5">
-                <p className="text-[11px] font-mono text-red-400">{error}</p>
+              <div className="rounded-none border-2 border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_8%,var(--bg-card))] px-3 py-2.5">
+                <p className="font-mono text-[11px] text-[var(--sev-high)]">{error}</p>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-0.5">
+            <div className="flex gap-2 pt-1">
               {!submitting && (
                 <Button
                   type="button"
                   onClick={() => onOpenChange(false)}
                   variant="outline"
-                  className="h-9 flex-1 rounded-md border-white/[0.10] bg-transparent text-[12px] text-zinc-500 transition-colors hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-zinc-200"
+                  className="btn-press h-10 flex-1 rounded-none border-2 border-[var(--border-pixel)] bg-transparent text-[11px] uppercase tracking-[0.05em] text-[var(--cream-dark)] transition-colors hover:border-[var(--border-light)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
                 >
                   Cancel
                 </Button>
@@ -238,7 +238,7 @@ export function NewAnalysisDialog({
               <Button
                 type="submit"
                 disabled={submitting}
-                className={`h-9 rounded-md bg-primary text-[12px] font-semibold text-white transition-colors hover:bg-primary/90 ${submitting ? "w-full" : "flex-[2]"}`}
+                className={`pixel-shadow-accent btn-press h-10 rounded-none border-2 border-[#0d0d0f] bg-primary text-[11px] font-semibold uppercase tracking-[0.05em] text-[#0d0d0f] transition-colors hover:bg-primary ${submitting ? "w-full" : "flex-[2]"}`}
               >
                 {submitting ? (
                   "Queueing…"

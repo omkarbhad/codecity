@@ -43,12 +43,12 @@ function DashboardContent() {
     <>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0b0b0c] px-4">
+        <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b-2 border-(--border-pixel) bg-(--bg) px-4">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-200" />
-            <Separator orientation="vertical" className="mx-1 h-4 bg-white/[0.08]" />
-            <span className="flex items-center gap-1.5 text-sm font-medium text-zinc-300">
-              <HugeIcon icon={FolderGitTwoIcon} className="size-3.5 text-zinc-600" />
+            <SidebarTrigger className="-ml-1 rounded-none text-(--muted) hover:text-(--cream)" />
+            <Separator orientation="vertical" className="mx-1 h-4 bg-(--border-pixel)" />
+            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-(--cream)">
+              <HugeIcon icon={FolderGitTwoIcon} className="size-3.5 text-primary" />
               My cities
             </span>
           </div>

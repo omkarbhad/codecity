@@ -207,20 +207,20 @@ function DeleteButton({
   if (confirmOpen) {
     return (
       <div
-        className="flex h-8 items-center gap-0.5 overflow-hidden rounded-md border border-white/[0.10] bg-white/[0.04]"
+        className="pixel-shadow-sm flex h-8 items-center gap-0.5 overflow-hidden rounded-none border-2 border-[var(--sev-high)] bg-[var(--bg-card)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="px-2 text-[11px] font-medium leading-none text-neutral-300">Remove?</span>
+        <span className="px-2 text-[10px] font-medium uppercase tracking-[0.08em] leading-none text-[var(--cream)]">Remove?</span>
         <IconButton
           onClick={confirm}
-          className="size-7 border-transparent bg-transparent text-rose-300 hover:border-rose-400/20 hover:bg-rose-400/[0.08] hover:text-rose-200"
+          className="size-7 rounded-none border-transparent bg-transparent text-[var(--sev-high)] hover:bg-[color-mix(in_srgb,var(--sev-high)_15%,transparent)]"
           aria-label="Confirm remove"
         >
           <Check />
         </IconButton>
         <IconButton
           onClick={cancel}
-          className="size-7 border-transparent bg-transparent text-neutral-400 hover:text-neutral-200"
+          className="size-7 rounded-none border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--cream)]"
           aria-label="Cancel delete"
         >
           <X />
@@ -232,7 +232,7 @@ function DeleteButton({
   return (
     <IconButton
       onClick={openConfirm}
-      className="size-8 border-white/[0.07] bg-white/[0.02] text-neutral-500 hover:border-rose-400/25 hover:bg-rose-400/[0.06] hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="pixel-shadow-sm btn-press size-8 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] hover:border-[var(--sev-high)] hover:text-[var(--sev-high)] focus-visible:outline-none"
       aria-label="Remove project"
     >
       <Trash2 />
@@ -301,26 +301,26 @@ function ProjectCard({
   if (view === "list") {
     return (
       <div
-        className={`grid min-h-11 grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] items-center gap-3 border-b border-white/[0.05] px-3 py-2 transition-colors hover:bg-white/[0.025]
-          ${isActive ? "bg-primary/[0.025]" : ""}
+        className={`grid min-h-11 grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] items-center gap-3 border-b-2 border-(--border-pixel) px-3 py-2 transition-colors hover:bg-(--bg-raised)
+          ${isActive ? "bg-[color-mix(in_srgb,var(--lime)_4%,transparent)]" : ""}
           ${isQueued ? "opacity-70" : ""}
         `}
       >
         <div className="min-w-0">
-          <p className="truncate font-mono text-[10px] leading-[1.4] text-neutral-500">{owner}/</p>
-          <h3 className="truncate text-[13px] font-medium leading-[1.25] text-neutral-100">{repo}</h3>
+          <p className="truncate font-mono text-[10px] leading-[1.4] text-(--muted)">{owner}/</p>
+          <h3 className="truncate text-[13px] font-medium leading-[1.25] text-(--cream)">{repo}</h3>
         </div>
-        <span className="font-mono text-[11px] leading-none text-neutral-400">
+        <span className="font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-(--cream-dark)">
           {isCompleted ? "done" : isActive ? "analyzing" : isQueued ? "queued" : "failed"}
         </span>
-        <span className="font-mono text-[11px] leading-none text-neutral-300 tabular-nums">{isCompleted ? formatNumber(project.fileCount ?? 0) : "—"}</span>
-        <span className="font-mono text-[11px] leading-none text-neutral-300 tabular-nums">{isCompleted ? formatNumber(project.lineCount ?? 0) : "—"}</span>
-        <span className="font-mono text-[11px] leading-none text-neutral-500">{timeAgo(project.createdAt)}</span>
+        <span className="font-mono text-[11px] leading-none text-(--cream) tabular-nums">{isCompleted ? formatNumber(project.fileCount ?? 0) : "—"}</span>
+        <span className="font-mono text-[11px] leading-none text-(--cream) tabular-nums">{isCompleted ? formatNumber(project.lineCount ?? 0) : "—"}</span>
+        <span className="font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-(--muted)">{timeAgo(project.createdAt)}</span>
         <div className="flex justify-end gap-1.5">
           {isProcessing && (
             <button
               onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-              className="flex size-8 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-neutral-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) text-(--muted) transition-colors hover:border-(--border-light) hover:text-(--cream) focus-visible:outline-none"
               title="Stop parsing"
               aria-label="Stop parsing"
             >
@@ -330,7 +330,7 @@ function ProjectCard({
           {isCompleted && (
             <Link
               href={`/project?id=${encodeURIComponent(project.id)}`}
-              className="flex h-8 items-center rounded-md border border-primary/25 bg-primary/[0.08] px-3 text-[11px] font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="pixel-shadow-accent btn-press flex h-8 items-center rounded-none border-2 border-[#0d0d0f] bg-primary px-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-[#0d0d0f] transition-colors hover:bg-primary focus-visible:outline-none"
             >
               Open
             </Link>
@@ -338,7 +338,7 @@ function ProjectCard({
           {isFailed && (
             <button
               onClick={(e) => { e.preventDefault(); onRetry(project) }}
-              className="flex h-8 items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[11px] font-medium text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="pixel-shadow-sm btn-press flex h-8 items-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream) focus-visible:outline-none"
             >
               Retry
             </button>
@@ -404,24 +404,24 @@ function ProjectCard({
 
           {/* Status pill */}
           {isCompleted && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] px-2 text-[10px] font-medium leading-none text-emerald-300">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-none border-2 border-[var(--lime)] bg-[color-mix(in_srgb,var(--lime)_10%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--lime)]">
               <Check className="size-3" />
               done
             </span>
           )}
           {isActive && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.10] px-2 text-[10px] font-medium leading-none text-primary">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-none border-2 border-primary bg-[color-mix(in_srgb,var(--lime)_12%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-primary">
               <Loader2 className="size-3 animate-spin" />
               analyzing
             </span>
           )}
           {isQueued && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-amber-300/20 bg-amber-300/[0.06] px-2 text-[10px] font-medium leading-none text-amber-200">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-none border-2 border-[var(--sev-med)] bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--sev-med)]">
               queued
             </span>
           )}
           {isFailed && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 text-[10px] font-medium leading-none text-rose-300">
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-none border-2 border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_10%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--sev-high)]">
               <AlertCircle className="size-3" />
               failed
             </span>
@@ -474,22 +474,22 @@ function ProjectCard({
 
         {/* Error */}
         {isFailed && project.error && (
-          <p className="line-clamp-2 rounded-md border border-rose-400/15 bg-rose-400/[0.04] px-3 py-2 font-mono text-[11px] leading-[1.4] text-rose-200/80">
+          <p className="line-clamp-2 rounded-none border-2 border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_6%,transparent)] px-3 py-2 font-mono text-[11px] leading-[1.4] text-[var(--sev-high)]">
             {project.error}
           </p>
         )}
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-dashed border-[var(--border-pixel)] pt-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="shrink-0 font-mono text-[11px] leading-none text-neutral-500">{timeAgo(project.createdAt)}</span>
+            <span className="shrink-0 font-mono text-[11px] leading-none text-[var(--muted)]">{timeAgo(project.createdAt)}</span>
             {isExternal && project.repoUrl && (
               <a
                 href={project.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex size-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-white/[0.05] hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="inline-flex size-7 items-center justify-center rounded-none text-[var(--muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--cream)] focus-visible:outline-none"
                 title="Open on GitHub"
                 aria-label="Open repository on GitHub"
               >
@@ -503,7 +503,7 @@ function ProjectCard({
             {isFailed && (
               <button
                 onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="flex h-8 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[11px] font-medium text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="pixel-shadow-sm btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--cream-dark)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)] focus-visible:outline-none"
               >
                 <RefreshCw className="size-3" />
                 Retry
@@ -513,7 +513,7 @@ function ProjectCard({
             {isProcessing && (
               <button
                 onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-                className="flex size-8 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-neutral-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)] focus-visible:outline-none"
                 title="Stop parsing"
                 aria-label="Stop parsing"
               >
@@ -526,7 +526,7 @@ function ProjectCard({
               <Link
                 href={`/project?id=${encodeURIComponent(project.id)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex h-8 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.08] px-3 text-[11px] font-medium leading-none text-primary transition-colors hover:border-primary/40 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="pixel-shadow-accent btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-[#0d0d0f] bg-primary px-3 text-[10px] font-semibold uppercase leading-none tracking-[0.05em] text-[#0d0d0f] transition-colors hover:bg-primary focus-visible:outline-none"
               >
                 Open
                 <ExternalLink className="size-3" />
@@ -657,9 +657,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       <div className="space-y-2.5">
         <div className="flex items-center gap-2 px-0.5">
           {icon}
-          <span className="text-[12px] font-semibold uppercase leading-none tracking-[0.08em] text-neutral-400">{label}</span>
-          <div className="h-px flex-1 bg-white/[0.06]" />
-          <span className="font-mono text-[10px] leading-none text-neutral-500 tabular-nums">{items.length}</span>
+          <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em] text-(--cream)">{label}</span>
+          <div className="h-px flex-1 border-t border-dashed border-(--border-pixel)" />
+          <span className="font-mono text-[10px] leading-none text-(--muted) tabular-nums">{items.length}</span>
         </div>
         {renderProjectCollection(items)}
       </div>
@@ -676,8 +676,8 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     }
 
     return (
-      <div className="overflow-hidden rounded-lg border border-white/[0.07] bg-[#101012]">
-        <div className="grid grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] gap-3 border-b border-white/[0.07] px-3 py-2.5 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-neutral-500">
+      <div className="pixel-shadow overflow-hidden rounded-none border-2 border-(--border-light) bg-card">
+        <div className="grid grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] gap-3 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-3 py-2.5 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-(--muted)">
           <span>City</span>
           <span>Status</span>
           <span>Files</span>
@@ -753,17 +753,17 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 px-0.5">
             <HugeIcon icon={WorkflowSquare01Icon} className="size-3 text-primary" />
-            <span className="text-[12px] font-semibold uppercase leading-none tracking-[0.08em] text-primary">Running</span>
-            <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="font-mono text-[10px] leading-none text-neutral-500 tabular-nums">{processingProjects.length}</span>
+            <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em] text-primary">Running</span>
+            <div className="h-px flex-1 border-t border-dashed border-primary opacity-40" />
+            <span className="font-mono text-[10px] leading-none text-(--muted) tabular-nums">{processingProjects.length}</span>
           </div>
           {renderProjectCollection(processingProjects)}
         </div>
       )}
 
-      {renderGroup("Cities", <HugeIcon icon={Building03Icon} className="size-3 text-neutral-500" />, settledProjects)}
+      {renderGroup("Cities", <HugeIcon icon={Building03Icon} className="size-3 text-(--muted)" />, settledProjects)}
       {failedProjects.length > 0 && (
-        <div className="rounded-lg border border-rose-400/15 bg-rose-400/[0.04] px-3 py-2.5 font-mono text-[11px] leading-[1.4] text-rose-200/80">
+        <div className="rounded-none border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_6%,transparent)] px-3 py-2.5 font-mono text-[11px] uppercase leading-[1.4] tracking-[0.05em] text-(--sev-high)">
           {failedProjects.length} failed analysis {failedProjects.length === 1 ? "needs" : "need"} attention.
         </div>
       )}
