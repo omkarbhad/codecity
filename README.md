@@ -1,137 +1,155 @@
+<!-- generated-by: gsd-doc-writer -->
 # CodeCity
 
-CodeCity is a local-first Tauri desktop app that turns a local folder or GitHub repository into a 3D city. Files become buildings, directories become districts, and imports become connection paths that make architecture visible at a glance.
+Visualize any codebase as an explorable 3D city — a Tauri 2 desktop app with a Rust analysis engine, a CLI, and an MCP server for LLM agents.
 
-The app is intentionally a single project. The UI stays in TypeScript/React because it drives the 3D experience, while repository analysis, parsing, storage, GitHub imports, and offline folder support live in Rust under `src-tauri`.
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.1-informational)
 
-## Features
+## What's in this repo
 
-- Analyze GitHub repositories or local folders.
-- Queue analyses and refresh completed cities.
-- Store parsed city data locally in SQLite.
-- Browse GitHub repositories, trending repositories, and recent cities.
-- View code structure as a 3D city with file details, filters, commits, and dependency paths.
-- Package native desktop builds for Windows, macOS, and Linux.
-- Supports Tauri updater artifacts through GitHub Releases.
+CodeCity is a Cargo workspace plus a Next.js frontend. It ships four artifacts that all sit on top of the same analysis core:
 
-## Downloads
+| Crate / package | Role |
+| --- | --- |
+| `crates/codecity-core` | Pure analysis engine — tree-sitter parsing, import resolution, network analysis, city layout. Zero I/O, zero app deps. |
+| `crates/codecity-cli` (`codecity-cli`) | Command-line wrapper around the core. `analyze`, `network`, `inspect`. |
+| `crates/codecity-mcp` (`codecity-mcp`) | MCP server exposing snapshot queries to LLM agents over stdio. |
+| `src-tauri` (`codecity`) | Tauri 2 desktop app. Owns DB, HTTP, RPC; thin wrapper over `codecity-core`. |
+| `src/` | Next.js 16 / React 19 frontend with `react-three-fiber` rendering the city. |
 
-Stable builds are published on the GitHub Releases page.
+Supported languages (parsed by `codecity-core` via tree-sitter): TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Bash, Zig, Lua, Haskell, Dart, Elixir, Scala, R, Julia, Perl, Erlang, Dockerfile, Nix, GLSL, Make, OCaml, WGSL, Groovy, GraphQL, Emacs Lisp, HCL, Protobuf, CSS, HTML, JSON, YAML, Markdown, TOML.
 
-| Platform | Release asset |
-|---|---|
-| Windows | NSIS setup `.exe` and WiX `.msi` installers |
-| macOS Apple Silicon | `.dmg` and `.app.tar.gz` for `aarch64` |
-| macOS Intel | `.dmg` and `.app.tar.gz` for `x86_64` |
-| Linux | `.AppImage`, `.deb`, and `.rpm` packages |
+## Prerequisites
 
-The app updater reads `latest.json` from:
+- **Node.js** with `pnpm@9.15.0` (pinned via `packageManager` in `package.json`)
+- **Rust** stable toolchain with `cargo` (workspace uses Rust 2021 edition)
+- **Tauri 2** system dependencies — see <https://v2.tauri.app/start/prerequisites/> <!-- VERIFY: Tauri 2 prerequisites URL -->
 
-```text
-https://github.com/MagnovaAI/codecity/releases/latest/download/latest.json
-```
-
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Desktop shell | Tauri 2 |
-| Backend | Rust, tree-sitter, SQLite |
-| Frontend | Next.js 16, React 19, TypeScript |
-| 3D scene | Three.js, React Three Fiber |
-| Styling | Tailwind CSS v4 |
-| Package manager | pnpm 9 |
-
-## Project Structure
-
-```text
-codecity/
-├── src/                    # Next.js app, UI, city scene, client helpers
-│   ├── app/                # App Router pages
-│   ├── components/         # Product and city components
-│   ├── lib/                # Frontend helpers and Tauri bridge
-│   └── ui/                 # Local shadcn-style UI primitives
-├── src-tauri/              # Rust backend and Tauri desktop package
-│   └── src/analysis/       # Parser, layout, database, GitHub analysis
-├── public/                 # Static assets
-├── scripts/                # Desktop/server helper scripts
-└── package.json
-```
-
-## Development
-
-Install dependencies:
+## Installation
 
 ```bash
+git clone https://github.com/MagnovaAI/codecity.git
+cd codecity
 pnpm install
 ```
 
-Run the web UI:
+## Quick start
 
-```bash
-pnpm dev
-```
-
-Run the desktop app:
+Run the desktop app in dev mode (Tauri spawns `pnpm dev` on port 3000 and opens the native shell):
 
 ```bash
 pnpm desktop
 ```
 
-Check the project:
+Web-only dev server (no Tauri shell, opens at <http://localhost:3000>):
 
 ```bash
-pnpm type-check
-cd src-tauri && cargo check
+pnpm dev
 ```
 
-Build locally:
+Build the CLI and analyze a project:
 
 ```bash
-pnpm build
-pnpm bundle:desktop
+cargo build -p codecity-cli --release
+./target/release/codecity-cli analyze /path/to/your/repo
 ```
 
-## Release
-
-Releases are built by `.github/workflows/release.yml` with `tauri-apps/tauri-action`. The workflow builds:
-
-- macOS Apple Silicon: `aarch64-apple-darwin`
-- macOS Intel: `x86_64-apple-darwin`
-- Windows: `windows-latest`, producing NSIS `.exe` and WiX `.msi` installers.
-- Linux: `ubuntu-22.04`, producing `.AppImage`, `.deb`, and `.rpm` packages.
-
-Before the first release, configure these repository secrets:
-
-| Secret | Required | Purpose |
-|---|---:|---|
-| `TAURI_SIGNING_PRIVATE_KEY` | Yes | Full updater private key content generated by `pnpm tauri signer generate -w ~/.tauri/codecity.key`. Include the comment lines. |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | If your key has one | Exact password for the updater signing key, or an empty value for an unencrypted key. |
-
-The public key from the signer command must match `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`.
-
-Create a release by bumping versions in:
-
-- `package.json`
-- `src-tauri/Cargo.toml`
-- `src-tauri/tauri.conf.json`
-
-Then tag and push:
+Run the MCP server against a repo (speaks MCP over stdio):
 
 ```bash
-git tag v0.1.0
-git push origin main --tags
+cargo run -p codecity-mcp -- --repo /path/to/your/repo
 ```
 
-You can also run the workflow manually from GitHub Actions. The workflow creates a GitHub Release named `CodeCity v__VERSION__`, uploads platform installers, and publishes updater metadata.
+## Usage examples
 
-## Notes
+### CLI — generate a snapshot
 
-- GitHub archive download is the fastest import path. Git clone is used as a fallback.
-- Clone fallback uses shallow, single-branch, no-tag clones to reduce transfer size.
-- Local folder analysis works offline after the app is installed.
-- If a local folder was moved or deleted, refresh/reanalysis will report that directly.
+```bash
+codecity-cli analyze ./my-project --json -o snapshot.json
+```
 
-## Third-party licenses
+Common flags:
 
-The security scan feature bundles [opengrep](https://github.com/opengrep/opengrep), which is licensed under LGPL-2.1. CodeCity invokes it as a separate sidecar process; the LGPL boundary is respected. The full license text ships with the app at `licenses/LICENSE.opengrep`.
+- `--json` / `-o <file>` — emit the full `CitySnapshot` as JSON instead of a human summary.
+- `--timeout <secs>` — abort analysis if it takes longer (default `60`, `0` disables).
+- `--no-gitskip` — analyze files normally hidden by `.gitignore`.
+- `--exclude '<glob>'` — drop extra paths (repeatable, gitignore-style).
+
+Inspect a saved snapshot:
+
+```bash
+codecity-cli inspect snapshot.json --node src/lib/foo.ts
+```
+
+Network-only views:
+
+```bash
+codecity-cli network ./my-project --communities
+codecity-cli network ./my-project --entries
+codecity-cli network ./my-project --hubs
+```
+
+### MCP server — feed a snapshot to an LLM agent
+
+```bash
+# Option A: analyze a repo on startup
+codecity-mcp --repo /path/to/repo
+
+# Option B: load a pre-baked snapshot
+codecity-mcp --snapshot snapshot.json --source-root /path/to/repo
+```
+
+The server talks JSON-RPC over stdio (stdout is reserved for the wire; logs go to stderr).
+
+### Desktop app
+
+`pnpm desktop` launches a 1280×800 Tauri window pointing at the Next.js dashboard. Pick a local directory or paste a Git URL, then explore the resulting 3D city.
+
+## Development
+
+| Script | What it does |
+| --- | --- |
+| `pnpm dev` | Next.js dev server on port 3000 |
+| `pnpm dev:fast` | Same, with a larger Node heap (`--max-old-space-size=4096`) |
+| `pnpm desktop` | `tauri dev` — runs the full desktop app |
+| `pnpm build` | Production Next.js build |
+| `pnpm build:desktop` | Debug Tauri build (no bundle) |
+| `pnpm bundle:desktop` | Full Tauri bundle for distribution |
+| `pnpm lint` / `pnpm type-check` | `tsc --noEmit` |
+| `cargo check` / `cargo build` | Build the Rust workspace |
+
+There is also a separate `homepage/` Next.js project (`pnpm dev:homepage`, port 3001) for the marketing site.
+
+## Project layout
+
+```
+codecity/
+├─ src/                  Next.js 16 + React 19 frontend (app router)
+├─ src-tauri/            Tauri 2 desktop shell (Rust)
+├─ crates/
+│  ├─ codecity-core/     Pure analysis engine (tree-sitter, layout, network)
+│  ├─ codecity-cli/      `codecity-cli` binary
+│  └─ codecity-mcp/      `codecity-mcp` binary (MCP over stdio)
+├─ homepage/             Standalone marketing site (Next.js)
+├─ licenses/             Third-party license notices (e.g., opengrep LGPL-2.1)
+└─ docs/                 Project documentation
+```
+
+## Tech stack
+
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Zustand, TanStack Query, Radix UI
+- **3D rendering:** three.js, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`
+- **Desktop shell:** Tauri 2 (`tauri-plugin-shell`, `tauri-plugin-dialog`, `tauri-plugin-updater`, `tauri-plugin-process`)
+- **Persistence:** SQLite via `rusqlite` (bundled)
+- **Analysis:** tree-sitter (40+ language grammars), `rayon` for parallel parsing, `ignore`/`globset` for filesystem walking
+- **MCP:** `rmcp` 1.6 (official `modelcontextprotocol/rust-sdk`)
+- **Security scanning:** `opengrep` (bundled as an external Tauri sidecar, see `licenses/LICENSE.opengrep`)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
