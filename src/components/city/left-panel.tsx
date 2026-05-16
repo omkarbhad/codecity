@@ -44,18 +44,11 @@ export function LeftPanel({ snapshot, collapsed }: LeftPanelProps) {
           ${collapsed ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}`}
       >
         <div className="pixel-shadow flex h-full flex-col overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)">
-          {/* Terminal header */}
+          {/* Header */}
           <div className="shrink-0 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
-            <div className="flex items-center gap-3">
-              <div className="flex shrink-0 items-center gap-1.5">
-                <span className="size-2.5 bg-(--sev-high)" />
-                <span className="size-2.5 bg-(--sev-med)" />
-                <span className="size-2.5 bg-(--lime)" />
-              </div>
-              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-(--cream-dark)">
-                tree <span className="text-(--dim)">~</span> <span className="text-primary">{repoName}/</span>
-              </span>
-            </div>
+            <span className="block truncate font-mono text-[11px] uppercase tracking-[0.08em] text-(--cream-dark)">
+              <span className="text-(--dim)">~/</span><span className="text-primary normal-case tracking-normal">{repoName}</span>
+            </span>
           </div>
 
           {/* File tree — fills all remaining space, owns the scroll */}

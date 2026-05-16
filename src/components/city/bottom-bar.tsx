@@ -153,18 +153,11 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
           ref={helpRef}
           className="pixel-shadow-lg absolute bottom-9 right-1 z-[70] max-h-[70vh] w-[min(340px,calc(100vw-2rem))] overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)"
         >
-          {/* Terminal header */}
+          {/* Header */}
           <div className="shrink-0 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2">
-            <div className="flex items-center gap-3">
-              <div className="flex shrink-0 items-center gap-1.5">
-                <span className="size-2.5 bg-(--sev-high)" />
-                <span className="size-2.5 bg-(--sev-med)" />
-                <span className="size-2.5 bg-(--lime)" />
-              </div>
-              <span className="flex-1 font-mono text-[11px] text-(--cream-dark)">
-                help <span className="text-(--dim)">~</span> <span className="text-primary">guide</span>
-              </span>
-            </div>
+            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
+              Help
+            </span>
           </div>
 
           {/* Body */}
