@@ -149,19 +149,11 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
 
   return (
     <div className="pixel-shadow flex h-full flex-col overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)">
-      {/* Terminal header */}
+      {/* Header */}
       <div className="shrink-0 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
         <div className="flex items-center gap-3">
-          {/* Traffic-light pixels */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="size-2.5 bg-(--sev-high)" />
-            <span className="size-2.5 bg-(--sev-med)" />
-            <span className="size-2.5 bg-(--lime)" />
-          </div>
-
-          {/* Title */}
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-(--cream-dark)">
-            opengrep scan <span className="text-(--dim)">~</span> findings.json
+            <span className="text-(--dim)">{">"}</span> opengrep <span className="text-primary">scan</span>
           </span>
 
           {/* Status + actions */}
