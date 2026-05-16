@@ -28,30 +28,30 @@ export function LoadStrip({
 
   return (
     <div
-      className={`pointer-events-none absolute bottom-4 left-1/2 z-40 w-[min(440px,calc(100%-32px))] -translate-x-1/2 rounded-md border border-white/[0.09] bg-[#0b0b0c]/90 px-3 py-2.5 shadow-2xl shadow-black/45 backdrop-blur-xl transition-all duration-300 ${
+      className={`pixel-shadow pointer-events-none absolute bottom-4 left-1/2 z-40 w-[min(440px,calc(100%-32px))] -translate-x-1/2 border-2 border-(--border-light) bg-(--bg-card) px-3 py-2.5 transition-all duration-300 ${
         leaving ? "translate-y-1 opacity-0" : "opacity-100"
       }`}
     >
-      <div className="mb-2.5 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-5 shrink-0 grid-cols-2 gap-[2px] rounded border border-white/[0.08] bg-white/[0.035] p-[3px]">
-            <span className="rounded-[1px] bg-primary/70" />
-            <span className="rounded-[1px] bg-white/[0.18]" />
-            <span className="rounded-[1px] bg-white/[0.14]" />
-            <span className="rounded-[1px] bg-primary/45" />
+          <span className="grid size-5 shrink-0 grid-cols-2 gap-[2px] border-2 border-(--border-pixel) bg-(--bg-deep) p-[2px]">
+            <span className="bg-primary" />
+            <span className="bg-(--border-light)" />
+            <span className="bg-(--border-light)" />
+            <span className="bg-primary" />
           </span>
-          <span className="truncate text-[11px] font-medium text-white/62">{label}</span>
+          <span className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark)">{label}</span>
         </div>
-        <span className="shrink-0 font-mono text-[10px] tabular-nums text-white/48">
-          {detail ? `${percentLabel}% · ${detail}` : `${percentLabel}%`}
+        <span className="shrink-0 font-mono text-[10px] tabular-nums uppercase tracking-[0.05em] text-(--cream)">
+          {detail ? <><span className="text-primary">{percentLabel}%</span><span className="text-(--dim)"> · </span>{detail}</> : <span className="text-primary">{percentLabel}%</span>}
         </span>
       </div>
-      <div className="grid h-[7px] grid-flow-col gap-[3px]">
+      <div className="grid h-[8px] grid-flow-col gap-[2px]">
         {Array.from({ length: totalRectangles }).map((_, index) => (
           <span
             key={index}
-            className={`rounded-[2px] transition-colors duration-200 ${
-              index < loadedRectangles ? "bg-primary/75 shadow-[0_0_8px_rgba(59,130,246,0.34)]" : "bg-white/[0.07]"
+            className={`transition-colors duration-200 ${
+              index < loadedRectangles ? "bg-primary" : "bg-(--border-pixel)"
             }`}
           />
         ))}

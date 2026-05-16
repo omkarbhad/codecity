@@ -22,7 +22,7 @@ export function ModeToolbar() {
   const setMode = useCityStore((s) => s.setMode)
 
   return (
-    <div className="flex items-center gap-1 backdrop-blur-xl bg-[#09090b]/92 border border-white/[0.08] rounded-lg px-2 py-1">
+    <div className="flex items-center border-2 border-(--border-pixel) bg-(--bg-card)">
       {MODES.map(({ mode, label, dotColor }) => {
         const active = visualizationMode === mode
         return (
@@ -31,17 +31,17 @@ export function ModeToolbar() {
             onClick={() => setMode(mode)}
             title={getModeDescription(mode)}
             className={`
-              flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-sans
-              transition-colors duration-150 cursor-pointer
+              flex h-8 cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.05em]
+              transition-colors duration-150
               ${
                 active
-                  ? "bg-primary text-white border border-primary/30"
-                  : "border border-transparent bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                  ? "bg-primary text-[#0d0d0f]"
+                  : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
               }
             `}
           >
             <span
-              className={`inline-block w-2 h-2 rounded-full shrink-0 ${active ? "motion-safe:animate-pulse" : ""}`}
+              className={`inline-block size-2 shrink-0 ${active ? "motion-safe:animate-pulse" : ""}`}
               style={{ backgroundColor: dotColor }}
             />
             {label}

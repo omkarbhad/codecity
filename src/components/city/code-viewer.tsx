@@ -102,13 +102,13 @@ function tokenizeLine(line: string, lang: string): React.ReactNode[] {
       if (m) {
         const text = m[0]
         let className = ""
-        if (kind === "comment") className = "text-white/30 italic"
-        else if (kind === "string") className = "text-emerald-400/80"
-        else if (kind === "number") className = "text-amber-400/80"
-        else if (kind === "type") className = "text-cyan-400/80"
-        else if (kind === "decorator") className = "text-purple-400/80"
-        else if (kind === "word" && KEYWORDS.has(text)) className = "text-purple-400/90 font-medium"
-        else if (kind === "punctuation") className = "text-white/40"
+        if (kind === "comment") className = "text-(--dim) italic"
+        else if (kind === "string") className = "text-(--lime)"
+        else if (kind === "number") className = "text-(--sev-med)"
+        else if (kind === "type") className = "text-(--sev-low)"
+        else if (kind === "decorator") className = "text-(--sev-high)"
+        else if (kind === "word" && KEYWORDS.has(text)) className = "text-(--sev-high) font-medium"
+        else if (kind === "punctuation") className = "text-(--muted)"
 
         tokens.push(
           className
@@ -252,77 +252,85 @@ export function CodeViewer() {
   const githubUrl = repoUrl && filePath ? getGitHubFileUrl(repoUrl, filePath, targetLine) : null
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col bg-[#0a0a0f]/98 backdrop-blur-sm">
-      {/* Header */}
-      <div className="flex items-center h-9 px-3 border-b border-white/[0.06] shrink-0 gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+    <div className="absolute inset-0 z-40 flex flex-col bg-(--bg-deep)">
+      {/* Terminal header */}
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="size-2.5 bg-(--sev-high)" />
+          <span className="size-2.5 bg-(--sev-med)" />
+          <span className="size-2.5 bg-(--lime)" />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <img
             src={`/icons/vscode/${getFileIcon(fileName)}`}
             alt=""
-            className="w-4 h-4 shrink-0"
+            className="size-4 shrink-0"
           />
-          <span className="text-[11px] font-medium text-white/90 truncate">{fileName}</span>
+          <span className="truncate font-mono text-[11px] font-semibold text-(--cream)">{fileName}</span>
           {filePath && filePath !== fileName && (
-            <span className="text-[10px] text-white/30 truncate hidden sm:inline">
-              {filePath?.slice(0, -(fileName.length + 1)) || ""}
+            <span className="hidden truncate font-mono text-[10px] text-(--muted) sm:inline">
+              <span className="text-(--dim)">~</span> {filePath?.slice(0, -(fileName.length + 1)) || ""}
             </span>
           )}
           <button
             onClick={handleCopyPath}
-            className="shrink-0 p-0.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/65 transition-colors"
+            className="shrink-0 rounded-none p-0.5 text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream)"
             title={filePath ?? ""}
           >
-            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            {copied ? <Check className="size-3 text-(--lime)" /> : <Copy className="size-3" />}
           </button>
           {functionName && (
             <>
-              <div className="w-px h-3 bg-white/[0.06]" />
-              <span className="text-[10px] text-primary font-medium">
+              <div className="h-3 w-px bg-(--border-pixel)" />
+              <span className="font-mono text-[10px] font-medium text-primary">
                 {functionName}()
               </span>
             </>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           {githubUrl && (
             <a
               href={githubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-6 h-6 rounded-md text-white/40 hover:text-white/65 hover:bg-white/[0.06] transition-colors"
+              className="flex h-6 w-6 items-center justify-center rounded-none border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
               title="Open on GitHub"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="size-3.5" />
             </a>
           )}
           <button
             onClick={closeCodeViewer}
-            className="flex items-center justify-center w-6 h-6 rounded-md text-white/40 hover:text-white/65 hover:bg-white/[0.06] transition-colors"
+            className="flex h-6 w-6 items-center justify-center rounded-none border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="size-3.5" />
           </button>
         </div>
       </div>
 
       {/* Code area */}
-      <div ref={scrollRef} className="flex-1 overflow-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div ref={scrollRef} className="flex-1 overflow-auto overscroll-contain scroll-thin">
         {loading && (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-5 h-5 text-white/40 animate-spin" />
+          <div className="flex h-full items-center justify-center gap-2">
+            <Loader2 className="size-5 animate-spin text-primary" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--cream-dark)">Loading source</span>
           </div>
         )}
 
         {error && (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-red-400/80">{error}</p>
+          <div className="flex h-full items-center justify-center p-4">
+            <div className="border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-4 py-3 font-mono text-[11px] text-(--sev-high)">
+              {error}
+            </div>
           </div>
         )}
 
         {code && isMarkdownPreview && (
-          <div className="markdown-body px-8 py-6 max-w-[900px] mx-auto">
+          <div className="markdown-body mx-auto max-w-[900px] px-8 py-6">
             {lang === "mdx" && (
-              <div className="mb-4 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] text-white/45">
-                MDX preview preserves imports, exports, and custom components as inline code.
+              <div className="mb-4 border-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2 font-mono text-[11px] text-(--cream-dark)">
+                <span className="text-(--dim)">{">"}</span> MDX preview preserves imports, exports, and custom components as inline code.
               </div>
             )}
             <ReactMarkdown
@@ -333,41 +341,41 @@ export function CodeViewer() {
                 KNOWN_HTML_TAGS.has(element.tagName)
               }
               components={{
-                h1: ({ children }) => <h1 className="text-[22px] font-semibold text-white/95 pb-2 mb-4 border-b border-white/[0.08]">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-[18px] font-semibold text-white/90 pb-1.5 mb-3 mt-8 border-b border-white/[0.06]">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-[15px] font-semibold text-white/85 mb-2 mt-6">{children}</h3>,
-                h4: ({ children }) => <h4 className="text-[13px] font-semibold text-white/80 mb-2 mt-4">{children}</h4>,
-                p: ({ children }) => <p className="text-[13px] leading-[1.7] text-white/70 mb-3">{children}</p>,
-                a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 underline decoration-primary/30 hover:decoration-primary/60 transition-colors">{children}</a>,
-                ul: ({ children }) => <ul className="text-[13px] leading-[1.7] text-white/70 mb-3 pl-6 list-disc space-y-1">{children}</ul>,
-                ol: ({ children }) => <ol className="text-[13px] leading-[1.7] text-white/70 mb-3 pl-6 list-decimal space-y-1">{children}</ol>,
-                li: ({ children }) => <li className="text-white/70">{children}</li>,
-                blockquote: ({ children }) => <blockquote className="border-l-[3px] border-white/10 pl-4 my-3 text-white/50 italic">{children}</blockquote>,
-                hr: () => <hr className="border-white/[0.08] my-6" />,
-                strong: ({ children }) => <strong className="font-semibold text-white/85">{children}</strong>,
-                em: ({ children }) => <em className="italic text-white/70">{children}</em>,
-                del: ({ children }) => <del className="text-white/40 line-through">{children}</del>,
+                h1: ({ children }) => <h1 className="mb-4 border-b-2 border-(--border-pixel) pb-2 text-[22px] font-semibold text-(--cream)">{children}</h1>,
+                h2: ({ children }) => <h2 className="mt-8 mb-3 border-b-2 border-dashed border-(--border-pixel) pb-1.5 text-[18px] font-semibold text-(--cream)">{children}</h2>,
+                h3: ({ children }) => <h3 className="mt-6 mb-2 text-[15px] font-semibold text-(--cream)">{children}</h3>,
+                h4: ({ children }) => <h4 className="mt-4 mb-2 text-[13px] font-semibold text-(--cream-dark)">{children}</h4>,
+                p: ({ children }) => <p className="mb-3 text-[13px] leading-[1.7] text-(--cream-dark)">{children}</p>,
+                a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline decoration-(--lime-shadow) underline-offset-2 transition-colors hover:decoration-primary">{children}</a>,
+                ul: ({ children }) => <ul className="mb-3 list-disc space-y-1 pl-6 text-[13px] leading-[1.7] text-(--cream-dark)">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-3 list-decimal space-y-1 pl-6 text-[13px] leading-[1.7] text-(--cream-dark)">{children}</ol>,
+                li: ({ children }) => <li className="text-(--cream-dark)">{children}</li>,
+                blockquote: ({ children }) => <blockquote className="my-3 border-l-2 border-primary pl-4 italic text-(--cream-dark)">{children}</blockquote>,
+                hr: () => <hr className="my-6 border-t-2 border-dashed border-(--border-pixel)" />,
+                strong: ({ children }) => <strong className="font-semibold text-(--cream)">{children}</strong>,
+                em: ({ children }) => <em className="italic text-(--cream-dark)">{children}</em>,
+                del: ({ children }) => <del className="text-(--muted) line-through">{children}</del>,
                 code: ({ className, children }) => {
                   const isBlock = className?.includes("language-")
                   if (isBlock) {
                     return <code className={`${className} text-[12px]`}>{children}</code>
                   }
-                  return <code className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[12px] text-primary/90 font-mono">{children}</code>
+                  return <code className="border-2 border-(--border-pixel) bg-(--bg-card) px-1.5 py-px font-mono text-[12px] text-primary">{children}</code>
                 },
-                pre: ({ children }) => <pre className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-4 mb-3 overflow-x-auto text-[12px] leading-[1.6] font-mono" style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', 'Menlo', monospace" }}>{children}</pre>,
-                table: ({ children }) => <div className="overflow-x-auto mb-3"><table className="w-full text-[12px] border-collapse">{children}</table></div>,
-                thead: ({ children }) => <thead className="bg-white/[0.04]">{children}</thead>,
-                th: ({ children }) => <th className="text-left text-white/70 font-semibold px-3 py-2 border border-white/[0.08]">{children}</th>,
-                td: ({ children }) => <td className="text-white/60 px-3 py-2 border border-white/[0.06]">{children}</td>,
-                img: ({ src, alt }) => <img src={src} alt={alt ?? ""} className="rounded-lg max-w-full my-2" />,
+                pre: ({ children }) => <pre className="mb-3 overflow-x-auto border-2 border-(--border-pixel) bg-(--bg-card) p-4 font-mono text-[12px] leading-[1.6]" style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', 'Menlo', monospace" }}>{children}</pre>,
+                table: ({ children }) => <div className="mb-3 overflow-x-auto"><table className="w-full border-collapse text-[12px]">{children}</table></div>,
+                thead: ({ children }) => <thead className="bg-(--bg-card)">{children}</thead>,
+                th: ({ children }) => <th className="border-2 border-(--border-pixel) px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">{children}</th>,
+                td: ({ children }) => <td className="border-2 border-(--border-pixel) px-3 py-2 text-(--cream-dark)">{children}</td>,
+                img: ({ src, alt }) => <img src={src} alt={alt ?? ""} className="my-2 max-w-full border-2 border-(--border-pixel)" />,
                 input: ({ checked, ...props }) => {
                   if (props.type === "checkbox") {
                     return <input type="checkbox" checked={checked} readOnly className="mr-1.5 accent-primary" />
                   }
                   return <input {...props} />
                 },
-                details: ({ children }) => <details className="mb-3 border border-white/[0.06] rounded-lg overflow-hidden">{children}</details>,
-                summary: ({ children }) => <summary className="px-3 py-2 cursor-pointer text-[13px] text-white/80 font-medium bg-white/[0.02] hover:bg-white/[0.04] transition-colors">{children}</summary>,
+                details: ({ children }) => <details className="mb-3 overflow-hidden border-2 border-(--border-pixel)">{children}</details>,
+                summary: ({ children }) => <summary className="cursor-pointer bg-(--bg-card) px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream) transition-colors hover:bg-(--bg-raised)">{children}</summary>,
               }}
             >
               {previewCode}
@@ -376,7 +384,7 @@ export function CodeViewer() {
         )}
 
         {code && !isMarkdownPreview && (
-          <div className="text-[12px] leading-[20px] min-w-fit" style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" }}>
+          <div className="min-w-fit text-[12px] leading-[20px]" style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" }}>
             {lines.map((line, i) => {
               const isTarget = targetLine !== null && i === targetLine
               const inRange = targetLine !== null && i >= targetLine && i < targetLine + 20
@@ -386,16 +394,16 @@ export function CodeViewer() {
                   ref={isTarget ? targetLineRef : undefined}
                   className={
                     isTarget
-                      ? "flex bg-primary/[0.12] border-l-2 border-primary"
+                      ? "flex border-l-2 border-primary bg-[color-mix(in_srgb,var(--lime)_14%,transparent)]"
                       : inRange
-                        ? "flex bg-primary/[0.04]"
-                        : "flex hover:bg-white/[0.02]"
+                        ? "flex bg-[color-mix(in_srgb,var(--lime)_5%,transparent)]"
+                        : "flex border-l-2 border-transparent hover:bg-(--bg-raised)"
                   }
                 >
-                  <span className="w-12 shrink-0 text-right pr-4 select-none text-white/20 tabular-nums">
+                  <span className="w-12 shrink-0 select-none pr-4 text-right text-(--dim) tabular-nums">
                     {i + 1}
                   </span>
-                  <span className="text-white/75 whitespace-pre pr-4">
+                  <span className="whitespace-pre pr-4 text-(--cream)">
                     {tokenizeLine(line, lang)}
                   </span>
                 </div>

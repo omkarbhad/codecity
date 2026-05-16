@@ -117,8 +117,8 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-4 text-[11px] text-white/45">
-        <Loader2 className="size-3 animate-spin" />
+      <div className="flex flex-1 items-center justify-center gap-2 p-4 font-mono text-[11px] uppercase tracking-[0.08em] text-(--cream-dark)">
+        <Loader2 className="size-3 animate-spin text-primary" />
         Loading commits
       </div>
     )
@@ -127,7 +127,7 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
   if (error) {
     return (
       <div className="p-3">
-        <div className="rounded-md border border-red-500/15 bg-red-500/[0.04] p-3 text-[11px] text-red-400/80">
+        <div className="border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] p-3 font-mono text-[11px] text-(--sev-high)">
           {error}
         </div>
       </div>
@@ -135,81 +135,85 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
   }
 
   if (commits.length === 0) {
-    return <p className="p-4 text-center text-xs text-white/35">No commits found</p>
+    return <p className="p-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--dim)">No commits found</p>
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="border-b border-white/[0.04] p-2">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-white/35" />
+    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">Commits</span>
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-(--muted)" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter commits"
-            className="h-7 w-full rounded-md border border-white/[0.07] bg-[#101012] pl-7 pr-7 font-mono text-[11px] text-white/75 outline-none placeholder:text-white/30 focus:border-white/[0.16]"
+            placeholder="filter…"
+            className="h-7 w-full rounded-none border-2 border-(--border-pixel) bg-(--bg-deep) pl-7 pr-7 font-mono text-[11px] text-(--cream) outline-none placeholder:text-(--dim) focus:border-primary"
           />
           {query && (
-            <button onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/65">
+            <button onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-(--muted) transition-colors hover:text-(--cream)">
               <X className="size-3" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
         {filteredCommits.map((commit, index) => {
           const isExpanded = expanded === commit.sha
           const files = commit.files.slice(0, 12)
 
           return (
-            <div key={commit.sha} className="border-b border-white/[0.035]">
+            <div key={commit.sha} className="border-b border-dashed border-(--border-pixel)">
               <button
                 onClick={() => toggleCommit(commit)}
-                className={`flex w-full gap-2 px-2.5 py-2 text-left transition-colors hover:bg-white/[0.025] ${isExpanded ? "bg-white/[0.025]" : ""}`}
+                className={`flex w-full gap-2 px-2.5 py-2 text-left transition-colors hover:bg-(--bg-raised) ${isExpanded ? "bg-(--bg-raised)" : ""}`}
               >
                 <div className="mt-0.5 flex w-8 shrink-0 flex-col items-center gap-1">
-                  <span className="font-mono text-[9px] text-white/25">{index + 1}</span>
-                  <ChevronDown className={`size-3 text-white/30 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                  <span className="font-mono text-[9px] tabular-nums text-(--muted)">{index + 1}</span>
+                  <ChevronDown className={`size-3 text-(--muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] leading-5 text-white/80">{commit.message || "Untitled commit"}</p>
-                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-[9px] text-white/35">
+                  <p className="truncate font-mono text-[11px] leading-snug text-(--cream)">{commit.message || "Untitled commit"}</p>
+                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-[9px] text-(--muted)">
                     <span className="truncate">{commit.author}</span>
+                    <span className="text-(--dim)">·</span>
                     <span>{timeAgo(commit.date)}</span>
-                    <span className="rounded border border-white/[0.06] px-1 py-px text-white/30">{commit.sha.slice(0, 7)}</span>
+                    <span className="border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-primary">{commit.sha.slice(0, 7)}</span>
                   </div>
                 </div>
               </button>
 
               {isExpanded && (
-                <div className="px-10 pb-2">
-                  <div className="mb-2 flex items-center gap-1">
+                <div className="px-10 pb-2 pt-1">
+                  <div className="mb-2 flex items-center gap-1.5">
                     <button
                       onClick={() => navigator.clipboard?.writeText(commit.sha)}
-                      className="flex items-center gap-1 rounded border border-white/[0.07] px-1.5 py-1 text-[10px] text-white/45 transition-colors hover:bg-white/[0.04] hover:text-white/70"
+                      className="btn-press flex items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-1 font-mono text-[9px] uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
                     >
                       <Copy className="size-3" />
                       SHA
                     </button>
-                    <span className="font-mono text-[10px] text-white/30">{commit.files.length} files</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
+                      <span className="tabular-nums text-(--cream-dark)">{commit.files.length}</span> files
+                    </span>
                   </div>
 
                   {loadingFiles === commit.sha ? (
-                    <div className="flex items-center gap-1.5 py-1 text-[10px] text-white/35">
-                      <Loader2 className="size-3 animate-spin" />
-                      Loading changed files
+                    <div className="flex items-center gap-1.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark)">
+                      <Loader2 className="size-3 animate-spin text-primary" />
+                      Loading files
                     </div>
                   ) : (
                     <div className="space-y-1">
                       {files.map((file) => (
-                        <div key={file} className="flex items-center gap-1.5 rounded-sm border border-white/[0.05] bg-white/[0.02] px-1.5 py-1">
-                          <FileCode className="size-3 shrink-0 text-primary/55" />
-                          <span className="truncate font-mono text-[10px] text-white/55">{file}</span>
+                        <div key={file} className="flex items-center gap-1.5 border-2 border-(--border-pixel) bg-(--bg-deep) px-1.5 py-1">
+                          <FileCode className="size-3 shrink-0 text-primary" />
+                          <span className="truncate font-mono text-[10px] text-(--cream-dark)">{file}</span>
                         </div>
                       ))}
                       {commit.files.length > files.length && (
-                        <p className="px-1 text-[10px] text-white/30">+{commit.files.length - files.length} more files</p>
+                        <p className="px-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--dim)">+<span className="tabular-nums text-(--cream-dark)">{commit.files.length - files.length}</span> more</p>
                       )}
                     </div>
                   )}
@@ -220,17 +224,17 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
         })}
 
         {filteredCommits.length === 0 && (
-          <p className="p-4 text-center text-xs text-white/35">No commits match this filter</p>
+          <p className="p-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--dim)">No commits match</p>
         )}
 
         {hasMore && !query && (
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="flex w-full items-center justify-center gap-1.5 px-3 py-2 text-[11px] text-white/45 transition-colors hover:bg-white/[0.025] hover:text-white/70 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-1.5 border-t-2 border-(--border-pixel) bg-(--bg-raised) px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:bg-(--bg-card) hover:text-(--cream) disabled:opacity-50"
           >
-            {loadingMore && <Loader2 className="size-3 animate-spin" />}
-            {loadingMore ? "Loading" : "Load more commits"}
+            {loadingMore && <Loader2 className="size-3 animate-spin text-primary" />}
+            {loadingMore ? "Loading" : "Load more"}
           </button>
         )}
       </div>

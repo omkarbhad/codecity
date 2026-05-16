@@ -47,75 +47,81 @@ export function CityTooltip({ snapshot }: CityTooltipProps) {
   const offsetX = mousePos.x > window.innerWidth - 280 ? -240 : 16
   const offsetY = mousePos.y > window.innerHeight - 140 ? -120 : 16
 
-  const complexityColor = file.complexity <= 10 ? "text-emerald-400" : file.complexity <= 25 ? "text-amber-400" : "text-red-400"
+  const cplxClass = file.complexity <= 10 ? "text-(--lime)" : file.complexity <= 25 ? "text-(--sev-med)" : "text-(--sev-high)"
   const fileName = file.path.split("/").pop() ?? file.path
   const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : ""
 
   return (
     <div
       ref={tooltipRef}
-      className="fixed z-[100] pointer-events-none bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg px-3 py-2.5 min-w-[200px] max-w-[260px] shadow-2xl shadow-black/50 animate-fade-in"
+      className="pixel-shadow pointer-events-none fixed z-[100] min-w-[220px] max-w-[280px] border-2 border-(--border-light) bg-(--bg-card) animate-fade-in"
       style={{
         left: mousePos.x + offsetX,
         top: mousePos.y + offsetY,
       }}
     >
-      {/* File name */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: districtColor, boxShadow: `0 0 6px ${districtColor}30` }} />
-        <span className="text-xs text-white font-semibold truncate">
+      {/* Terminal header */}
+      <div className="flex items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-deep) px-2 py-1.5">
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="size-1.5 bg-(--sev-high)" />
+          <span className="size-1.5 bg-(--sev-med)" />
+          <span className="size-1.5 bg-(--lime)" />
+        </div>
+        <span className="size-2 shrink-0" style={{ backgroundColor: districtColor }} />
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold text-(--cream)">
           {fileName}
         </span>
         {ext && (
-          <span className="text-[9px] text-white/40 bg-white/[0.04] px-1 py-0.5 rounded shrink-0 font-sans">
+          <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-raised) px-1 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--cream-dark)">
             {ext}
           </span>
         )}
       </div>
 
-      {/* Path */}
-      <p className="font-sans text-[9px] text-white/40 truncate mb-2">{file.path}</p>
+      <div className="px-2.5 py-2">
+        {/* Path */}
+        <p className="mb-2 truncate font-mono text-[9px] text-(--muted)">{file.path}</p>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-1.5">
-        <div className="text-center">
-          <div className="text-[11px] text-white/85 font-bold tabular-nums">{file.lines}</div>
-          <div className="text-[7px] text-white/40 uppercase tracking-wider">lines</div>
+        {/* Stats grid */}
+        <div className="grid grid-cols-4 gap-1">
+          {[
+            { v: file.lines, l: "Lines", c: "text-(--cream)" },
+            { v: file.functions.length, l: "Fns", c: "text-(--lime)" },
+            { v: file.complexity, l: "Cplx", c: cplxClass },
+            { v: file.imports.length, l: "Deps", c: "text-(--sev-low)" },
+          ].map((s, i) => (
+            <div key={i} className="border-2 border-(--border-pixel) bg-(--bg-raised) p-1 text-center">
+              <div className={`font-mono text-[12px] font-bold tabular-nums leading-none ${s.c}`}>
+                {s.v.toLocaleString()}
+              </div>
+              <div className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.08em] text-(--muted)">
+                {s.l}
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="text-center">
-          <div className="text-[11px] text-white/85 font-bold tabular-nums">{file.functions.length}</div>
-          <div className="text-[7px] text-white/40 uppercase tracking-wider">fns</div>
-        </div>
-        <div className="text-center">
-          <div className={`text-[11px] font-bold tabular-nums ${complexityColor}`}>{file.complexity}</div>
-          <div className="text-[7px] text-white/40 uppercase tracking-wider">cplx</div>
-        </div>
-        <div className="text-center">
-          <div className="text-[11px] text-white/85 font-bold tabular-nums">{file.imports.length}</div>
-          <div className="text-[7px] text-white/40 uppercase tracking-wider">deps</div>
-        </div>
+
+        {/* Badges */}
+        {(file.isReactComponent || file.hasUnusedExports || file.types.length > 0) && (
+          <div className="mt-2 flex gap-1 border-t-2 border-dashed border-(--border-pixel) pt-2">
+            {file.isReactComponent && (
+              <span className="border-2 border-(--sev-low) bg-[color-mix(in_srgb,var(--sev-low)_8%,transparent)] px-1.5 py-px font-mono text-[8px] uppercase tracking-[0.08em] text-(--sev-low)">
+                REACT
+              </span>
+            )}
+            {file.hasUnusedExports && (
+              <span className="border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-1.5 py-px font-mono text-[8px] uppercase tracking-[0.08em] text-(--sev-high)">
+                UNUSED
+              </span>
+            )}
+            {file.types.length > 0 && (
+              <span className="border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[8px] uppercase tracking-[0.08em] text-(--sev-med)">
+                {file.types.length} TYPES
+              </span>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Badges */}
-      {(file.isReactComponent || file.hasUnusedExports || file.types.length > 0) && (
-        <div className="flex gap-1 mt-2 pt-2 border-t border-white/[0.04]">
-          {file.isReactComponent && (
-            <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/[0.08] text-blue-400/70 border border-blue-500/[0.08]">
-              React
-            </span>
-          )}
-          {file.hasUnusedExports && (
-            <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/[0.08] text-red-400/70 border border-red-500/[0.08]">
-              Unused
-            </span>
-          )}
-          {file.types.length > 0 && (
-            <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/[0.08] text-amber-400/70 border border-amber-500/[0.08]">
-              {file.types.length} types
-            </span>
-          )}
-        </div>
-      )}
     </div>
   )
 }
