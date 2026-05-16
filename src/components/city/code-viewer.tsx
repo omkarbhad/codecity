@@ -253,13 +253,8 @@ export function CodeViewer() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-(--bg-deep)">
-      {/* Terminal header */}
+      {/* Header */}
       <div className="flex h-9 shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3">
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className="size-2.5 bg-(--sev-high)" />
-          <span className="size-2.5 bg-(--sev-med)" />
-          <span className="size-2.5 bg-(--lime)" />
-        </div>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <img
             src={`/icons/vscode/${getFileIcon(fileName)}`}

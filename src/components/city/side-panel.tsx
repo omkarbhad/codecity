@@ -96,25 +96,18 @@ export function SidePanel({ snapshot }: SidePanelProps) {
 
   return (
     <div className="pixel-shadow flex h-full flex-col overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)">
-      {/* Terminal header */}
-      <div className="shrink-0 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
-        <div className="flex items-center gap-3">
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="size-2.5 bg-(--sev-high)" />
-            <span className="size-2.5 bg-(--sev-med)" />
-            <span className="size-2.5 bg-(--lime)" />
-          </div>
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-(--cream-dark)">
-            file <span className="text-(--dim)">~</span> <span className="text-primary">{fileName}</span>
-          </span>
-          <button
-            onClick={() => selectFile(null, null)}
-            aria-label="Close panel"
-            className="shrink-0 rounded-none border-2 border-transparent p-0.5 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
-          >
-            <X className="size-3" />
-          </button>
-        </div>
+      {/* Header */}
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-(--cream-dark)">
+          <span className="text-(--dim)">file:</span> <span className="text-primary">{fileName}</span>
+        </span>
+        <button
+          onClick={() => selectFile(null, null)}
+          aria-label="Close panel"
+          className="shrink-0 rounded-none border-2 border-transparent p-0.5 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+        >
+          <X className="size-3" />
+        </button>
       </div>
 
       {/* Identity row */}

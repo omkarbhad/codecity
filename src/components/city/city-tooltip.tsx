@@ -60,13 +60,8 @@ export function CityTooltip({ snapshot }: CityTooltipProps) {
         top: mousePos.y + offsetY,
       }}
     >
-      {/* Terminal header */}
+      {/* Header */}
       <div className="flex items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-deep) px-2 py-1.5">
-        <div className="flex shrink-0 items-center gap-1">
-          <span className="size-1.5 bg-(--sev-high)" />
-          <span className="size-1.5 bg-(--sev-med)" />
-          <span className="size-1.5 bg-(--lime)" />
-        </div>
         <span className="size-2 shrink-0" style={{ backgroundColor: districtColor }} />
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold text-(--cream)">
           {fileName}
