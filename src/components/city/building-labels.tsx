@@ -146,14 +146,14 @@ export function BuildingLabels({ snapshot, cityBounds }: BuildingLabelsProps) {
           >
             <Text
               fontSize={isHovered || isSelected ? 0.45 : 0.3}
-              color={isHovered || isSelected ? "#ffffff" : color}
-              fillOpacity={isHovered || isSelected ? 0.9 : 0.5}
+              color={isHovered || isSelected ? "#e8dcc8" : color}
+              fillOpacity={isHovered || isSelected ? 0.95 : 0.5}
               anchorX="center"
               anchorY="bottom"
               maxWidth={6}
-              outlineWidth={0.03}
-              outlineColor="#000000"
-              outlineOpacity={0.6}
+              outlineWidth={0.04}
+              outlineColor="#0d0d0f"
+              outlineOpacity={0.75}
             >
               {fileNames[i]}
             </Text>

@@ -179,16 +179,16 @@ const TreeNodeItem = memo(function TreeNodeItem({
   if (node.isFile) {
     return (
       <div
-        className={`group flex h-7 select-none items-center border-l-2 pr-2 text-[12px] transition-colors ${isSelectable ? "cursor-pointer" : "cursor-default"} ${
+        className={`group flex h-7 select-none items-center border-l-2 pr-2 font-mono text-[11px] transition-colors ${isSelectable ? "cursor-pointer" : "cursor-default"} ${
           isSelected
-            ? "border-primary bg-white/[0.08] text-white"
+            ? "border-primary bg-[color-mix(in_srgb,var(--lime)_12%,transparent)] text-(--cream)"
             : isHidden
-              ? "border-transparent text-white/22"
+              ? "border-transparent text-(--dim)"
               : isUnparsed
-                ? "border-transparent text-white/28"
+                ? "border-transparent text-(--dim)"
               : isMatch
-                ? "border-primary/45 bg-primary/[0.06] text-primary/80"
-                : "border-transparent text-white/58 hover:bg-white/[0.045] hover:text-white/90"
+                ? "border-primary bg-[color-mix(in_srgb,var(--lime)_6%,transparent)] text-primary"
+                : "border-transparent text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
         }`}
         style={{ paddingLeft: indent }}
         data-file-path={node.path}
@@ -205,10 +205,10 @@ const TreeNodeItem = memo(function TreeNodeItem({
           alt=""
           className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
         />
-        <span className={`truncate flex-1 font-mono text-[11px] ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
+        <span className={`flex-1 truncate ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
         {isUnparsed && !isHidden && (
-          <span className="ml-1 shrink-0 rounded border border-white/[0.06] px-1 py-px font-sans text-[9px] text-white/24">
-            skipped
+          <span className="ml-1 shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--dim)">
+            skip
           </span>
         )}
         <button
@@ -217,7 +217,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
             event.stopPropagation()
             togglePathVisibility(node.path)
           }}
-          className="ml-1 flex size-5 shrink-0 items-center justify-center rounded text-white/24 opacity-0 transition-colors hover:bg-white/[0.05] hover:text-white/65 group-hover:opacity-100 focus:opacity-100"
+          className="ml-1 flex size-5 shrink-0 items-center justify-center rounded-none text-(--muted) opacity-0 transition-colors hover:bg-(--bg-raised) hover:text-(--cream) group-hover:opacity-100 focus:opacity-100"
           title={isPathHidden ? "Show path" : "Hide path"}
           aria-label={isPathHidden ? `Show ${node.name}` : `Hide ${node.name}`}
         >
@@ -230,29 +230,29 @@ const TreeNodeItem = memo(function TreeNodeItem({
   return (
     <div>
       <div
-        className={`group flex h-7 cursor-pointer select-none items-center border-l-2 pr-2 text-[12px] transition-colors ${
+        className={`group flex h-7 cursor-pointer select-none items-center border-l-2 pr-2 font-mono text-[11px] transition-colors ${
           isHidden
-            ? "border-transparent text-white/25"
+            ? "border-transparent text-(--dim)"
             : isUnparsed
-              ? "border-transparent text-white/30"
+              ? "border-transparent text-(--dim)"
             : isMatch
-              ? "border-primary/45 text-primary/80"
-              : "border-transparent text-white/60 hover:bg-white/[0.045] hover:text-white/90"
+              ? "border-primary text-primary"
+              : "border-transparent text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
         }`}
         style={{ paddingLeft: indent }}
         onClick={() => toggleFolder(node.path)}
       >
         {isExpanded
-          ? <ChevronDown className="w-4 h-4 shrink-0 text-white/30 -ml-0.5" />
-          : <ChevronRight className="w-4 h-4 shrink-0 text-white/30 -ml-0.5" />
+          ? <ChevronDown className="w-4 h-4 shrink-0 text-(--muted) -ml-0.5" />
+          : <ChevronRight className="w-4 h-4 shrink-0 text-(--muted) -ml-0.5" />
         }
         <img
           src={`/icons/vscode/${isExpanded ? getOpenFolderIcon(node.name) : getFolderIcon(node.name)}`}
           alt=""
           className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
         />
-        <span className={`truncate flex-1 font-medium ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
-        <span className="mr-1 rounded border border-white/[0.06] bg-white/[0.025] px-1 py-px font-mono text-[9px] text-white/32">
+        <span className={`flex-1 truncate font-semibold ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
+        <span className="mr-1 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] tabular-nums text-(--muted)">
           {node.fileCount}
         </span>
         <button
@@ -261,7 +261,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
             event.stopPropagation()
             togglePathVisibility(node.path)
           }}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-white/24 opacity-0 transition-colors hover:bg-white/[0.05] hover:text-white/65 group-hover:opacity-100 focus:opacity-100"
+          className="flex size-5 shrink-0 items-center justify-center rounded-none text-(--muted) opacity-0 transition-colors hover:bg-(--bg-raised) hover:text-(--cream) group-hover:opacity-100 focus:opacity-100"
           title={isPathHidden ? "Show path" : "Hide path"}
           aria-label={isPathHidden ? `Show ${node.name}` : `Hide ${node.name}`}
         >
@@ -351,8 +351,8 @@ export function FileTree({ snapshot, selectionSnapshot = snapshot }: FileTreePro
   }, [])
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#0b0b0c]">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain py-1.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+    <div className="flex h-full flex-col overflow-hidden bg-(--bg-deep)">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain py-1.5 scroll-thin">
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}
@@ -366,13 +366,13 @@ export function FileTree({ snapshot, selectionSnapshot = snapshot }: FileTreePro
         ))}
       </div>
       {hiddenPaths.size > 0 && (
-        <div className="flex shrink-0 items-center justify-between border-t border-white/[0.08] bg-[#0d0d0f] px-3 py-2">
-          <span className="font-sans text-[10px] text-amber-300/55">
-            {hiddenPaths.size} hidden
+        <div className="flex shrink-0 items-center justify-between border-t-2 border-(--border-pixel) bg-(--bg-card) px-3 py-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-med)">
+            <span className="tabular-nums">{hiddenPaths.size}</span> hidden
           </span>
           <button
             onClick={showAllPaths}
-            className="rounded border border-amber-300/10 bg-amber-300/[0.04] px-1.5 py-0.5 font-sans text-[10px] text-amber-300/65 transition-colors hover:text-amber-200"
+            className="btn-press border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--sev-med) transition-colors hover:bg-[color-mix(in_srgb,var(--sev-med)_15%,transparent)]"
           >
             Show all
           </button>

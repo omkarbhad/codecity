@@ -31,18 +31,17 @@ export function SearchBar() {
   }, [])
 
   return (
-    <div className="relative bg-white/[0.03] backdrop-blur-xl rounded-lg border border-white/[0.08] focus-within:border-primary/45 transition-colors">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 pointer-events-none" />
+    <div className="relative border-2 border-(--border-pixel) bg-(--bg-card) transition-colors focus-within:border-primary">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-(--muted)" />
       <input
         ref={inputRef}
         type="text"
         data-city-search
         value={searchQuery}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search files... ( / )"
+        placeholder="search files… ( / )"
         aria-label="Search files"
-        className="w-full bg-transparent pl-9 pr-3 py-2 font-sans text-xs text-zinc-200
-          placeholder:text-zinc-600 outline-none"
+        className="w-full bg-transparent py-2 pl-9 pr-3 font-mono text-[11px] text-(--cream) outline-none placeholder:text-(--dim)"
       />
     </div>
   )
