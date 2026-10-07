@@ -125,6 +125,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
   const isProgressivelyLoading = !!buildingLoadProgress && !buildingLoadProgress.complete
   const loadedDistricts = useMemo(() => {
@@ -164,6 +165,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
   const farPlane = Math.max(5000, cityMetrics.spread * 5)
 
   return (
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
     <Canvas
       key={canvasKey}
       gl={{
@@ -175,6 +177,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
       shadows={{ type: THREE.PCFShadowMap }}
       camera={{ position: [40, 40, 40], fov: 50, near: 0.5, far: farPlane }}
       style={{ width: "100%", height: "100%" }}
+      eventSource={containerRef as React.RefObject<HTMLElement>}
       onCreated={({ gl, invalidate }) => {
         gl.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         const canvas = gl.domElement
@@ -225,6 +228,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
 
       <fogExp2 attach="fog" args={["#040408", cityMetrics.fogDensity * 0.22]} />
     </Canvas>
+    </div>
   )
 }
 
