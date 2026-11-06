@@ -22,6 +22,7 @@ import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
 import { enqueueAnalysis, getGithubToken, isTauri, listGithubRepos, type GitHubRepoSummary } from "@/lib/tauri"
 import { HugeIcon } from "@/components/ui/huge-icon"
+import { EmptyState } from "@/components/ui/empty-state"
 
 type SortMode = "updated" | "name" | "owner"
 type OwnerFilter = "all" | "user" | "org"
@@ -128,27 +129,30 @@ export function GitHubReposTab() {
 
   if (!isTauri()) {
     return (
-      <div className="flex flex-col items-center rounded-lg border border-white/[0.06] bg-white/[0.015] py-16 text-center">
-        <HugeIcon icon={GithubIcon} className="mb-3 size-8 text-zinc-700" />
-        <p className="text-[13px] font-mono text-zinc-500">open the desktop app to load GitHub repos</p>
-      </div>
+      <EmptyState
+        icon={<HugeIcon icon={GithubIcon} />}
+        title="Desktop app needed"
+        description="GitHub repositories load through the CodeCity desktop app. Open it to browse and build your repos."
+      />
     )
   }
 
   if (isError) {
     return (
-      <div className="rounded-lg border border-white/[0.07] bg-white/[0.015] px-6 py-12 text-center">
-        <HugeIcon icon={GithubIcon} className="mx-auto mb-3 size-8 text-zinc-700" />
-        <p className="text-[13px] font-mono text-zinc-400">GitHub repositories are not available</p>
-        <p className="mt-1 text-[11px] text-zinc-600">Connect GitHub from the sidebar, then refresh this list.</p>
-        <Button
-          type="button"
-          onClick={() => refetch()}
-          className="mt-4 h-8 rounded-md bg-white/[0.06] px-3 text-[11px] text-zinc-200 hover:bg-white/[0.10]"
-        >
-          Retry
-        </Button>
-      </div>
+      <EmptyState
+        icon={<HugeIcon icon={GithubIcon} />}
+        title="GitHub not connected"
+        description="Connect GitHub from the sidebar, then load your repositories again."
+        action={
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="pixel-shadow-sm btn-press flex h-9 items-center gap-2 border-2 border-(--border-light) bg-(--bg-raised) px-4 font-mono text-[11px] uppercase tracking-[0.05em] text-(--cream) transition-colors hover:border-primary"
+          >
+            Load repositories
+          </button>
+        }
+      />
     )
   }
 
@@ -156,12 +160,12 @@ export function GitHubReposTab() {
     return (
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="h-3 w-44 animate-pulse rounded bg-white/[0.04]" />
-          <div className="h-8 w-72 animate-pulse rounded-md bg-white/[0.03]" />
+          <div className="h-3 w-44 animate-pulse rounded-none bg-(--bg-raised)" />
+          <div className="h-8 w-72 animate-pulse rounded-md bg-(--bg-raised)" />
         </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-lg border border-white/[0.05] bg-white/[0.02] p-4" />
+            <div key={i} className="h-28 animate-pulse rounded-lg border border-(--border-pixel) bg-(--bg-raised) p-4" />
           ))}
         </div>
       </div>
@@ -172,7 +176,7 @@ export function GitHubReposTab() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-medium text-zinc-500">
+          <span className="text-[11px] font-medium text-(--muted)">
             {filteredRepos.length} / {repos.length} repos
           </span>
           {error && <span className="text-[10px] font-mono text-primary/80">{error}</span>}
@@ -189,15 +193,15 @@ export function GitHubReposTab() {
             onChange={setOwnerFilter}
           />
 
-          <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+          <div className="cc-seg">
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setSort(opt.value)}
-                className={`flex h-7 items-center gap-1.5 rounded px-2 text-[11px] font-medium transition-colors ${
-                  sort === opt.value ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"
-                }`}
+                aria-pressed={sort === opt.value}
+                title={`Sort by ${opt.label === "A-Z" ? "name" : opt.label.toLowerCase()}`}
+                className="cc-seg-btn"
               >
                 <HugeIcon icon={opt.icon} className="size-3" />
                 {opt.label}
@@ -206,30 +210,35 @@ export function GitHubReposTab() {
           </div>
 
           <div className="relative sm:w-56">
-            <HugeIcon icon={Search01Icon} className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-zinc-600" />
+            <HugeIcon icon={Search01Icon} className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-(--muted)" />
             <Input
               type="text"
               placeholder="search repos, orgs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 rounded-md border-white/[0.07] bg-white/[0.03] pl-7 text-[12px] font-mono text-zinc-300 placeholder:text-zinc-700 focus-visible:border-primary/35 focus-visible:ring-0"
+              aria-label="Search repositories"
+              className="h-8 rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) pl-7 text-[12px] font-mono text-(--cream) placeholder:text-(--muted) focus-visible:border-primary focus-visible:ring-0"
             />
           </div>
 
-          <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+          <div className="cc-seg">
             <button
               type="button"
               onClick={() => setView("grid")}
-              className={`flex size-7 items-center justify-center rounded ${view === "grid" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+              aria-pressed={view === "grid"}
+              aria-label="Grid view"
               title="Grid view"
+              className="cc-seg-btn"
             >
               <HugeIcon icon={GridViewIcon} className="size-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setView("list")}
-              className={`flex size-7 items-center justify-center rounded ${view === "list" ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"}`}
+              aria-pressed={view === "list"}
+              aria-label="List view"
               title="List view"
+              className="cc-seg-btn"
             >
               <HugeIcon icon={LayoutTable01Icon} className="size-3.5" />
             </button>
@@ -238,11 +247,11 @@ export function GitHubReposTab() {
       </div>
 
       {filteredRepos.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-white/[0.05] bg-white/[0.01] py-16">
-          <HugeIcon icon={Building03Icon} className="mb-3 size-8 text-zinc-700" />
-          <p className="text-[13px] font-mono text-zinc-500">no repositories match this view</p>
-          <p className="mt-1 text-[11px] text-zinc-700">Try another search, owner, or visibility filter.</p>
-        </div>
+        <EmptyState
+          icon={<HugeIcon icon={Search01Icon} />}
+          title="No matching repositories"
+          description="Try another search, owner or visibility filter."
+        />
       ) : (
         view === "grid" ? (
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -251,8 +260,8 @@ export function GitHubReposTab() {
             ))}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-white/[0.07] bg-[#101012]">
-            <div className="grid grid-cols-[minmax(0,1.6fr)_110px_90px_92px_40px] gap-3 border-b border-white/[0.07] px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
+          <div className="overflow-hidden rounded-lg border border-(--border-pixel) bg-(--bg-raised)">
+            <div className="grid grid-cols-[minmax(0,1.6fr)_110px_90px_92px_40px] gap-3 border-b border-(--border-pixel) px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-(--muted)">
               <span>Repository</span>
               <span>Owner</span>
               <span>Access</span>
@@ -279,15 +288,14 @@ function SegmentedControl<TValue extends string>({
   onChange: (value: TValue) => void
 }) {
   return (
-    <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+    <div className="cc-seg">
       {options.map((filter) => (
         <button
           key={filter.value}
           type="button"
           onClick={() => onChange(filter.value)}
-          className={`h-7 rounded px-2 text-[11px] font-medium transition-colors ${
-            value === filter.value ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"
-          }`}
+          aria-pressed={value === filter.value}
+          className="cc-seg-btn"
         >
           {filter.label}
         </button>
@@ -309,7 +317,7 @@ function OwnerIconSwitcher({
   ]
 
   return (
-    <div className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-white/[0.02] p-0.5">
+    <div className="cc-seg">
       {options.map((option) => (
         <button
           key={option.value}
@@ -318,9 +326,7 @@ function OwnerIconSwitcher({
           aria-label={option.label}
           aria-pressed={value === option.value}
           onClick={() => onChange(value === option.value ? "all" : option.value)}
-          className={`flex size-7 items-center justify-center rounded transition-colors ${
-            value === option.value ? "bg-white/[0.08] text-zinc-100" : "text-zinc-600 hover:text-zinc-300"
-          }`}
+          className="cc-seg-btn"
         >
           <HugeIcon icon={option.icon} className="size-3.5" />
         </button>
@@ -347,24 +353,24 @@ function RepoCard({
 
   if (view === "list") {
     return (
-      <div className="grid min-h-11 grid-cols-[minmax(0,1.6fr)_110px_90px_92px_40px] items-center gap-3 border-b border-white/[0.05] px-3 py-2.5 transition-colors hover:bg-white/[0.025]">
+      <div className="grid min-h-11 grid-cols-[minmax(0,1.6fr)_110px_90px_92px_40px] items-center gap-3 border-b border-(--border-pixel) px-3 py-2.5 transition-colors hover:bg-(--bg-raised)">
         <div className="min-w-0">
-          <p className="truncate text-[10px] font-mono text-zinc-700">{repo.owner_login}/</p>
-          <h3 className="truncate text-[12px] font-medium leading-tight text-zinc-200">{repoName}</h3>
+          <p className="truncate text-[10px] font-mono text-(--muted)">{repo.owner_login}/</p>
+          <h3 className="truncate text-[12px] font-medium leading-tight text-(--cream)">{repoName}</h3>
         </div>
-        <span className="font-mono text-[10px] text-zinc-600">{ownerKind}</span>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5 font-mono text-[10px] text-zinc-600">
+        <span className="font-mono text-[10px] text-(--muted)">{ownerKind}</span>
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-none border border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] text-(--muted)">
           {repo.private ? <HugeIcon icon={LockIcon} className="size-3" /> : <HugeIcon icon={GlobeIcon} className="size-3" />}
           {repo.private ? "private" : "public"}
         </span>
-        <span className="truncate font-mono text-[10px] text-zinc-700">{timeAgo(repo.updated_at)}</span>
+        <span className="truncate font-mono text-[10px] text-(--muted)">{timeAgo(repo.updated_at)}</span>
         <Button
           type="button"
           onClick={onQueue}
           disabled={isQueueing || isQueued}
           title={isQueued ? "Queued" : "Queue new city"}
           aria-label={isQueued ? "Queued" : "Queue new city"}
-          className="size-7 rounded-md border border-white/[0.08] bg-white/[0.035] p-0 text-zinc-300 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-70"
+          className="size-7 rounded-md border border-(--border-pixel) bg-(--bg-raised) p-0 text-(--cream-dark) hover:border-(--border-light) hover:bg-(--bg-card) hover:text-(--cream) disabled:opacity-70"
         >
           {isQueueing ? <Loader2 className="size-3.5 animate-spin" /> : isQueued ? <HugeIcon icon={CheckmarkCircle02Icon} className="size-3.5" /> : <HugeIcon icon={Add01Icon} className="size-3.5" />}
         </Button>
@@ -373,32 +379,32 @@ function RepoCard({
   }
 
   return (
-    <div className="group rounded-lg border border-white/[0.07] bg-[#101012] p-4 transition-colors hover:border-white/[0.13] hover:bg-white/[0.025]">
+    <div className="group rounded-lg border border-(--border-pixel) bg-(--bg-raised) p-4 transition-colors hover:border-(--border-light) hover:bg-(--bg-raised)">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[10px] font-mono text-zinc-700">{repo.owner_login}/</p>
-          <h3 className="truncate text-[13px] font-semibold leading-tight text-zinc-100">{repoName}</h3>
+          <p className="truncate text-[10px] font-mono text-(--muted)">{repo.owner_login}/</p>
+          <h3 className="truncate text-[13px] font-semibold leading-tight text-(--cream)">{repoName}</h3>
         </div>
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-white/[0.07] bg-white/[0.025] text-zinc-600">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-(--border-pixel) bg-(--bg-raised) text-(--muted)">
           {repo.private ? <HugeIcon icon={LockIcon} className="size-3.5" /> : <HugeIcon icon={GlobeIcon} className="size-3.5" />}
         </span>
       </div>
 
-      <div className="mb-3 flex items-center gap-2 text-[10px] font-mono text-zinc-600">
-        <span className="rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5">{ownerKind}</span>
-        <span className="rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5">{repo.private ? "private" : "public"}</span>
-        <span className="truncate rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5">{repo.default_branch}</span>
+      <div className="mb-3 flex items-center gap-2 text-[10px] font-mono text-(--muted)">
+        <span className="rounded-none border border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5">{ownerKind}</span>
+        <span className="rounded-none border border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5">{repo.private ? "private" : "public"}</span>
+        <span className="truncate rounded-none border border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5">{repo.default_branch}</span>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-white/[0.04] pt-3">
-        <span className="text-[10px] font-mono text-zinc-700">updated {timeAgo(repo.updated_at)}</span>
+      <div className="flex items-center justify-between gap-3 border-t border-(--border-pixel) pt-3">
+        <span className="text-[10px] font-mono text-(--muted)">updated {timeAgo(repo.updated_at)}</span>
         <Button
           type="button"
           onClick={onQueue}
           disabled={isQueueing || isQueued}
           title={isQueued ? "Queued" : "Queue new city"}
           aria-label={isQueued ? "Queued" : "Queue new city"}
-          className="size-7 rounded-md border border-white/[0.08] bg-white/[0.035] p-0 text-zinc-300 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-zinc-100 disabled:opacity-70"
+          className="size-7 rounded-md border border-(--border-pixel) bg-(--bg-raised) p-0 text-(--cream-dark) hover:border-(--border-light) hover:bg-(--bg-card) hover:text-(--cream) disabled:opacity-70"
         >
           {isQueueing ? (
             <Loader2 className="size-3.5 animate-spin" />

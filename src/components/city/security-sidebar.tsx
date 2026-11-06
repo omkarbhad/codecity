@@ -48,7 +48,7 @@ function FindingRow({ finding }: { finding: SecurityFinding }) {
     >
       <span
         className={cn(
-          "flex h-9 w-12 shrink-0 items-center justify-center font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0d0d0f]",
+          "flex h-9 w-12 shrink-0 items-center justify-center font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-primary-foreground",
           SEV_BG[finding.severity]
         )}
       >
@@ -99,7 +99,7 @@ function FindingRow({ finding }: { finding: SecurityFinding }) {
           </pre>
         )}
         {expanded && (
-          <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.08em] text-(--dim)">
+          <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
             rule: {finding.rule_id}
           </div>
         )}
@@ -168,7 +168,7 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
                 onClick={handleCopyAll}
                 aria-label="Copy all findings"
                 title="Copy all findings"
-                className="btn-press flex items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
+                className="btn-press flex items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
               >
                 {copied ? <Check className="size-2.5 text-(--lime)" /> : <Copy className="size-2.5" />}
                 {copied ? "OK" : "COPY ALL"}
@@ -209,11 +209,11 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
 
         {scan?.status === "COMPLETED" && totalFindings === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <div className="pixel-shadow-accent flex size-12 items-center justify-center border-2 border-[#0d0d0f] bg-(--lime) font-mono text-[16px] font-bold text-[#0d0d0f]">
+            <div className="pixel-shadow-accent flex size-12 items-center justify-center border-2 border-(--bg) bg-(--lime) font-mono text-[16px] font-bold text-primary-foreground">
               ✓
             </div>
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-(--lime)">No issues</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--dim)">scan complete · 0 findings</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">scan complete · 0 findings</p>
           </div>
         )}
 
@@ -229,7 +229,7 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
             <span className="text-(--dim)">{">"}</span>{" "}
             {totalFindings > 0 ? `showing ${sortedFindings.length} of ${totalFindings}` : "no findings"}
           </span>
-          <span className="shrink-0 truncate text-(--dim)">
+          <span className="shrink-0 truncate text-(--muted)">
             {totalFindings > 0 ? (
               <>
                 <span className="text-(--sev-high)">{errors}</span> · <span className="text-(--sev-med)">{warnings}</span> · <span className="text-(--sev-low)">{infos}</span>

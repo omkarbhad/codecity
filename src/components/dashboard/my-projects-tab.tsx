@@ -28,47 +28,10 @@ import { Button } from "@codecity/ui/components/button"
 import { IconButton } from "@codecity/ui/components/icon-button"
 import { MiniCityPreview } from "@/components/city/mini-city-preview"
 import type { CitySnapshot } from "@/lib/types/city"
-import { getProjects, getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject, cancelProject } from "@/lib/tauri"
+import { getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject, cancelProject } from "@/lib/tauri"
 import { HugeIcon } from "@/components/ui/huge-icon"
-
-interface Project {
-  id: string
-  name: string
-  repoUrl: string
-  status: string
-  fileCount?: number
-  lineCount?: number
-  progress?: number
-  progressStage?: string
-  progressMessage?: string
-  filesDiscovered?: number
-  filesParsed?: number
-  error?: string | null
-  createdAt: string
-}
-
-function normalizeProjectRecord(record: Record<string, unknown>): Project {
-  return {
-    id: String(record.id ?? ""),
-    name: String(record.name ?? "Untitled"),
-    repoUrl: String(record.repo_url ?? record.repoUrl ?? ""),
-    status: String(record.status ?? "FAILED"),
-    fileCount: Number(record.file_count ?? record.fileCount ?? 0),
-    lineCount: Number(record.line_count ?? record.lineCount ?? 0),
-    progress: Number(record.progress ?? 0),
-    progressStage: String(record.progress_stage ?? record.progressStage ?? "queued"),
-    progressMessage: String(record.progress_message ?? record.progressMessage ?? "Queued"),
-    filesDiscovered: Number(record.files_discovered ?? record.filesDiscovered ?? 0),
-    filesParsed: Number(record.files_parsed ?? record.filesParsed ?? 0),
-    error: typeof record.error === "string" ? record.error : null,
-    createdAt: (() => {
-      const raw = record.created_at ?? record.createdAt
-      if (typeof raw === "string" && raw.trim()) return raw
-      if (typeof raw === "number" && Number.isFinite(raw)) return new Date(raw).toISOString()
-      return new Date().toISOString()
-    })(),
-  }
-}
+import { fetchProjects, type Project } from "@/lib/projects"
+import { EmptyState } from "@/components/ui/empty-state"
 
 function getProjectLabel(project: Project) {
   const source = project.repoUrl || project.name
@@ -232,7 +195,7 @@ function DeleteButton({
   return (
     <IconButton
       onClick={openConfirm}
-      className="pixel-shadow-sm btn-press size-8 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] hover:border-[var(--sev-high)] hover:text-[var(--sev-high)] focus-visible:outline-none"
+      className="pixel-shadow-sm btn-press size-8 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] hover:border-[var(--sev-high)] hover:text-[var(--sev-high)]"
       aria-label="Remove project"
     >
       <Trash2 />
@@ -320,7 +283,7 @@ function ProjectCard({
           {isProcessing && (
             <button
               onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-              className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) text-(--muted) transition-colors hover:border-(--border-light) hover:text-(--cream) focus-visible:outline-none"
+              className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) text-(--muted) transition-colors hover:border-(--border-light) hover:text-(--cream)"
               title="Stop parsing"
               aria-label="Stop parsing"
             >
@@ -330,7 +293,7 @@ function ProjectCard({
           {isCompleted && (
             <Link
               href={`/project?id=${encodeURIComponent(project.id)}`}
-              className="pixel-shadow-accent btn-press flex h-8 items-center rounded-none border-2 border-[#0d0d0f] bg-primary px-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-[#0d0d0f] transition-colors hover:bg-primary focus-visible:outline-none"
+              className="pixel-shadow-accent btn-press flex h-8 items-center rounded-none border-2 border-(--bg) bg-primary px-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-primary-foreground transition-colors hover:bg-primary"
             >
               Open
             </Link>
@@ -338,7 +301,7 @@ function ProjectCard({
           {isFailed && (
             <button
               onClick={(e) => { e.preventDefault(); onRetry(project) }}
-              className="pixel-shadow-sm btn-press flex h-8 items-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream) focus-visible:outline-none"
+              className="pixel-shadow-sm btn-press flex h-8 items-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
             >
               Retry
             </button>
@@ -389,15 +352,36 @@ function ProjectCard({
         </div>
       )}
 
+      {/* Status pane — same footprint as the city preview so cards line up */}
+      {!isCompleted && view === "grid" && (
+        <div className="relative flex h-32 flex-col items-center justify-center gap-1.5 border-2 border-(--border-pixel) bg-(--bg-deep)">
+          {isActive && (
+            <>
+              <span className="font-mono text-[28px] font-bold leading-none tabular-nums text-primary">{currentProgress}%</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">building city</span>
+            </>
+          )}
+          {isQueued && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">in queue</span>
+          )}
+          {isFailed && (
+            <>
+              <AlertCircle className="size-6 text-(--sev-high)" aria-hidden="true" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-high)">analysis failed</span>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="relative flex flex-1 flex-col gap-3 p-3">
         {/* Top row */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-1.5">
-              <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-neutral-500" />
-              <span className="truncate font-mono text-[11px] leading-none text-neutral-400">{owner}/</span>
+              <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-(--muted)" />
+              <span className="truncate font-mono text-[11px] leading-none text-(--cream-dark)">{owner}/</span>
             </div>
-            <h3 className="truncate text-[14px] font-semibold leading-[1.25] tracking-tight text-neutral-100">
+            <h3 className="truncate text-[14px] font-semibold leading-[1.25] tracking-tight text-(--cream)">
               {repo}
             </h3>
           </div>
@@ -432,15 +416,15 @@ function ProjectCard({
         {isCompleted && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <HugeIcon icon={DocumentCodeIcon} className="size-3.5 text-neutral-500" />
-              <span className="font-mono text-[12px] leading-none text-neutral-200 tabular-nums">{formatNumber(project.fileCount ?? 0)}</span>
-              <span className="text-[10px] leading-none text-neutral-500">files</span>
+              <HugeIcon icon={DocumentCodeIcon} className="size-3.5 text-(--muted)" />
+              <span className="font-mono text-[12px] leading-none text-(--cream) tabular-nums">{formatNumber(project.fileCount ?? 0)}</span>
+              <span className="text-[10px] leading-none text-(--muted)">files</span>
             </div>
-            <div className="h-3 w-px bg-white/[0.10]" />
+            <div className="h-3 w-px bg-(--bg-card)" />
             <div className="flex items-center gap-1.5">
-              <HugeIcon icon={CodeIcon} className="size-3.5 text-neutral-500" />
-              <span className="font-mono text-[12px] leading-none text-neutral-200 tabular-nums">{formatNumber(project.lineCount ?? 0)}</span>
-              <span className="text-[10px] leading-none text-neutral-500">lines</span>
+              <HugeIcon icon={CodeIcon} className="size-3.5 text-(--muted)" />
+              <span className="font-mono text-[12px] leading-none text-(--cream) tabular-nums">{formatNumber(project.lineCount ?? 0)}</span>
+              <span className="text-[10px] leading-none text-(--muted)">lines</span>
             </div>
           </div>
         )}
@@ -448,18 +432,22 @@ function ProjectCard({
         {/* Progress — active */}
         {isActive && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="truncate font-mono text-[11px] leading-none text-neutral-400">{currentMessage}</span>
-              <span className="ml-2 shrink-0 font-mono text-[11px] leading-none text-neutral-200 tabular-nums">{currentProgress}%</span>
-            </div>
-            <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <span className="block truncate font-mono text-[11px] leading-none text-(--cream-dark)">{currentMessage}</span>
+            <div
+              role="progressbar"
+              aria-label="Analysis progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={currentProgress}
+              className="h-1.5 w-full overflow-hidden border border-(--border-pixel) bg-(--bg-deep)"
+            >
               <div
-                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                className="h-full bg-primary transition-[width] duration-700 ease-out"
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
             {(project.filesDiscovered ?? 0) > 0 && (
-              <div className="flex items-center gap-3 font-mono text-[10px] leading-none text-neutral-500 tabular-nums">
+              <div className="flex items-center gap-3 font-mono text-[10px] leading-none text-(--muted) tabular-nums">
                 <span>{formatNumber(project.filesDiscovered ?? 0)} found</span>
                 <span>{formatNumber(project.filesParsed ?? 0)} parsed</span>
               </div>
@@ -469,7 +457,7 @@ function ProjectCard({
 
         {/* Queued message */}
         {isQueued && (
-          <p className="font-mono text-[11px] leading-[1.4] text-neutral-500">{currentMessage}</p>
+          <p className="font-mono text-[11px] leading-[1.4] text-(--muted)">{currentMessage}</p>
         )}
 
         {/* Error */}
@@ -489,7 +477,7 @@ function ProjectCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex size-7 items-center justify-center rounded-none text-[var(--muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--cream)] focus-visible:outline-none"
+                className="inline-flex size-7 items-center justify-center rounded-none text-[var(--muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
                 title="Open on GitHub"
                 aria-label="Open repository on GitHub"
               >
@@ -503,7 +491,7 @@ function ProjectCard({
             {isFailed && (
               <button
                 onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="pixel-shadow-sm btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--cream-dark)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)] focus-visible:outline-none"
+                className="pixel-shadow-sm btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--cream-dark)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)]"
               >
                 <RefreshCw className="size-3" />
                 Retry
@@ -513,7 +501,7 @@ function ProjectCard({
             {isProcessing && (
               <button
                 onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-                className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)] focus-visible:outline-none"
+                className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)]"
                 title="Stop parsing"
                 aria-label="Stop parsing"
               >
@@ -526,7 +514,7 @@ function ProjectCard({
               <Link
                 href={`/project?id=${encodeURIComponent(project.id)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="pixel-shadow-accent btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-[#0d0d0f] bg-primary px-3 text-[10px] font-semibold uppercase leading-none tracking-[0.05em] text-[#0d0d0f] transition-colors hover:bg-primary focus-visible:outline-none"
+                className="pixel-shadow-accent btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-(--bg) bg-primary px-3 text-[10px] font-semibold uppercase leading-none tracking-[0.05em] text-primary-foreground transition-colors hover:bg-primary"
               >
                 Open
                 <ExternalLink className="size-3" />
@@ -548,10 +536,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: async () => {
-      const records = await getProjects()
-      return records.map((record) => normalizeProjectRecord(record as unknown as Record<string, unknown>))
-    },
+    queryFn: fetchProjects,
     refetchInterval: (query) => {
       const data = query.state.data as Project[] | undefined
       const hasActive = data?.some((p) => p.status === "PROCESSING" || p.status === "PENDING")
@@ -623,25 +608,21 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex min-h-72 items-center justify-center border-2 border-dashed border-[var(--border-light)] bg-card">
-        <div className="flex flex-col items-center px-6 py-10 text-center">
-          <div className="pixel-shadow-sm mb-4 flex size-12 items-center justify-center border-2 border-[var(--border-light)] bg-[var(--bg-raised)]">
-            <HugeIcon icon={Building03Icon} className="size-6 text-primary" />
-          </div>
-          <p className="text-[14px] font-semibold leading-[1.25] text-[var(--cream)] uppercase tracking-[0.05em]">No cities yet</p>
-          <p className="mt-2 max-w-xs text-[12px] leading-[1.5] text-[var(--cream-dark)]">
-            Analyze a GitHub repo to generate an interactive 3D city from its codebase.
-          </p>
+      <EmptyState
+        icon={<HugeIcon icon={Building03Icon} />}
+        title="No cities yet"
+        description="Analyze a GitHub repo to generate an interactive 3D city from its codebase."
+        action={
           <Button
             onClick={() => onCreateCity?.()}
             size="sm"
-            className="pixel-shadow-accent btn-press mt-5 h-9 gap-2 rounded-none border-2 border-[#0d0d0f] bg-primary px-4 text-[12px] font-medium uppercase leading-none tracking-[0.05em] text-[#0d0d0f] hover:bg-primary focus-visible:outline-none"
+            className="pixel-shadow-accent btn-press h-9 gap-2 rounded-none border-2 border-(--bg) bg-primary px-4 text-[12px] font-medium uppercase leading-none tracking-[0.05em] text-primary-foreground hover:bg-primary"
           >
             <HugeIcon icon={Add01Icon} className="size-3.5" />
             New City
           </Button>
-        </div>
-      </div>
+        }
+      />
     )
   }
 
@@ -711,13 +692,13 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
-        <DashboardStat tone="blue" icon={<HugeIcon icon={Building03Icon} className="size-3.5" />} label="cities" value={projects.length} />
-        <DashboardStat tone="amber" icon={<HugeIcon icon={Activity01Icon} className="size-3.5" />} label="active" value={processingProjects.length} />
-        <DashboardStat tone="emerald" icon={<HugeIcon icon={DocumentCodeIcon} className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
-        <DashboardStat tone="violet" icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
+        <DashboardStat icon={<HugeIcon icon={Building03Icon} className="size-3.5" />} label="cities" value={projects.length} />
+        <DashboardStat highlight={processingProjects.length > 0} icon={<HugeIcon icon={Activity01Icon} className="size-3.5" />} label="active" value={processingProjects.length} />
+        <DashboardStat icon={<HugeIcon icon={DocumentCodeIcon} className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
+        <DashboardStat icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
         <Button
           onClick={() => onCreateCity?.()}
-          className="pixel-shadow-accent btn-press col-span-2 h-11 self-stretch gap-2 rounded-none border-2 border-[#0d0d0f] bg-primary px-4 text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#0d0d0f] hover:bg-primary focus-visible:outline-none lg:col-span-1"
+          className="pixel-shadow-accent btn-press col-span-2 h-11 self-stretch gap-2 rounded-none border-2 border-(--bg) bg-primary px-4 text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-primary-foreground hover:bg-primary lg:col-span-1"
         >
           <HugeIcon icon={Add01Icon} className="size-3.5" />
           New City
@@ -725,11 +706,11 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
       </div>
 
       <div className="flex justify-end">
-        <div className="flex items-center gap-0 border-2 border-[var(--border-pixel)] bg-card p-0.5">
+        <div className="cc-seg" role="group" aria-label="Layout">
           <button
             type="button"
             onClick={() => setView("grid")}
-            className={`flex size-8 items-center justify-center transition-colors ${view === "grid" ? "bg-[var(--bg-raised)] text-[var(--cream)]" : "text-[var(--muted)] hover:text-[var(--cream)]"}`}
+            className="cc-seg-btn h-8"
             title="Grid view"
             aria-label="Grid view"
             aria-pressed={view === "grid"}
@@ -739,7 +720,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
           <button
             type="button"
             onClick={() => setView("list")}
-            className={`flex size-8 items-center justify-center transition-colors ${view === "list" ? "bg-[var(--bg-raised)] text-[var(--cream)]" : "text-[var(--muted)] hover:text-[var(--cream)]"}`}
+            className="cc-seg-btn h-8"
             title="List view"
             aria-label="List view"
             aria-pressed={view === "list"}
@@ -775,29 +756,27 @@ function DashboardStat({
   icon,
   label,
   value,
-  tone,
+  highlight = false,
 }: {
   icon: React.ReactNode
   label: string
   value: React.ReactNode
-  tone: "blue" | "amber" | "emerald" | "violet"
+  highlight?: boolean
 }) {
-  const tones = {
-    blue: "border-[var(--sev-low)] bg-[color-mix(in_srgb,var(--sev-low)_8%,transparent)] text-[var(--sev-low)]",
-    amber: "border-[var(--sev-med)] bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] text-[var(--sev-med)]",
-    emerald: "border-[var(--lime)] bg-[color-mix(in_srgb,var(--lime)_10%,transparent)] text-[var(--lime)]",
-    violet: "border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] text-[var(--sev-high)]",
-  }
-
   return (
-    <div className="pixel-shadow-sm flex h-11 items-center justify-between border-2 border-[var(--border-light)] bg-card px-3">
+    <div className="pixel-shadow-sm flex h-11 items-center justify-between border-2 border-(--border-light) bg-card px-3">
       <div className="flex items-center gap-2">
-        <span className={`flex size-7 items-center justify-center border-2 ${tones[tone]}`}>
+        <span
+          aria-hidden="true"
+          className={`flex size-7 items-center justify-center border-2 ${
+            highlight ? "border-primary bg-primary text-primary-foreground" : "border-(--border-pixel) bg-(--bg-raised) text-(--cream-dark)"
+          }`}
+        >
           {icon}
         </span>
-        <span className="text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--muted)]">{label}</span>
+        <span className="font-mono text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-(--muted)">{label}</span>
       </div>
-      <span className="font-mono text-[13px] leading-none text-[var(--cream)] tabular-nums">{value}</span>
+      <span className="font-mono text-[13px] leading-none text-(--cream) tabular-nums">{value}</span>
     </div>
   )
 }

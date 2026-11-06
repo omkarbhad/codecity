@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useRef } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
@@ -110,34 +110,48 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
   const maxLines = useMemo(() => Math.max(1, ...snapshot.files.map((file) => file.lines)), [snapshot.files])
 
+  // Only keep a WebGL context while the card is on (or near) screen: browsers
+  // cap live contexts (~16), and off-screen previews would burn GPU for nothing.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [onScreen, setOnScreen] = useState(false)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { rootMargin: "200px" })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <div className={className} style={{ width: "100%", height: "100%" }}>
-      <Canvas
-        gl={{
-          antialias: false, // off for perf in thumbnail
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.95,
-          powerPreference: "low-power",
-        }}
-        shadows={false} // no shadows for thumbnails — big perf win
-        camera={{ position: [30, 20, 30], fov: 42, near: 0.5, far: 5000 }}
-        style={{ width: "100%", height: "100%" }}
-        onCreated={({ gl }) => {
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-        }}
-      >
-        <color attach="background" args={["#0b0c10"]} />
-        <Suspense fallback={null}>
-          <MiniCameraFit cityBounds={cityBounds} maxLines={maxLines} />
-          <MiniPreviewLights />
-          <MiniPreviewGround cityBounds={cityBounds} />
-          {snapshot.districts.map((d) => (
-            <DistrictGround key={d.name} district={d} />
-          ))}
-          <InstancedBuildings snapshot={snapshot} />
-          <MiniParticles spread={40} />
-        </Suspense>
-      </Canvas>
+    <div ref={containerRef} className={className} style={{ width: "100%", height: "100%" }}>
+      {onScreen && (
+        <Canvas
+          gl={{
+            antialias: false, // off for perf in thumbnail
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.95,
+            powerPreference: "low-power",
+          }}
+          shadows={false} // no shadows for thumbnails — big perf win
+          camera={{ position: [30, 20, 30], fov: 42, near: 0.5, far: 5000 }}
+          style={{ width: "100%", height: "100%" }}
+          onCreated={({ gl }) => {
+            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          }}
+        >
+          <color attach="background" args={["#0b0c10"]} />
+          <Suspense fallback={null}>
+            <MiniCameraFit cityBounds={cityBounds} maxLines={maxLines} />
+            <MiniPreviewLights />
+            <MiniPreviewGround cityBounds={cityBounds} />
+            {snapshot.districts.map((d) => (
+              <DistrictGround key={d.name} district={d} />
+            ))}
+            <InstancedBuildings snapshot={snapshot} />
+            <MiniParticles spread={40} />
+          </Suspense>
+        </Canvas>
+      )}
     </div>
   )
 }

@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
-  Code2,
   ExternalLink,
   FolderTree,
   FileCode,
@@ -15,9 +14,7 @@ import {
   Filter,
   Map,
   Palette,
-  Info,
   GitCommit,
-  Keyboard,
   Box,
   Square,
   Share2,
@@ -27,7 +24,7 @@ import { cn } from "@codecity/ui/lib/utils"
 import { IconButton } from "@codecity/ui/components/icon-button"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
 import type { SecurityScanResult } from "@/lib/tauri"
-import { startSecurityScan, cancelSecurityScan, isTauri } from "@/lib/tauri"
+import { startSecurityScan, isTauri } from "@/lib/tauri"
 import { pollSecurityScan } from "@/lib/security"
 import { useCityStore, type VisualizationMode } from "./use-city-store"
 import { FileTree } from "./file-tree"
@@ -40,6 +37,7 @@ import { BottomBar } from "./bottom-bar"
 import { CityTooltip } from "./city-tooltip"
 import { CommitTimeline } from "./commit-timeline"
 import { CodeViewer } from "./code-viewer"
+import { LogoMark } from "@/components/logo"
 
 // ── Resize Handle ───────────────────────────────────────────────────────────
 
@@ -96,11 +94,11 @@ function ResizeHandle({
     <div
       ref={handleRef}
       className={cn(
-        "group flex w-[5px] shrink-0 cursor-col-resize items-stretch justify-center bg-[#080809] transition-colors hover:bg-white/[0.04] active:bg-primary/15",
-        side === "left" ? "border-r border-white/[0.06]" : "border-l border-white/[0.06]"
+        "group flex w-[5px] shrink-0 cursor-col-resize items-stretch justify-center bg-(--bg-deep) transition-colors hover:bg-(--bg-raised) active:bg-primary/15",
+        side === "left" ? "border-r-2 border-(--border-pixel)" : "border-l-2 border-(--border-pixel)"
       )}
     >
-      <span className="my-3 w-px rounded-full bg-white/[0.05] transition-colors group-hover:bg-primary/45" />
+      <span className="my-3 w-px bg-(--border-light) transition-colors group-hover:bg-primary" />
     </div>
   )
 }
@@ -109,18 +107,18 @@ function ResizeHandle({
 
 type PrimaryView = "explorer" | "search" | "filters" | "minimap" | "legend" | "commits"
 
-const MODES: { key: VisualizationMode; label: string; shortcut: string }[] = [
-  { key: "dependencies", label: "Deps", shortcut: "1" },
-  { key: "complexity", label: "Cplx", shortcut: "2" },
-  { key: "unused", label: "Unused", shortcut: "3" },
-  { key: "filesize", label: "Size", shortcut: "4" },
-  { key: "types", label: "Types", shortcut: "5" },
+const MODES: { key: VisualizationMode; label: string; title: string; shortcut: string }[] = [
+  { key: "dependencies", label: "Deps", title: "Color by dependencies", shortcut: "1" },
+  { key: "complexity", label: "Complexity", title: "Color by complexity", shortcut: "2" },
+  { key: "unused", label: "Unused", title: "Highlight unused exports", shortcut: "3" },
+  { key: "filesize", label: "Size", title: "Color by file size", shortcut: "4" },
+  { key: "types", label: "Types", title: "Color by type count", shortcut: "5" },
 ]
 
-const LAYOUTS: { key: LayoutMode; label: string; icon: typeof FolderTree }[] = [
-  { key: "folder", label: "Folder", icon: FolderTree },
-  { key: "extension", label: "Ext", icon: FileCode },
-  { key: "semantic", label: "Cluster", icon: Brain },
+const LAYOUTS: { key: LayoutMode; label: string; title: string; icon: typeof FolderTree }[] = [
+  { key: "folder", label: "Folder", title: "Group by folder", icon: FolderTree },
+  { key: "extension", label: "Ext", title: "Group by file extension", icon: FileCode },
+  { key: "semantic", label: "Cluster", title: "Group by import cluster", icon: Brain },
 ]
 
 interface ProjectShellProps {
@@ -164,31 +162,34 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
   return (
     <div
       className={cn(
-        "flex w-12 shrink-0 flex-col items-center gap-1 bg-[#09090a] px-1.5 py-2",
-        position === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
+        "flex w-12 shrink-0 flex-col items-center gap-1 bg-(--bg-deep) px-1.5 py-2",
+        position === "left" ? "border-r-2 border-(--border-pixel)" : "border-l-2 border-(--border-pixel)"
       )}
     >
       {items.map((item) => {
         const Icon = item.icon
         const active = activeView === item.id
+        const label = `${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`
         return (
           <button
             key={item.id}
             onClick={() => onViewChange(item.id)}
-            title={`${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`}
+            title={label}
+            aria-label={label}
+            aria-pressed={active}
             className={cn(
-              "relative flex h-9 w-9 items-center justify-center rounded-lg border transition-colors",
+              "relative flex h-9 w-9 items-center justify-center border-2 transition-colors",
               active
-                ? "border-white/[0.10] bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                : "border-transparent text-white/38 hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-white/72"
+                ? "border-(--border-light) bg-(--bg-raised) text-primary"
+                : "border-transparent text-(--muted) hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
             )}
           >
             {/* Active indicator bar */}
             {active && (
               <div
                 className={cn(
-                  "absolute bottom-2 top-2 w-[2px] rounded-sm bg-primary",
-                  position === "left" ? "-left-1.5" : "-right-1.5"
+                  "absolute bottom-1.5 top-1.5 w-[3px] bg-primary",
+                  position === "left" ? "-left-2" : "-right-2"
                 )}
               />
             )}
@@ -235,9 +236,9 @@ function PrimaryPanelContent({
       return (
         <>
           <PanelHeader title="Search" />
-          <div className="border-b border-white/[0.06] px-3 py-2.5">
+          <div className="border-b-2 border-(--border-pixel) px-3 py-2.5">
             <div className="relative group">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/45 pointer-events-none group-focus-within:text-white/65 transition-colors" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-(--muted) pointer-events-none group-focus-within:text-primary transition-colors" />
               <input
                 ref={inputRef}
                 type="text"
@@ -245,16 +246,16 @@ function PrimaryPanelContent({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search files..."
                 aria-label="Search files"
-                className="h-8 w-full rounded-md border border-white/[0.08] bg-[#111113] pl-7 pr-7 text-[12px] text-white/80 outline-none transition-colors placeholder:text-white/35 focus:border-white/18 focus:bg-white/[0.05]"
+                className="h-8 w-full border-2 border-(--border-pixel) bg-(--bg-card) pl-7 pr-7 font-mono text-[12px] text-(--cream) outline-none transition-colors placeholder:text-(--muted) focus:border-primary"
               />
               {searchQuery && (
-                <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/65 hover:text-white/75 transition-colors">
-                  <X className="w-2.5 h-2.5" />
+                <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center text-(--muted) transition-colors hover:text-(--cream)">
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
             <FileTree snapshot={explorerSnapshot} selectionSnapshot={snapshot} />
           </div>
         </>
@@ -276,7 +277,7 @@ function PrimaryPanelContent({
     case "minimap":
       return (
         <>
-          <PanelHeader title="Minimap" />
+          <PanelHeader title="Minimap" subtitle="Click to navigate" />
           <Minimap snapshot={snapshot} />
         </>
       )
@@ -288,7 +289,7 @@ function PrimaryPanelContent({
             <CommitTimeline repoUrl={repoUrl} />
           ) : (
             <div className="flex items-center justify-center p-6">
-              <p className="text-xs text-white/40 text-center">No repository URL available</p>
+              <p className="text-xs text-(--muted) text-center">No repository URL available</p>
             </div>
           )}
         </>
@@ -298,12 +299,12 @@ function PrimaryPanelContent({
 
 function PanelHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0d0d0f] px-3 shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
-      <span className="text-[13px] font-semibold text-white/72">
+    <div className="flex h-11 shrink-0 items-center justify-between border-b-2 border-(--border-pixel) bg-(--bg) px-3">
+      <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
         {title}
       </span>
       {subtitle && (
-        <span className="rounded border border-white/[0.07] bg-white/[0.03] px-1.5 py-0.5 text-[10px] tabular-nums text-white/38">{subtitle}</span>
+        <span className="border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-(--cream-dark)">{subtitle}</span>
       )}
     </div>
   )
@@ -319,7 +320,7 @@ function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot;
   return (
     <>
       <ResizeHandle side="right" onResize={onResize} />
-      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#0b0b0c] shadow-[-20px_0_60px_rgba(0,0,0,0.20)] md:flex">
+      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden bg-(--bg) md:flex">
         <SidePanel snapshot={snapshot} />
       </div>
     </>
@@ -327,12 +328,6 @@ function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot;
 }
 
 // ── Project Navbar ──────────────────────────────────────────────────────────
-
-function formatStat(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
-  return n.toString()
-}
 
 function ProjectNavbar({
   projectName,
@@ -360,91 +355,81 @@ function ProjectNavbar({
   const setViewDimension = useCityStore((s) => s.setViewDimension)
 
   return (
-    <header className="z-50 grid h-[52px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-white/[0.08] bg-[#0b0b0c]/95 px-3 shadow-[0_1px_0_rgba(255,255,255,0.02),0_14px_40px_rgba(0,0,0,0.20)] backdrop-blur">
+    <header className="z-50 grid h-[52px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-deep) px-3">
       {/* Left */}
       <div className="flex items-center gap-2 min-w-0">
-        <IconButton
-          onClick={() => router.back()}
-          className="text-white/60 hover:text-white"
-          aria-label="Go back"
-        >
+        <IconButton onClick={() => router.back()} aria-label="Go back" title="Go back">
           <ArrowLeft />
         </IconButton>
-        <Link href="/dashboard" className="flex items-center gap-2 text-white/80 transition-colors hover:text-white">
-          <img src="/logo.png" alt="CodeCity" className="size-6 shrink-0 rounded-sm" />
-          <span className="hidden text-[13px] font-semibold sm:inline">CodeCity</span>
+        <Link href="/dashboard" className="flex items-center gap-2 text-(--cream) transition-colors hover:text-primary">
+          <LogoMark className="size-6" />
+          <span className="hidden font-mono text-[12px] font-semibold uppercase tracking-[0.05em] xl:inline">CodeCity</span>
         </Link>
-        <span className="hidden text-white/35 sm:inline">/</span>
-        <span className="max-w-[90px] truncate font-sans text-[13px] font-medium text-white/72 sm:max-w-[240px]">{projectName}</span>
+        <span className="hidden text-(--muted) sm:inline">/</span>
+        <span className="max-w-[90px] truncate font-mono text-[12px] text-(--cream-dark) sm:max-w-[240px]">{projectName}</span>
         {repoUrl?.startsWith("http") && (
           <a
             href={repoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden size-7 shrink-0 items-center justify-center rounded-md text-white/35 transition-colors hover:bg-white/[0.04] hover:text-white/70 sm:flex"
-            title="Open repository"
+            className="hidden size-7 shrink-0 items-center justify-center text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream) sm:flex"
+            title="Open repository on GitHub"
+            aria-label="Open repository on GitHub"
           >
             <ExternalLink className="size-3.5" />
           </a>
         )}
       </div>
 
-      {/* Center — layout + viz modes */}
-      <div className="col-start-2 hidden min-w-0 items-center gap-1 overflow-x-auto scrollbar-none sm:flex">
-        <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
+      {/* Center — view, layout and color mode */}
+      <div className="col-start-2 hidden min-w-0 items-center gap-2 overflow-x-auto scrollbar-none sm:flex">
+        <div className="cc-seg" role="group" aria-label="View">
           {([
             { key: "3d" as const, label: "3D", Icon: Box },
             { key: "2d" as const, label: "2D", Icon: Square },
             { key: "network" as const, label: "Network", Icon: Share2 },
-          ]).map(({ key, label, Icon }) => {
-            const active = viewDimension === key
-            return (
-              <button
-                key={key}
-                onClick={() => setViewDimension(key)}
-                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors ${
-                  active ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
-                }`}
-                title={`${label} view`}
-              >
-                <Icon className="size-3.5" />
-                <span className="hidden md:inline">{label}</span>
-              </button>
-            )
-          })}
+          ]).map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              onClick={() => setViewDimension(key)}
+              aria-pressed={viewDimension === key}
+              aria-label={`${label} view`}
+              title={`${label} view`}
+              className="cc-seg-btn"
+            >
+              <Icon />
+              <span className="hidden min-[1440px]:inline">{label}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
-
-        <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
+        <div className="cc-seg" role="group" aria-label="Layout">
           {LAYOUTS.map((l) => {
             const Icon = l.icon
-            const active = layoutMode === l.key
             return (
               <button
                 key={l.key}
                 onClick={() => setLayoutMode(l.key)}
-                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors ${
-                  active ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
-                }`}
+                aria-pressed={layoutMode === l.key}
+                aria-label={l.title}
+                title={l.title}
+                className="cc-seg-btn"
               >
-                <Icon className="size-3.5" />
-                <span className="hidden md:inline">{l.label}</span>
+                <Icon />
+                <span className="hidden min-[1440px]:inline">{l.label}</span>
               </button>
             )
           })}
         </div>
 
-        <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
-
-        <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
+        <div className="cc-seg" role="group" aria-label="Color mode">
           {MODES.map((m) => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`h-7 rounded-md px-2 text-[11px] font-medium transition-colors ${
-                visualizationMode === m.key ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
-              }`}
+              aria-pressed={visualizationMode === m.key}
+              title={`${m.title} (${m.shortcut})`}
+              className="cc-seg-btn"
             >
               {m.label}
             </button>
@@ -452,34 +437,19 @@ function ProjectNavbar({
         </div>
       </div>
 
-      <div className="col-start-3 flex min-w-0 justify-end gap-2 font-mono text-[10px] text-white/45">
-        <div className="hidden items-center gap-2 lg:flex">
-          <span className="flex h-7 items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.025] px-2">
-            <FileCode className="size-3 text-white/30" />
-            <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalFiles)}</strong>
-            files
-          </span>
-          <span className="flex h-7 items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.025] px-2">
-            <Code2 className="size-3 text-white/30" />
-            <strong className="font-medium text-white/70">{formatStat(snapshot.stats.totalLines)}</strong>
-            lines
-          </span>
-        </div>
+      <div className="col-start-3 flex min-w-0 justify-end gap-2 font-mono text-[11px] text-(--muted)">
         {actions}
         {securityEnabled && onSecurityClick && (
-          <div className="flex shrink-0 items-center rounded-lg border border-white/[0.08] bg-white/[0.035] p-0.5">
+          <div className="cc-seg">
             <button
               onClick={onSecurityClick}
               title="Security scan"
               aria-label="Security scan"
-              className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium font-sans transition-colors ${
-                securityActive
-                  ? "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                  : "text-white/58 hover:bg-white/[0.05] hover:text-white/85"
-              }`}
+              aria-pressed={!!securityActive}
+              className="cc-seg-btn"
             >
-              <ShieldAlert className="size-3.5" />
-              <span className="hidden sm:inline">Security</span>
+              <ShieldAlert />
+              <span className="hidden xl:inline">Security</span>
             </button>
           </div>
         )}
@@ -492,7 +462,8 @@ function ProjectNavbar({
             const idx = LAYOUTS.findIndex((l) => l.key === layoutMode)
             setLayoutMode(LAYOUTS[(idx + 1) % LAYOUTS.length].key)
           }}
-          className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[11px] font-medium text-white"
+          aria-label={`Layout: ${LAYOUTS.find((l) => l.key === layoutMode)?.title}. Tap to change`}
+          className="flex h-7 items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-card) px-2 text-(--cream)"
         >
           {(() => {
             const ActiveIcon = LAYOUTS.find((l) => l.key === layoutMode)!.icon
@@ -504,7 +475,8 @@ function ProjectNavbar({
             const idx = MODES.findIndex((m) => m.key === visualizationMode)
             setMode(MODES[(idx + 1) % MODES.length].key)
           }}
-          className="rounded-md border border-white/[0.08] bg-white/[0.07] px-2 py-1 text-[11px] font-medium text-white"
+          aria-label={`Color mode: ${MODES.find((m) => m.key === visualizationMode)?.title}. Tap to change`}
+          className="h-7 bg-primary px-2 font-mono text-[11px] font-medium uppercase tracking-[0.05em] text-primary-foreground"
         >
           {MODES.find((m) => m.key === visualizationMode)?.label}
         </button>
@@ -529,7 +501,6 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
   const [securityResult, setSecurityResult] = useState<SecurityScanResult | null>(null)
   const [securityLoading, setSecurityLoading] = useState(false)
   const [securityError, setSecurityError] = useState<string | null>(null)
-  const [activeScanId, setActiveScanId] = useState<string | null>(null)
   const stopPollRef = useRef<(() => void) | null>(null)
 
   const isDesktop = isTauri()
@@ -553,8 +524,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
     setSecurityError(null)
 
     try {
-      const { scanId } = await startSecurityScan(projectId, projectRoot)
-      setActiveScanId(scanId)
+      await startSecurityScan(projectId, projectRoot)
 
       stopPollRef.current = pollSecurityScan(
         projectId,
@@ -615,7 +585,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
   const showSecurityPanel = securityOpen && canScan
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#050506]">
+    <div className="flex h-screen flex-col overflow-hidden bg-(--bg-deep)">
       {/* Top navbar — full width */}
       <ProjectNavbar
         projectName={projectName}
@@ -639,7 +609,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
         {/* Primary sidebar panel — slides in/out */}
         {activeView && (
           <>
-            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-r border-white/[0.08] bg-[#0b0b0c] shadow-[18px_0_60px_rgba(0,0,0,0.16)] md:flex">
+            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden bg-(--bg) md:flex">
               <PrimaryPanelContent view={activeView} snapshot={snapshot} explorerSnapshot={explorerSnapshot} repoUrl={repoUrl} />
             </div>
             <ResizeHandle side="left" onResize={handlePrimaryResize} />
@@ -647,7 +617,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
         )}
 
         {/* Canvas area */}
-        <div className="flex flex-col flex-1 overflow-hidden bg-[#070708]">
+        <div className="flex flex-col flex-1 overflow-hidden bg-(--bg-deep)">
           <div className="relative flex-1 overflow-hidden">
             {children}
             <CityTooltip snapshot={snapshot} />
@@ -663,7 +633,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
         {showSecurityPanel && (
           <>
             <ResizeHandle side="right" onResize={handleSecondaryResize} />
-            <div style={{ width: secondaryWidth }} className="hidden shrink-0 flex-col overflow-hidden border-l border-white/[0.08] bg-[#0b0b0c] shadow-[-20px_0_60px_rgba(0,0,0,0.20)] md:flex">
+            <div style={{ width: secondaryWidth }} className="hidden shrink-0 flex-col overflow-hidden bg-(--bg) md:flex">
               <SecuritySidebar
                 result={securityResult}
                 loading={securityLoading}

@@ -7,6 +7,17 @@ export const LogoIcon = (props: React.ComponentProps<"svg">) => (
 	</svg>
 );
 
+/** Brand tile: the glyph on a lime square, sized by className (e.g. size-6). */
+export const LogoMark = ({ className = "" }: { className?: string }) => (
+	<span
+		role="img"
+		aria-label="CodeCity"
+		className={`grid shrink-0 place-items-center bg-primary text-primary-foreground ${className}`}
+	>
+		<LogoIcon aria-hidden="true" className="size-[62%]" />
+	</span>
+);
+
 export const Logo = (props: React.ComponentProps<"svg">) => (
 	<svg
 		fill="currentColor"

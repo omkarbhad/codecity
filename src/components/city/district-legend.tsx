@@ -39,16 +39,7 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
-      {/* Section header */}
-      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
-        <span className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
-          Districts
-        </span>
-        <span className="font-mono text-[10px] tabular-nums text-(--muted)">
-          {snapshot.districts.length}
-        </span>
-      </div>
+    <div className="flex h-full flex-col overflow-hidden">
 
       <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
         {snapshot.districts.map((district) => {
@@ -70,10 +61,10 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
                 style={{ backgroundColor: district.color }}
               />
               <span className="flex-1 truncate">{district.name}</span>
-              <span className="shrink-0 font-mono text-[9px] tabular-nums text-(--muted)">
+              <span className="shrink-0 font-mono text-[10px] tabular-nums text-(--muted)">
                 {stats ? `${(stats.lines / 1000).toFixed(1)}k` : ""}
               </span>
-              <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] tabular-nums text-(--cream-dark)">
+              <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] tabular-nums text-(--cream-dark)">
                 {district.files.length}
               </span>
             </button>

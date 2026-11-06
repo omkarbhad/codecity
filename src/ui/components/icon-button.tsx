@@ -13,7 +13,7 @@ export function IconButton({ asChild = false, className, ...props }: IconButtonP
   return (
     <Comp
       className={cn(
-        "inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5",
+        "inline-flex size-7 shrink-0 cursor-pointer items-center justify-center border-2 border-(--border-pixel) bg-(--bg-raised) text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream) disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5",
         className
       )}
       {...props}

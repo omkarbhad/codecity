@@ -98,13 +98,13 @@ export function SidePanel({ snapshot }: SidePanelProps) {
     <div className="pixel-shadow flex h-full flex-col overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)">
       {/* Header */}
       <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-(--cream-dark)">
-          <span className="text-(--dim)">file:</span> <span className="text-primary">{fileName}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
+          File details
         </span>
         <button
           onClick={() => selectFile(null, null)}
           aria-label="Close panel"
-          className="shrink-0 rounded-none border-2 border-transparent p-0.5 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+          className="flex size-6 shrink-0 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
         >
           <X className="size-3" />
         </button>
@@ -125,7 +125,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
             </button>
             <div className="mt-1 flex items-center gap-1.5">
               <span className="size-1.5 shrink-0" style={{ backgroundColor: districtColor }} />
-              <span className="truncate font-mono text-[10px] uppercase tracking-[0.06em] text-(--cream-dark)">{file.district}</span>
+              <span className="truncate font-mono text-[11px] text-(--cream-dark)">{file.district}</span>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -133,7 +133,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
               onClick={() => openCodeViewer(file.path)}
               aria-label="View source"
               title="View source"
-              className="rounded-none border-2 border-transparent p-1 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+              className="flex size-6 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
             >
               <FileCode className="size-3" />
             </button>
@@ -141,7 +141,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
               onClick={handleCopyPath}
               aria-label="Copy file path"
               title="Copy path"
-              className="rounded-none border-2 border-transparent p-1 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+              className="flex size-6 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
             >
               {copied ? <Check className="size-3 text-(--lime)" /> : <Copy className="size-3" />}
             </button>
@@ -151,7 +151,8 @@ export function SidePanel({ snapshot }: SidePanelProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Open on GitHub"
-                className="rounded-none border-2 border-transparent p-1 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+                aria-label="Open file on GitHub"
+                className="flex size-6 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
               >
                 <svg className="size-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
               </a>
@@ -167,7 +168,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
             </span>
           )}
           <span className={`border-2 ${cplxBadgeClass} bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]`}>
-            CPLX {cplxLabel}
+            Complexity: {cplxLabel}
           </span>
           {file.isReactComponent && (
             <span className="border-2 border-(--sev-low) bg-[color-mix(in_srgb,var(--sev-low)_8%,transparent)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-low)">
@@ -187,11 +188,11 @@ export function SidePanel({ snapshot }: SidePanelProps) {
         <div className="px-3 py-3">
           <div className="grid grid-cols-3 gap-1.5">
             <StatCell label="Lines" value={file.lines} />
-            <StatCell label="Funcs" value={file.functions.length} />
-            <StatCell label="Cplx" value={file.complexity} valueClassName={cplxColorClass} />
+            <StatCell label="Functions" value={file.functions.length} />
+            <StatCell label="Complexity" value={file.complexity} valueClassName={cplxColorClass} />
             <StatCell label="Types" value={file.types.length} />
-            <StatCell label="Imp" value={file.imports.length} />
-            <StatCell label="Used" value={file.importedBy.length} />
+            <StatCell label="Imports" value={file.imports.length} />
+            <StatCell label="Used by" value={file.importedBy.length} />
           </div>
         </div>
 
@@ -220,7 +221,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
             <div className="space-y-px">
               {file.types.map((t, i) => (
                 <div key={`${t.name}-${i}`} className="flex items-center gap-2 border border-transparent px-2 py-1.5 transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised)">
-                  <span className="border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_10%,transparent)] px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.08em] text-(--sev-med)">
+                  <span className="border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_10%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-med)">
                     {t.kind}
                   </span>
                   <span className="truncate font-mono text-[11px] text-(--cream-dark)">{t.name}</span>
@@ -294,22 +295,6 @@ export function SidePanel({ snapshot }: SidePanelProps) {
           </Section>
         )}
       </div>
-
-      {/* Terminal footer */}
-      <div className="shrink-0 border-t-2 border-(--border-pixel) bg-(--bg-card) px-3 py-1.5">
-        <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-          <span className="truncate">
-            <span className="text-(--dim)">{">"}</span>{" "}
-            <span className="text-(--cream-dark) tabular-nums">{file.lines}</span> lines
-          </span>
-          <span className="shrink-0 text-(--dim)">
-            <span className="text-(--cream-dark) tabular-nums">{file.functions.length}</span>fn ·{" "}
-            <span className="text-(--cream-dark) tabular-nums">{file.types.length}</span>t ·{" "}
-            <span className="text-(--cream-dark) tabular-nums">{file.imports.length}</span>→ ·{" "}
-            <span className="text-(--cream-dark) tabular-nums">{file.importedBy.length}</span>←
-          </span>
-        </div>
-      </div>
     </div>
   )
 }
@@ -320,7 +305,7 @@ function StatCell({ label, value, valueClassName = "" }: { label: string; value:
       <div className={`font-mono text-[15px] font-bold tabular-nums leading-none ${valueClassName || "text-(--cream)"}`}>
         {value.toLocaleString()}
       </div>
-      <div className="mt-1 font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-(--muted)">{label}</div>
+      <div className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.04em] text-(--muted)">{label}</div>
     </div>
   )
 }

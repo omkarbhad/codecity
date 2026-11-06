@@ -16,6 +16,7 @@ import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
 import { enqueueAnalysis, isTauri } from "@/lib/tauri"
 import { HugeIcon } from "@/components/ui/huge-icon"
+import { LogoMark } from "@/components/logo"
 
 const QUICK_REPOS = [
   { label: "vercel/next.js", url: "https://github.com/vercel/next.js" },
@@ -25,14 +26,6 @@ const QUICK_REPOS = [
 ]
 
 type SourceMode = "github" | "local"
-
-function normalizeInput(value: string): string {
-  return value
-    .trim()
-    .replace(/^https?:\/\/github\.com\//, "")
-    .replace(/\.git$/, "")
-    .replace(/\/$/, "")
-}
 
 export function NewAnalysisDialog({
   open,
@@ -106,7 +99,7 @@ export function NewAnalysisDialog({
           {/* Header */}
           <DialogHeader className="mb-5">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="CodeCity" className="size-9 shrink-0 rounded-none border-2 border-[var(--border-pixel)]" />
+              <LogoMark className="size-9" />
               <div>
                 <DialogTitle className="text-[15px] font-semibold uppercase tracking-[0.05em] text-[var(--cream)] leading-none">
                   New City
@@ -238,7 +231,7 @@ export function NewAnalysisDialog({
               <Button
                 type="submit"
                 disabled={submitting}
-                className={`pixel-shadow-accent btn-press h-10 rounded-none border-2 border-[#0d0d0f] bg-primary text-[11px] font-semibold uppercase tracking-[0.05em] text-[#0d0d0f] transition-colors hover:bg-primary ${submitting ? "w-full" : "flex-[2]"}`}
+                className={`pixel-shadow-accent btn-press h-10 rounded-none border-2 border-(--bg) bg-primary text-[11px] font-semibold uppercase tracking-[0.05em] text-primary-foreground transition-colors hover:bg-primary ${submitting ? "w-full" : "flex-[2]"}`}
               >
                 {submitting ? (
                   "Queueing…"
