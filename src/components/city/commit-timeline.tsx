@@ -135,20 +135,20 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
   }
 
   if (commits.length === 0) {
-    return <p className="p-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--dim)">No commits found</p>
+    return <p className="p-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--muted)">No commits found</p>
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
-      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">Commits</span>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) px-3 py-2.5">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-(--muted)" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="filter…"
-            className="h-7 w-full rounded-none border-2 border-(--border-pixel) bg-(--bg-deep) pl-7 pr-7 font-mono text-[11px] text-(--cream) outline-none placeholder:text-(--dim) focus:border-primary"
+            placeholder="Filter commits…"
+            aria-label="Filter commits"
+            className="h-8 w-full rounded-none border-2 border-(--border-pixel) bg-(--bg-card) pl-7 pr-7 font-mono text-[12px] text-(--cream) outline-none placeholder:text-(--muted) focus:border-primary"
           />
           {query && (
             <button onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-(--muted) transition-colors hover:text-(--cream)">
@@ -170,16 +170,16 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
                 className={`flex w-full gap-2 px-2.5 py-2 text-left transition-colors hover:bg-(--bg-raised) ${isExpanded ? "bg-(--bg-raised)" : ""}`}
               >
                 <div className="mt-0.5 flex w-8 shrink-0 flex-col items-center gap-1">
-                  <span className="font-mono text-[9px] tabular-nums text-(--muted)">{index + 1}</span>
+                  <span className="font-mono text-[10px] tabular-nums text-(--muted)">{index + 1}</span>
                   <ChevronDown className={`size-3 text-(--muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-mono text-[11px] leading-snug text-(--cream)">{commit.message || "Untitled commit"}</p>
-                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-[9px] text-(--muted)">
+                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-[10px] text-(--muted)">
                     <span className="truncate">{commit.author}</span>
                     <span className="text-(--dim)">·</span>
                     <span>{timeAgo(commit.date)}</span>
-                    <span className="border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-primary">{commit.sha.slice(0, 7)}</span>
+                    <span className="border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-primary">{commit.sha.slice(0, 7)}</span>
                   </div>
                 </div>
               </button>
@@ -189,7 +189,7 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
                   <div className="mb-2 flex items-center gap-1.5">
                     <button
                       onClick={() => navigator.clipboard?.writeText(commit.sha)}
-                      className="btn-press flex items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-1 font-mono text-[9px] uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
+                      className="btn-press flex items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-1 font-mono text-[10px] uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
                     >
                       <Copy className="size-3" />
                       SHA
@@ -224,7 +224,7 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
         })}
 
         {filteredCommits.length === 0 && (
-          <p className="p-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--dim)">No commits match</p>
+          <p className="p-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--muted)">No commits match</p>
         )}
 
         {hasMore && !query && (

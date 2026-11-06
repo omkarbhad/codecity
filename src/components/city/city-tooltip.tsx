@@ -67,7 +67,7 @@ export function CityTooltip({ snapshot }: CityTooltipProps) {
           {fileName}
         </span>
         {ext && (
-          <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-raised) px-1 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--cream-dark)">
+          <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-raised) px-1 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--cream-dark)">
             {ext}
           </span>
         )}
@@ -75,7 +75,7 @@ export function CityTooltip({ snapshot }: CityTooltipProps) {
 
       <div className="px-2.5 py-2">
         {/* Path */}
-        <p className="mb-2 truncate font-mono text-[9px] text-(--muted)">{file.path}</p>
+        <p className="mb-2 truncate font-mono text-[10px] text-(--muted)">{file.path}</p>
 
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-1">

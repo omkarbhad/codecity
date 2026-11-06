@@ -334,7 +334,7 @@ export function City2DCanvas({ snapshot }: Props) {
     }
   }, [hoverFile])
 
-  const wrapperClass = `absolute inset-0 bg-[#070708] city2d ${
+  const wrapperClass = `absolute inset-0 bg-(--bg-deep) city2d ${
     selectedFile ? "city2d-has-selection" : ""
   } ${dimUnselected ? "city2d-dim" : ""}`
 

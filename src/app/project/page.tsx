@@ -167,18 +167,18 @@ function ProjectContent() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm">
-          <div className="rounded-xl border border-white/[0.08] bg-neutral-900/95 p-6 text-center shadow-lg shadow-black/40 backdrop-blur-xl">
-            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-lg border border-rose-400/25 bg-rose-400/[0.08]">
-              <AlertTriangle className="size-5 text-rose-300" />
+          <div className="pixel-shadow border-2 border-(--border-light) bg-(--bg-card) p-6 text-center">
+            <div className="mx-auto mb-4 flex size-12 items-center justify-center border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)]">
+              <AlertTriangle className="size-5 text-(--sev-high)" />
             </div>
-            <h2 className="mb-2 text-[14px] font-semibold leading-[1.25] text-neutral-100">Something went wrong</h2>
-            <p className="mb-6 text-[12px] leading-[1.5] text-neutral-400">{error}</p>
+            <h2 className="mb-2 font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-(--cream)">Something went wrong</h2>
+            <p className="mb-6 text-[12px] leading-[1.5] text-(--cream-dark)">{error}</p>
             <div className="flex flex-col gap-2">
               {repoUrl && (
                 <button
                   onClick={handleReanalyze}
                   disabled={refreshState.status === "running"}
-                  className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-[12px] font-medium leading-none text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+                  className="flex h-9 w-full items-center justify-center gap-2 pixel-shadow-accent btn-press border-2 border-(--bg) bg-primary px-4 font-mono text-[11px] font-semibold uppercase leading-none tracking-[0.05em] text-primary-foreground disabled:opacity-50"
                 >
                   <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
                   {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
@@ -187,14 +187,14 @@ function ProjectContent() {
               <div className="flex gap-2">
                 <button
                   onClick={() => router.back()}
-                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 text-[12px] font-medium leading-none text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex h-9 flex-1 items-center justify-center gap-2 pixel-shadow-sm btn-press border-2 border-(--border-pixel) bg-(--bg-raised) px-3 font-mono text-[11px] uppercase leading-none tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
                 >
                   <ArrowLeft className="size-3.5" />
                   Back
                 </button>
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 text-[12px] font-medium leading-none text-neutral-300 transition-colors hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex h-9 flex-1 items-center justify-center gap-2 pixel-shadow-sm btn-press border-2 border-(--border-pixel) bg-(--bg-raised) px-3 font-mono text-[11px] uppercase leading-none tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
                 >
                   <RotateCcw className="size-3.5" />
                   Retry
@@ -211,11 +211,11 @@ function ProjectContent() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background px-4">
         <div className="text-center">
-          <p className="mb-3 text-[12px] leading-[1.5] text-neutral-400">No visualization data available.</p>
+          <p className="mb-3 text-[12px] leading-[1.5] text-(--cream-dark)">No visualization data available.</p>
           <button
             onClick={handleReanalyze}
             disabled={refreshState.status === "running"}
-            className="mx-auto flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[12px] font-medium leading-none text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+            className="mx-auto flex h-9 items-center gap-2 pixel-shadow-accent btn-press border-2 border-(--bg) bg-primary px-4 font-mono text-[11px] font-semibold uppercase leading-none tracking-[0.05em] text-primary-foreground disabled:opacity-50"
           >
             <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${refreshState.status === "running" ? "animate-spin" : ""}`} />
             {refreshState.status === "running" ? "Starting..." : "Re-analyze"}
@@ -260,21 +260,21 @@ function ProjectRefreshControl({
   return (
     <div className="flex min-w-0 items-center gap-2">
       {isRunning && (
-        <div className="hidden h-8 min-w-[160px] max-w-[224px] items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.025] px-2 sm:flex">
+        <div className="hidden h-7 min-w-[160px] max-w-[224px] items-center gap-2 border-2 border-(--border-pixel) bg-(--bg-raised) px-2 sm:flex">
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[10px] font-medium leading-none text-neutral-400">{state.message || "Refreshing city"}</span>
-            <span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/[0.08]">
+            <span className="block truncate text-[10px] font-medium leading-none text-(--cream-dark)">{state.message || "Refreshing city"}</span>
+            <span className="mt-1 block h-1 overflow-hidden bg-(--bg-deep)">
               <span
-                className="block h-full rounded-full bg-primary transition-[width] duration-300"
+                className="block h-full bg-primary transition-[width] duration-300"
                 style={{ width: `${Math.max(4, Math.min(100, state.progress))}%` }}
               />
             </span>
           </span>
-          <span className="font-mono text-[10px] leading-none text-neutral-300 tabular-nums">{Math.round(state.progress)}%</span>
+          <span className="font-mono text-[10px] leading-none text-(--cream-dark) tabular-nums">{Math.round(state.progress)}%</span>
         </div>
       )}
       {isFailed && (
-        <span className="hidden h-8 max-w-[240px] items-center truncate rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 text-[11px] font-medium leading-none text-rose-300 sm:inline-flex">
+        <span className="hidden h-7 max-w-[240px] items-center truncate border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-2 text-[11px] font-medium leading-none text-(--sev-high) sm:inline-flex">
           {state.message || "Refresh failed"}
         </span>
       )}
@@ -284,10 +284,10 @@ function ProjectRefreshControl({
         disabled={disabled || isRunning}
         title={isFailed ? state.message || "Refresh failed" : "Refresh analysis"}
         aria-label={isFailed ? state.message || "Refresh failed" : "Refresh analysis"}
-        className={`flex size-8 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 ${
+        className={`flex size-7 shrink-0 items-center justify-center border-2 transition-colors disabled:pointer-events-none disabled:opacity-50 ${
           isFailed
-            ? "border-rose-400/30 bg-rose-400/[0.08] text-rose-300 hover:bg-rose-400/[0.14]"
-            : "border-white/[0.08] bg-white/[0.03] text-neutral-400 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-neutral-100"
+            ? "border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] text-(--sev-high) hover:bg-[color-mix(in_srgb,var(--sev-high)_14%,transparent)]"
+            : "border-(--border-pixel) bg-(--bg-raised) text-(--cream-dark) hover:border-(--border-light) hover:bg-(--bg-card) hover:text-(--cream)"
         }`}
       >
         <HugeIcon icon={ArrowReloadHorizontalIcon} className={`size-3.5 ${isRunning ? "animate-spin" : ""}`} />

@@ -17,6 +17,7 @@ import {
   Clock03Icon,
 } from "@hugeicons/core-free-icons"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { fetchProjects, type Project } from "@/lib/projects"
 import {
   Sidebar,
   SidebarContent,
@@ -31,7 +32,6 @@ import {
 import { IconButton } from "@codecity/ui/components/icon-button"
 import {
   enqueueAnalysis,
-  getProjects,
   getGithubToken,
   githubGetUser,
   githubImportCliSession,
@@ -44,12 +44,7 @@ import {
 } from "@/lib/tauri"
 import { UpdateButton } from "@/components/dashboard/update-button"
 import { HugeIcon } from "@/components/ui/huge-icon"
-
-interface Project {
-  id: string
-  name: string
-  status: "COMPLETED" | "PROCESSING" | "FAILED"
-}
+import { LogoMark } from "@/components/logo"
 
 export function AppSidebar({
   user,
@@ -146,14 +141,7 @@ export function AppSidebar({
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: async () => {
-      const records = await getProjects()
-      return records.map((r) => ({
-        id: r.id,
-        name: r.name,
-        status: r.status as "COMPLETED" | "PROCESSING" | "FAILED",
-      }))
-    },
+    queryFn: fetchProjects,
   })
 
   const completedProjects = projects.filter((p) => p.status === "COMPLETED").slice(0, 6)
@@ -185,7 +173,7 @@ export function AppSidebar({
       <SidebarHeader className="border-b-2 border-[var(--border-pixel)] bg-[var(--bg-deep)]">
         <div className="flex items-center justify-between px-2 py-2.5">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <img src="/logo.png" alt="CodeCity" className="size-6 shrink-0 rounded-none border-2 border-[var(--border-pixel)]" />
+            <LogoMark className="size-6" />
             <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--cream)] truncate">CodeCity</span>
           </Link>
           <UpdateButton />
@@ -200,7 +188,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 asChild
                 isActive={isDashboard}
-                className="h-8 rounded-none border-2 border-transparent text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] data-[active=true]:text-[#0d0d0f] data-[active=true]:bg-primary data-[active=true]:border-[#0d0d0f] data-[active=true]:hover:bg-primary data-[active=true]:hover:text-[#0d0d0f] transition-colors"
+                className="h-8 rounded-none border-2 border-transparent text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] data-[active=true]:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:border-(--bg) data-[active=true]:hover:bg-primary data-[active=true]:hover:text-primary-foreground transition-colors"
               >
                 <Link href="/dashboard">
                   <HugeIcon icon={FolderGitTwoIcon} className="size-3.5" />
@@ -212,7 +200,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 asChild
                 isActive={isRepos}
-                className="h-8 rounded-none border-2 border-transparent text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] data-[active=true]:text-[#0d0d0f] data-[active=true]:bg-primary data-[active=true]:border-[#0d0d0f] data-[active=true]:hover:bg-primary data-[active=true]:hover:text-[#0d0d0f] transition-colors"
+                className="h-8 rounded-none border-2 border-transparent text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)] data-[active=true]:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:border-(--bg) data-[active=true]:hover:bg-primary data-[active=true]:hover:text-primary-foreground transition-colors"
               >
                 <Link href="/repos">
                   <HugeIcon icon={GithubIcon} className="size-3.5" />
@@ -242,9 +230,7 @@ export function AppSidebar({
           </div>
           <SidebarMenu className="gap-0.5">
             {completedProjects.map((project) => {
-              const parts = project.name.split("/")
-              const repo = parts[1] ?? project.name
-              const owner = parts[0]
+              const [owner, repo] = project.name.includes("/") ? project.name.split("/") : [null, project.name]
               return (
                 <SidebarMenuItem key={project.id}>
                   <SidebarMenuButton
@@ -254,7 +240,7 @@ export function AppSidebar({
                     <Link href={`/project?id=${encodeURIComponent(project.id)}`}>
                       <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-[var(--muted)] group-hover:text-primary" />
                       <span className="truncate font-mono">
-                        <span className="text-[var(--muted)]">{owner}/</span>
+                        {owner && <span className="text-[var(--muted)]">{owner}/</span>}
                         <span className="text-[var(--cream)]">{repo}</span>
                       </span>
                     </Link>
@@ -310,48 +296,49 @@ export function AppSidebar({
       <SidebarFooter className="border-t-2 border-[var(--border-pixel)] bg-[var(--bg-deep)] p-2">
         {authCode && (
           <div className="pixel-shadow-sm mb-2 rounded-none border-2 border-[var(--border-light)] bg-[var(--bg-card)] px-2 py-2">
-            <p className="text-[9px] font-mono uppercase tracking-[0.08em] text-[var(--muted)]">GitHub code</p>
-            <p className="mt-1 font-mono text-[13px] font-semibold tracking-[0.2em] text-primary">{authCode}</p>
+            <p className="text-[11px] leading-4 text-[var(--cream-dark)]">Enter this code on the GitHub page that just opened:</p>
+            <p className="mt-1 select-all font-mono text-[15px] font-semibold tracking-[0.2em] text-primary">{authCode}</p>
           </div>
         )}
         {authError && (
           <p className="mb-2 px-2 text-[10px] leading-4 text-[var(--sev-high)]">{authError}</p>
         )}
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          {activeUser?.image ? (
-            <img src={activeUser.image} alt={activeUser.name ?? "User avatar"} className="h-6 w-6 rounded-none border-2 border-[var(--border-pixel)] shrink-0" />
-          ) : (
-            <div className="h-6 w-6 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] flex items-center justify-center shrink-0">
-              <HugeIcon icon={UserIcon} className="h-3 w-3 text-[var(--muted)]" />
+        {activeUser?.name ? (
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            {activeUser.image ? (
+              <img src={activeUser.image} alt="" className="size-6 shrink-0 border-2 border-[var(--border-pixel)]" />
+            ) : (
+              <div className="flex size-6 shrink-0 items-center justify-center border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)]">
+                <HugeIcon icon={UserIcon} className="size-3 text-[var(--muted)]" />
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate text-[11px] font-medium text-[var(--cream)]">{activeUser.name}</span>
+              <span className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)]">GitHub connected</span>
             </div>
-          )}
-          <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-            <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--cream)] truncate">
-              {activeUser?.name ?? (user?.email ? user.email.split("@")[0] : "—")}
-            </span>
-            <span className="text-[9px] font-mono uppercase tracking-[0.08em] text-[var(--dim)] truncate">
-              {activeUser?.name ? "GitHub connected" : "Not connected"}
-            </span>
-          </div>
-          {activeUser?.name ? (
             <IconButton
               onClick={handleLogout}
-              title="Sign out"
-              className="size-6 rounded-none border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)]"
+              title="Sign out of GitHub"
+              aria-label="Sign out of GitHub"
+              className="size-6 border-transparent bg-transparent text-[var(--muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
             >
               <HugeIcon icon={Logout03Icon} />
             </IconButton>
-          ) : (
-            <IconButton
+          </div>
+        ) : (
+          <div className="space-y-1.5 px-1 py-1">
+            <button
+              type="button"
               onClick={handleGithubLogin}
               disabled={isSigningIn}
-              title="Connect GitHub"
-              className="size-6 rounded-none border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--cream)] hover:bg-[var(--bg-raised)]"
+              className="pixel-shadow-sm btn-press flex h-8 w-full items-center justify-center gap-2 border-2 border-[var(--border-light)] bg-[var(--bg-raised)] font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--cream)] transition-colors hover:border-primary disabled:opacity-60"
             >
-              {isSigningIn ? <Loader2 className="animate-spin" /> : <HugeIcon icon={GithubIcon} />}
-            </IconButton>
-          )}
-        </div>
+              {isSigningIn ? <Loader2 className="size-3.5 animate-spin" /> : <HugeIcon icon={GithubIcon} className="size-3.5" />}
+              {isSigningIn ? "Waiting for GitHub…" : "Connect GitHub"}
+            </button>
+            <p className="px-1 text-[11px] leading-4 text-[var(--muted)]">Lists your repositories and lets you build private ones.</p>
+          </div>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

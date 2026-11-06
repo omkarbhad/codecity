@@ -1,5 +1,6 @@
 "use client"
 
+import { AlertTriangle } from "lucide-react"
 import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useRef, useCallback } from "react"
 import dynamic from "next/dynamic"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
@@ -16,7 +17,7 @@ const CitySceneCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full w-full items-center justify-center bg-[#040408]">
+      <div className="flex h-full w-full items-center justify-center bg-(--bg-deep)">
         <Loader size="md" text="Constructing city..." />
       </div>
     ),
@@ -28,7 +29,7 @@ const City2DCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full w-full items-center justify-center bg-[#040408]">
+      <div className="flex h-full w-full items-center justify-center bg-(--bg-deep)">
         <Loader size="md" text="Laying out blocks..." />
       </div>
     ),
@@ -40,7 +41,7 @@ const CityNetworkCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full w-full items-center justify-center bg-[#040408]">
+      <div className="flex h-full w-full items-center justify-center bg-(--bg-deep)">
         <Loader size="md" text="Building network..." />
       </div>
     ),
@@ -67,18 +68,18 @@ class SceneErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-full w-full items-center justify-center bg-[#040408]">
+        <div className="flex h-full w-full items-center justify-center bg-(--bg-deep)">
           <div className="flex flex-col items-center gap-4 max-w-md text-center px-6">
-            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
-              <span className="text-red-400 text-xl">!</span>
+            <div className="flex size-12 items-center justify-center border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)]">
+              <AlertTriangle className="size-5 text-(--sev-high)" aria-hidden="true" />
             </div>
-            <h3 className="font-sans text-sm text-white">Scene failed to render</h3>
-            <p className="font-sans text-xs text-white/40">
+            <h3 className="font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-(--cream)">Scene failed to render</h3>
+            <p className="font-sans text-xs text-(--muted)">
               {this.state.error?.message ?? "An unexpected error occurred in the 3D visualization."}
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 font-sans text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              className="pixel-shadow-sm btn-press h-8 border-2 border-(--border-pixel) bg-(--bg-raised) px-4 font-mono text-[11px] uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
             >
               Retry
             </button>
@@ -309,7 +310,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, pr
         {/* Layout transition overlay */}
         {isTransitioning && (
           <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/40 backdrop-blur-2xl border border-white/[0.07] rounded-lg shadow-2xl shadow-black/50 px-5 py-3">
+            <div className="bg-black/40 backdrop-blur-2xl border border-(--border-pixel) rounded-lg shadow-2xl shadow-black/50 px-5 py-3">
               <Loader size="sm" text="Rebuilding layout..." />
             </div>
           </div>

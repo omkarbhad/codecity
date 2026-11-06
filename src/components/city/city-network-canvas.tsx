@@ -565,38 +565,38 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
   }
 
   return (
-    <div className="absolute inset-0 bg-[#070708]">
+    <div className="absolute inset-0 bg-(--bg-deep)">
       <div ref={containerRef} className="absolute inset-0" />
 
       {phase === "ready" && dataset.communityCount > 0 && (
-        <div className="pointer-events-none absolute top-4 left-4 rounded-md border border-white/10 bg-[#0b0b0c]/85 px-3 py-1.5 backdrop-blur-md">
-          <span className="flex items-center gap-3 text-[11px] font-medium text-white/65">
+        <div className="pointer-events-none absolute top-4 left-4 border-2 border-(--border-pixel) bg-(--bg-deep) px-3 py-1.5">
+          <span className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.05em] text-(--cream-dark)">
             <span>{dataset.nodes.length.toLocaleString()} nodes</span>
-            <span className="text-white/25">·</span>
+            <span className="text-(--muted)">·</span>
             <span>{dataset.edges.length.toLocaleString()} edges</span>
-            <span className="text-white/25">·</span>
+            <span className="text-(--muted)">·</span>
             <span>{dataset.communityCount} communities</span>
           </span>
         </div>
       )}
 
       {phase === "ready" && traceFrom && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 rounded-md border border-cyan-400/30 bg-[#0b0b0c]/92 px-3 py-1.5 backdrop-blur-md shadow-lg shadow-cyan-400/10">
-          <span className="size-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.85)]" />
-          <span className="text-[11px] font-medium text-white/85">
-            Tracing from <span className="font-mono text-cyan-300">{traceFrom.split("/").pop()}</span>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 border-2 border-(--sev-low) bg-(--bg-deep) px-3 py-1.5 pixel-shadow-sm">
+          <span className="size-1.5 bg-(--sev-low)" />
+          <span className="text-[11px] font-medium text-(--cream)">
+            Tracing from <span className="font-mono text-(--sev-low)">{traceFrom.split("/").pop()}</span>
           </span>
-          <span className="font-mono text-[10px] text-white/45">
+          <span className="font-mono text-[10px] text-(--muted)">
             {traceSet ? `${traceSet.nodes.size - 1} reached` : ""}
           </span>
-          <div className="ml-1 flex items-center gap-1 border-l border-white/10 pl-2">
-            <span className="text-[10px] text-white/40">depth</span>
+          <div className="ml-1 flex items-center gap-1 border-l border-(--border-pixel) pl-2">
+            <span className="text-[10px] text-(--muted)">depth</span>
             {[1, 2, 3, Infinity].map((d) => (
               <button
                 key={String(d)}
                 onClick={() => setTraceDepth(d)}
-                className={`rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
-                  traceDepth === d ? "bg-cyan-400/20 text-cyan-200" : "text-white/40 hover:bg-white/[0.05] hover:text-white/80"
+                className={`rounded-none px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
+                  traceDepth === d ? "bg-(--sev-low) text-(--bg)" : "text-(--muted) hover:bg-(--bg-card) hover:text-(--cream)"
                 }`}
               >
                 {d === Infinity ? "∞" : d}
@@ -605,7 +605,7 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
           </div>
           <button
             onClick={() => setTraceFrom(null)}
-            className="ml-1 rounded p-1 text-white/45 hover:bg-white/[0.05] hover:text-white/85"
+            className="ml-1 rounded-none p-1 text-(--muted) hover:bg-(--bg-card) hover:text-(--cream)"
             aria-label="Clear trace"
             title="Clear trace"
           >
@@ -618,9 +618,9 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
 
       {phase === "ready" && dataset.nodes.length > 0 && (
         <div
-          className={`absolute right-4 top-4 bottom-4 w-[300px] flex flex-col rounded-lg border border-white/[0.08] bg-[#0b0b0c]/92 shadow-2xl shadow-black/40 backdrop-blur-xl transition-transform ${panelOpen ? "translate-x-0" : "translate-x-[316px]"}`}
+          className={`absolute right-4 top-4 bottom-4 w-[300px] flex flex-col border-2 border-(--border-light) bg-(--bg-deep) pixel-shadow transition-transform ${panelOpen ? "translate-x-0" : "translate-x-[316px]"}`}
         >
-          <div className="flex items-center border-b border-white/[0.06] px-1.5 py-1.5">
+          <div className="flex items-center border-b border-(--border-pixel) px-1.5 py-1.5">
             {([
               { key: "insights" as const, label: "Insights" },
               { key: "communities" as const, label: "Communities" },
@@ -628,8 +628,8 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
               <button
                 key={t.key}
                 onClick={() => setPanelTab(t.key)}
-                className={`flex-1 rounded px-2 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                  panelTab === t.key ? "bg-white/[0.06] text-white/90" : "text-white/45 hover:bg-white/[0.03] hover:text-white/70"
+                className={`flex-1 rounded-none px-2 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors ${
+                  panelTab === t.key ? "bg-(--bg-card) text-(--cream)" : "text-(--muted) hover:bg-(--bg-raised) hover:text-(--cream-dark)"
                 }`}
               >
                 {t.label}
@@ -637,7 +637,7 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
             ))}
             <button
               onClick={() => setPanelOpen(false)}
-              className="ml-1 rounded p-1 text-white/40 hover:bg-white/[0.05] hover:text-white/80"
+              className="ml-1 rounded-none p-1 text-(--muted) hover:bg-(--bg-card) hover:text-(--cream)"
               aria-label="Hide panel"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -650,31 +650,31 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
             {panelTab === "insights" && (
               <>
                 <div className="px-2 pt-1 pb-1.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Entry points</div>
-                  <div className="text-[10px] text-white/30">Files nothing imports — top of the call tree.</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-(--muted)">Entry points</div>
+                  <div className="text-[10px] text-(--muted)">Files nothing imports — top of the call tree.</div>
                 </div>
                 {dataset.entryPoints.length === 0 ? (
-                  <div className="px-2 py-3 text-[11px] text-white/35">No clear entry points detected.</div>
+                  <div className="px-2 py-3 text-[11px] text-(--muted)">No clear entry points detected.</div>
                 ) : (
                   dataset.entryPoints.map((e) => {
                     const isActive = traceFrom === e.path
                     return (
                       <div
                         key={e.path}
-                        className={`mb-0.5 flex items-center gap-1 rounded px-1 py-1 transition-colors ${
-                          isActive ? "bg-cyan-400/10 ring-1 ring-cyan-400/30" : "hover:bg-white/[0.04]"
+                        className={`mb-0.5 flex items-center gap-1 rounded-none px-1 py-1 transition-colors ${
+                          isActive ? "bg-[color-mix(in_srgb,var(--sev-low)_10%,transparent)] ring-1 ring-(--sev-low)" : "hover:bg-(--bg-raised)"
                         }`}
                       >
                         <button
                           onClick={() => focusFile(e.path)}
-                          className="group flex flex-1 items-center gap-2 truncate rounded px-1.5 py-0.5 text-left"
+                          className="group flex flex-1 items-center gap-2 truncate rounded-none px-1.5 py-0.5 text-left"
                           title={e.path}
                         >
-                          <span className="size-1.5 shrink-0 rounded-full bg-cyan-400/70" />
-                          <span className={`flex-1 truncate font-mono text-[11px] ${isActive ? "text-cyan-200" : "text-white/75 group-hover:text-white"}`}>
+                          <span className="size-1.5 shrink-0 bg-(--sev-low)" />
+                          <span className={`flex-1 truncate font-mono text-[11px] ${isActive ? "text-(--sev-low)" : "text-(--cream-dark) group-hover:text-(--cream)"}`}>
                             {e.label}
                           </span>
-                          <span className="font-mono text-[9px] tabular-nums text-white/35">{e.reachable} reach</span>
+                          <span className="font-mono text-[10px] tabular-nums text-(--muted)">{e.reachable} reach</span>
                         </button>
                         <button
                           onClick={() => {
@@ -686,8 +686,8 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
                               }
                             }
                           }}
-                          className={`rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide transition-colors ${
-                            isActive ? "bg-cyan-400/30 text-cyan-100" : "text-white/40 hover:bg-cyan-400/15 hover:text-cyan-200"
+                          className={`rounded-none px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-colors ${
+                            isActive ? "bg-(--sev-low) text-(--bg)" : "text-(--muted) hover:bg-[color-mix(in_srgb,var(--sev-low)_15%,transparent)] hover:text-(--sev-low)"
                           }`}
                           title="Trace downstream from this file"
                         >
@@ -699,24 +699,24 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
                 )}
 
                 <div className="mt-3 px-2 pt-1 pb-1.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Hubs</div>
-                  <div className="text-[10px] text-white/30">Most-imported files — load-bearing utilities.</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-(--muted)">Hubs</div>
+                  <div className="text-[10px] text-(--muted)">Most-imported files — load-bearing utilities.</div>
                 </div>
                 {dataset.hubs.length === 0 ? (
-                  <div className="px-2 py-3 text-[11px] text-white/35">No hubs detected.</div>
+                  <div className="px-2 py-3 text-[11px] text-(--muted)">No hubs detected.</div>
                 ) : (
                   dataset.hubs.map((h) => (
                     <button
                       key={h.path}
                       onClick={() => focusFile(h.path)}
-                      className="group mb-0.5 flex w-full items-center gap-2 rounded px-2 py-1 text-left transition-colors hover:bg-white/[0.04]"
+                      className="group mb-0.5 flex w-full items-center gap-2 rounded-none px-2 py-1 text-left transition-colors hover:bg-(--bg-raised)"
                       title={h.path}
                     >
-                      <span className="size-1.5 shrink-0 rounded-full bg-amber-400/70" />
-                      <span className="flex-1 truncate font-mono text-[11px] text-white/75 group-hover:text-white">
+                      <span className="size-1.5 shrink-0 bg-(--sev-med)" />
+                      <span className="flex-1 truncate font-mono text-[11px] text-(--cream-dark) group-hover:text-(--cream)">
                         {h.label}
                       </span>
-                      <span className="font-mono text-[9px] tabular-nums text-white/35">← {h.inDegree}</span>
+                      <span className="font-mono text-[10px] tabular-nums text-(--muted)">← {h.inDegree}</span>
                     </button>
                   ))
                 )}
@@ -728,43 +728,43 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
                 const isExpanded = expandedCommunity === c.id
                 const visibleMembers = isExpanded ? c.members : c.hubs
                 return (
-                  <div key={c.id} className="mb-1 rounded-md border border-transparent hover:border-white/[0.05]">
+                  <div key={c.id} className="mb-1 border-2 border-transparent hover:border-(--border-pixel)">
                     <button
                       onClick={() => focusCommunity(c.members.map((m) => m.path))}
-                      className="flex w-full items-center gap-2 rounded-t-md px-2 py-1.5 text-left transition-colors hover:bg-white/[0.04]"
+                      className="flex w-full items-center gap-2 rounded-t-md px-2 py-1.5 text-left transition-colors hover:bg-(--bg-raised)"
                     >
                       <span
                         className="size-2 shrink-0 rounded-sm"
                         style={{ background: c.color, boxShadow: `0 0 6px ${c.color}80` }}
                       />
-                      <span className="flex-1 truncate text-[12px] font-medium text-white/85">
+                      <span className="flex-1 truncate text-[12px] font-medium text-(--cream)">
                         Community {c.rank + 1}
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/40">{c.size}</span>
+                      <span className="font-mono text-[10px] tabular-nums text-(--muted)">{c.size}</span>
                     </button>
                     <div className="px-1 pb-1">
                       {visibleMembers.map((m) => (
                         <button
                           key={m.path}
                           onClick={() => focusFile(m.path)}
-                          className={`group flex w-full items-center gap-2 rounded px-2 py-0.5 text-left transition-colors hover:bg-white/[0.05] ${
-                            selectedFile === m.path ? "bg-white/[0.06]" : ""
+                          className={`group flex w-full items-center gap-2 rounded-none px-2 py-0.5 text-left transition-colors hover:bg-(--bg-card) ${
+                            selectedFile === m.path ? "bg-(--bg-card)" : ""
                           }`}
                           title={m.path}
                         >
-                          <span className="size-1 shrink-0 rounded-full bg-white/30 group-hover:bg-white/60" />
+                          <span className="size-1 shrink-0 bg-(--muted) group-hover:bg-(--cream)" />
                           <span className={`flex-1 truncate font-mono text-[10.5px] ${
-                            selectedFile === m.path ? "text-white" : "text-white/55 group-hover:text-white/85"
+                            selectedFile === m.path ? "text-(--cream)" : "text-(--cream-dark) group-hover:text-(--cream)"
                           }`}>
                             {m.label}
                           </span>
-                          <span className="font-mono text-[9px] tabular-nums text-white/30">{m.degree}</span>
+                          <span className="font-mono text-[10px] tabular-nums text-(--muted)">{m.degree}</span>
                         </button>
                       ))}
                       {c.size > 5 && (
                         <button
                           onClick={() => setExpandedCommunity(isExpanded ? null : c.id)}
-                          className="ml-1 mt-0.5 px-2 py-0.5 text-[10px] text-white/35 hover:text-white/70"
+                          className="ml-1 mt-0.5 px-2 py-0.5 text-[10px] text-(--muted) hover:text-(--cream-dark)"
                         >
                           {isExpanded ? "Show less" : `+ ${c.size - 5} more`}
                         </button>
@@ -780,7 +780,7 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
       {phase === "ready" && !panelOpen && dataset.nodes.length > 0 && (
         <button
           onClick={() => setPanelOpen(true)}
-          className="absolute right-4 top-4 rounded-md border border-white/10 bg-[#0b0b0c]/85 px-3 py-1.5 text-[11px] font-medium text-white/70 backdrop-blur-md hover:bg-[#0b0b0c]/95 hover:text-white"
+          className="absolute right-4 top-4 border-2 border-(--border-pixel) bg-(--bg-deep) px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.05em] text-(--cream-dark) hover:border-(--border-light) hover:text-(--cream)"
         >
           Insights
         </button>

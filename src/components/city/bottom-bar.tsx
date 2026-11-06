@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import type { CityStats } from "@/lib/types/city"
 import { useCityStore } from "./use-city-store"
 
@@ -71,11 +71,11 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
   }
 
   const items = [
-    { label: "Files", value: stats.totalFiles, color: "text-primary" },
-    { label: "Fns", value: stats.totalFunctions, color: "text-(--lime)" },
-    { label: "Imports", value: stats.totalImports, color: "text-(--sev-low)" },
+    { label: "Files", value: stats.totalFiles, color: "text-(--cream)" },
+    { label: "Functions", value: stats.totalFunctions, color: "text-(--cream)" },
+    { label: "Imports", value: stats.totalImports, color: "text-(--cream)" },
     { label: "Unused", value: stats.unusedExports, color: stats.unusedExports > 0 ? "text-(--sev-high)" : "text-(--cream-dark)" },
-    { label: "LOC", value: stats.totalLines, color: "text-(--sev-med)" },
+    { label: "Lines", value: stats.totalLines, color: "text-(--cream)" },
     { label: "Types", value: stats.totalTypes, color: "text-(--cream)" },
   ]
 
@@ -101,7 +101,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
             <span className={`font-mono text-[11px] font-bold tabular-nums ${item.color}`}>
               {item.value >= 1000 ? `${(item.value / 1000).toFixed(1)}k` : item.value}
             </span>
-            <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--muted)">{item.label}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-(--muted)">{item.label}</span>
           </span>
         ))}
 
@@ -109,12 +109,12 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
           <>
             <span className="mx-0.5 text-(--dim)">·</span>
             {hiddenExtensions.size > 0 && (
-              <span className="border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--sev-med)">
+              <span className="border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--sev-med)">
                 {hiddenExtensions.size} EXT
               </span>
             )}
             {hiddenPaths.size > 0 && (
-              <span className="ml-0.5 border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--sev-med)">
+              <span className="ml-0.5 border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--sev-med)">
                 {hiddenPaths.size} PATH
               </span>
             )}
@@ -124,7 +124,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
         {warnings && warnings.length > 0 && (
           <>
             <span className="mx-0.5 text-(--dim)">·</span>
-            <span className="cursor-help border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--sev-high)" title={`${warnings.length} parse errors`}>
+            <span className="cursor-help border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--sev-high)" title={`${warnings.length} parse errors`}>
               {warnings.length} WARN
             </span>
           </>
@@ -139,7 +139,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
           onClick={() => setHelpOpen((v) => !v)}
           className={`flex h-6 w-6 items-center justify-center rounded-none border-2 font-mono text-[11px] font-bold transition-colors ${
             helpOpen
-              ? "border-[#0d0d0f] bg-primary text-[#0d0d0f]"
+              ? "border-(--bg) bg-primary text-primary-foreground"
               : "border-(--border-pixel) bg-(--bg-raised) text-(--cream-dark) hover:border-(--border-light) hover:text-(--cream)"
           }`}
           aria-label="Help — keyboard shortcuts and visual guide"
@@ -179,7 +179,7 @@ export function BottomBar({ stats, warnings }: BottomBarProps) {
               <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                 {SHORTCUTS.map(([key, desc]) => (
                   <div key={key} className="flex items-center gap-2">
-                    <kbd className="min-w-[42px] border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 text-center font-mono text-[9px] uppercase tracking-[0.05em] text-(--cream)">{key}</kbd>
+                    <kbd className="min-w-[42px] border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 text-center font-mono text-[10px] uppercase tracking-[0.05em] text-(--cream)">{key}</kbd>
                     <span className="font-mono text-[10px] text-(--cream-dark)">{desc}</span>
                   </div>
                 ))}

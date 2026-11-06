@@ -82,7 +82,7 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
         <button
           onClick={showAllExtensions}
           disabled={noneHidden}
-          className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
+          className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
         >
           ALL
         </button>
@@ -90,7 +90,7 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
         <button
           onClick={() => hideAllExtensions(allExts)}
           disabled={allHidden}
-          className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
+          className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
         >
           NONE
         </button>
@@ -118,7 +118,7 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
                 <Eye className="size-3 shrink-0 text-(--lime)" />
               )}
               <span
-                className={`inline-block w-6 shrink-0 border-2 px-0.5 py-px text-center font-mono text-[9px] font-bold uppercase tracking-[0.04em] ${
+                className={`inline-block w-6 shrink-0 border-2 px-0.5 py-px text-center font-mono text-[10px] font-bold uppercase tracking-[0.04em] ${
                   isHidden ? "border-(--very-dim) opacity-30" : "border-(--border-pixel)"
                 }`}
                 style={{ color }}
@@ -138,7 +138,7 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
 
       {hiddenExtensions.size > 0 && (
         <div className="border-t-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1">
-          <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-(--muted)">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
             <span className="text-(--dim)">{">"}</span> <span className="text-(--cream-dark) tabular-nums">{visibleCount}</span>/<span className="text-(--cream-dark) tabular-nums">{snapshot.files.length}</span> shown
           </span>
         </div>

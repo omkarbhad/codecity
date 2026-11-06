@@ -207,7 +207,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
         />
         <span className={`flex-1 truncate ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
         {isUnparsed && !isHidden && (
-          <span className="ml-1 shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] uppercase tracking-[0.05em] text-(--dim)">
+          <span className="ml-1 shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--muted)">
             skip
           </span>
         )}
@@ -252,7 +252,7 @@ const TreeNodeItem = memo(function TreeNodeItem({
           className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
         />
         <span className={`flex-1 truncate font-semibold ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
-        <span className="mr-1 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[9px] tabular-nums text-(--muted)">
+        <span className="mr-1 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] tabular-nums text-(--muted)">
           {node.fileCount}
         </span>
         <button
