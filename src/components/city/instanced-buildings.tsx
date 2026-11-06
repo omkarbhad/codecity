@@ -8,6 +8,7 @@ import { useCityStore, isPathHidden } from "./use-city-store"
 import { getExtension } from "./extension-filter"
 import { getBuildingColor, clamp, easeOutQuint } from "@/lib/visualization/color-utils"
 import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
+import { createBuildingDepthMaterial, createBuildingGeometry, createBuildingMaterial } from "./building-material"
 
 interface InstancedBuildingsProps {
   snapshot: CitySnapshot
@@ -24,8 +25,10 @@ export interface BuildingLoadProgress {
   complete: boolean
 }
 
-const MAX_FLOOR_LINES = 12
 const CLICK_THRESHOLD_PX = 6
+const PODIUM_HEIGHT = 0.3
+const DIMMED_LIGHT = 0.12
+const SELECTED_LIGHT = 1.25
 const PROGRESSIVE_THRESHOLD = 1200
 const LARGE_CITY_THRESHOLD = 15000
 const LARGE_CITY_CHUNK_SIZE = 650
@@ -33,7 +36,6 @@ const SMALL_CITY_CHUNK_SIZE = 800
 const CHUNK_LOAD_DELAY_MS = 45
 const MOVEMENT_IDLE_MS = 220
 const MOVING_CHUNK_DELAY_MS = 650
-const DETAIL_GEOMETRY_THRESHOLD = 1200
 const snapshotLoadProgress = new Map<string, number>()
 
 function getTopFolder(path: string): string {
@@ -81,14 +83,11 @@ function getSnapshotLoadKey(snapshot: CitySnapshot): string {
 
 export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildingsProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
-  const buildingMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const platformRef = useRef<THREE.InstancedMesh>(null)
   const antennaCylRef = useRef<THREE.InstancedMesh>(null)
   const antennaTipRef = useRef<THREE.InstancedMesh>(null)
   const domeRef = useRef<THREE.InstancedMesh>(null)
   const typeRingRef = useRef<THREE.InstancedMesh>(null)
-  const edgesMeshRef = useRef<THREE.LineSegments>(null)
-  const floorLinesMeshRef = useRef<THREE.InstancedMesh>(null)
 
   // Track pointer for click vs drag detection
   const pointerDownPos = useRef<{ x: number; y: number; instanceId: number | undefined } | null>(null)
@@ -146,6 +145,14 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
     return Array.from(loaded)
   }, [fileIndexByPath, loadedIndices, snapshot.districts])
 
+  // Facade material + geometry (per-instance aLit = window light level)
+  const buildingMaterial = useMemo(() => createBuildingMaterial(), [])
+  const buildingDepthMaterial = useMemo(() => createBuildingDepthMaterial(), [])
+  useEffect(() => () => buildingDepthMaterial.dispose(), [buildingDepthMaterial])
+  const buildingGeometry = useMemo(() => createBuildingGeometry(count), [count])
+  useEffect(() => () => buildingMaterial.dispose(), [buildingMaterial])
+  useEffect(() => () => buildingGeometry.dispose(), [buildingGeometry])
+
   // PERF: Reusable Object3D for matrix computation — avoids per-frame heap allocation
   const _dummy = useRef(new THREE.Object3D())
 
@@ -154,10 +161,6 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   const GROW_DURATION = Math.min(3.0, 1.2 + count * 0.003)
   const GROW_STAGGER = Math.min(1.0, 0.3 + count * 0.002)
   const enableGrowAnimation = count <= PROGRESSIVE_THRESHOLD
-  const isProgressivelyLoading = shouldLoadProgressively && loadedChunkCount < folderChunks.length
-  const [hasSettledAfterProgressiveLoad, setHasSettledAfterProgressiveLoad] = useState(!shouldLoadProgressively)
-  const enableDetailGeometry =
-    count <= DETAIL_GEOMETRY_THRESHOLD && !isProgressivelyLoading && hasSettledAfterProgressiveLoad
 
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectedIndex = useCityStore((s) => s.selectedIndex)
@@ -253,21 +256,6 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   }, [enableGrowAnimation, firstChunkCount, folderChunks.length, loadKey, shouldLoadProgressively, snapshot.files])
 
   useEffect(() => {
-    if (!shouldLoadProgressively) {
-      setHasSettledAfterProgressiveLoad(true)
-      return
-    }
-
-    if (isProgressivelyLoading) {
-      setHasSettledAfterProgressiveLoad(false)
-      return
-    }
-
-    const timeoutId = setTimeout(() => setHasSettledAfterProgressiveLoad(true), 600)
-    return () => clearTimeout(timeoutId)
-  }, [isProgressivelyLoading, shouldLoadProgressively])
-
-  useEffect(() => {
     if (!onLoadProgress) return
 
     if (!shouldLoadProgressively) {
@@ -330,7 +318,6 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
 
   // LOD gating: skip expensive decorations for very large codebases
   const enableDecorations = count < 1500
-  const enableFloorLines = count < 800
 
   const decorationData = useMemo(() => {
     if (!enableDecorations) return { platforms: [], antennas: [], domes: [], typeRings: [] }
@@ -424,6 +411,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
     const dummy = new THREE.Object3D()
     const _color = new THREE.Color()
     meshRef.current.count = loadedFileIndices.length
+    const litAttr = buildingGeometry.getAttribute("aLit") as THREE.InstancedBufferAttribute
 
     for (let instanceIndex = 0; instanceIndex < loadedFileIndices.length; instanceIndex++) {
       const i = loadedFileIndices[instanceIndex]
@@ -445,7 +433,10 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       const isDimmed = !!(relatedFiles && !relatedFiles.has(file.path))
       getBuildingColor(file, visualizationMode, buildingColor, isDimmed, _color)
       meshRef.current.setColorAt(instanceIndex, _color)
+      // Window lights: off for unrelated buildings, brighter for the selection
+      litAttr.setX(instanceIndex, isDimmed ? DIMMED_LIGHT : file.path === selectedFile ? SELECTED_LIGHT : 1)
     }
+    litAttr.needsUpdate = true
 
     meshRef.current.instanceMatrix.needsUpdate = true
     if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true
@@ -462,14 +453,15 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
           dummy.position.set(0, -1000, 0)
           dummy.scale.set(0, 0, 0)
         } else {
-          dummy.position.set(file.position.x, 0.04, file.position.z)
-          dummy.scale.set(dim.width + 0.6, 0.08, dim.depth + 0.6)
+          dummy.position.set(file.position.x, PODIUM_HEIGHT / 2, file.position.z)
+          dummy.scale.set(dim.width + 0.5, PODIUM_HEIGHT, dim.depth + 0.5)
         }
 
         dummy.updateMatrix()
         platformRef.current.setMatrixAt(pi, dummy.matrix)
-        _color.set(buildingColor)
-        if (relatedFiles && !relatedFiles.has(file.path)) _color.multiplyScalar(0.35)
+        // Podium follows the active color mode, a shade darker than the tower
+        getBuildingColor(file, visualizationMode, buildingColor, !!(relatedFiles && !relatedFiles.has(file.path)), _color)
+        _color.multiplyScalar(0.5)
         platformRef.current.setColorAt(pi, _color)
       }
       platformRef.current.instanceMatrix.needsUpdate = true
@@ -538,8 +530,9 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
           dummy.position.set(0, -1000, 0)
           dummy.scale.set(0, 0, 0)
         } else {
-          dummy.position.set(file.position.x, dim.height + 0.15, file.position.z)
-          dummy.scale.set(1, 1, 1)
+          const ringScale = (Math.min(dim.width, dim.depth) * 0.34) / 0.85
+          dummy.position.set(file.position.x, dim.height + 0.02, file.position.z)
+          dummy.scale.set(ringScale, ringScale, ringScale * 0.5)
           dummy.rotation.set(-Math.PI / 2, 0, 0)
         }
         dummy.updateMatrix()
@@ -548,160 +541,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       }
       typeRingRef.current.instanceMatrix.needsUpdate = true
     }
-  }, [snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visualizationMode, visibleMask, decorationData, relatedFiles, loadedIndices, loadedFileIndices])
-
-  // PERF: Batch all edge wireframes into ONE merged BufferGeometry
-  // Use a shared unit box edge template to avoid creating/disposing N geometries
-  const unitEdgePositions = useMemo(() => {
-    const box = new THREE.BoxGeometry(1, 1, 1)
-    const edges = new THREE.EdgesGeometry(box)
-    box.dispose()
-    const pos = edges.getAttribute("position")
-    const arr = new Float32Array(pos.count * 3)
-    for (let i = 0; i < pos.count; i++) {
-      arr[i * 3] = pos.getX(i)
-      arr[i * 3 + 1] = pos.getY(i)
-      arr[i * 3 + 2] = pos.getZ(i)
-    }
-    edges.dispose()
-    return arr
-  }, [])
-
-  const prevEdgeGeomRef = useRef<THREE.BufferGeometry | null>(null)
-
-  useEffect(() => {
-    if (!edgesMeshRef.current) return
-    const mesh = edgesMeshRef.current
-    if (!enableDetailGeometry) {
-      mesh.visible = false
-      return
-    }
-
-    mesh.visible = true
-    const vertCount = unitEdgePositions.length / 3
-
-    let visibleCount = 0
-    for (let i = 0; i < count; i++) {
-      if (loadedIndices && !loadedIndices.has(i)) continue
-      if (!visibleMask || visibleMask[i]) visibleCount++
-    }
-
-    const allPositions = new Float32Array(visibleCount * unitEdgePositions.length)
-    const allColors = new Float32Array(visibleCount * vertCount * 3)
-    // PERF: Reuse single Color instance instead of allocating per building
-    const _c = new THREE.Color()
-    let offset = 0
-    let colorOffset = 0
-
-    for (let i = 0; i < count; i++) {
-      if (loadedIndices && !loadedIndices.has(i)) continue
-      if (visibleMask && !visibleMask[i]) continue
-
-      const file = snapshot.files[i]
-      const dim = getDimensions(file)
-      const edgeColor = getBuildingBaseColor(file)
-      const isDimmed = !!(relatedFiles && !relatedFiles.has(file.path))
-      const isUnused = file.hasUnusedExports
-
-      _c.set(edgeColor)
-      const opacity = isDimmed ? 0.06 : isUnused ? 0.5 : 0.25
-      _c.multiplyScalar(opacity / 0.3)
-
-      for (let vi = 0; vi < vertCount; vi++) {
-        allPositions[offset++] = unitEdgePositions[vi * 3] * dim.width + file.position.x
-        allPositions[offset++] = unitEdgePositions[vi * 3 + 1] * dim.height + dim.height / 2
-        allPositions[offset++] = unitEdgePositions[vi * 3 + 2] * dim.depth + file.position.z
-        allColors[colorOffset++] = _c.r
-        allColors[colorOffset++] = _c.g
-        allColors[colorOffset++] = _c.b
-      }
-    }
-
-    const geom = new THREE.BufferGeometry()
-    geom.setAttribute("position", new THREE.BufferAttribute(allPositions, 3))
-    geom.setAttribute("color", new THREE.BufferAttribute(allColors, 3))
-
-    // Assign new geometry first, then dispose the old one
-    const oldGeom = prevEdgeGeomRef.current
-    mesh.geometry = geom
-    prevEdgeGeomRef.current = geom
-    if (oldGeom) oldGeom.dispose()
-
-    return () => {
-      if (prevEdgeGeomRef.current === geom) {
-        geom.dispose()
-        prevEdgeGeomRef.current = null
-      }
-    }
-  }, [snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visibleMask, count, relatedFiles, unitEdgePositions, loadedIndices, enableDetailGeometry])
-
-  // PERF: Batch floor lines into single InstancedMesh
-  const floorLineCount = useMemo(() => {
-    if (!enableFloorLines || !enableDetailGeometry) return 1
-    let total = 0
-    for (let i = 0; i < count; i++) {
-      if (loadedIndices && !loadedIndices.has(i)) continue
-      if (visibleMask && !visibleMask[i]) continue
-      total += Math.min(snapshot.files[i].functions.length, MAX_FLOOR_LINES)
-    }
-    return Math.max(1, total) // At least 1 to avoid empty InstancedMesh
-  }, [count, snapshot.files, visibleMask, enableFloorLines, loadedIndices, enableDetailGeometry])
-
-  useEffect(() => {
-    if (!floorLinesMeshRef.current || !enableFloorLines) return
-    const mesh = floorLinesMeshRef.current
-    if (!enableDetailGeometry) {
-      mesh.visible = false
-      return
-    }
-
-    mesh.visible = true
-
-    const dummy = new THREE.Object3D()
-    const _c = new THREE.Color()
-    let idx = 0
-
-    for (let i = 0; i < count; i++) {
-      if (loadedIndices && !loadedIndices.has(i)) continue
-      if (visibleMask && !visibleMask[i]) continue
-
-      const file = snapshot.files[i]
-      const dim = getDimensions(file)
-      const fnCount = Math.min(file.functions.length, MAX_FLOOR_LINES)
-      if (fnCount === 0) continue
-
-      const isDimmed = !!(relatedFiles && !relatedFiles.has(file.path))
-
-      for (let fi = 0; fi < fnCount; fi++) {
-        if (idx >= floorLineCount) break
-        const floorY = ((fi + 1) / (fnCount + 1)) * dim.height
-        const fn = file.functions[fi]
-        const isUnused = !fn.exported && file.hasUnusedExports
-        const floorColor = isUnused ? 0xff4040 : fn.exported ? 0x34d399 : 0xffffff
-        const floorOpacity = (isUnused ? 0.3 : fn.exported ? 0.12 : 0.05) * (isDimmed ? 0.3 : 1)
-
-        dummy.position.set(file.position.x, floorY, file.position.z)
-        dummy.scale.set(dim.width + 0.02, 0.04, dim.depth + 0.02)
-        dummy.updateMatrix()
-        mesh.setMatrixAt(idx, dummy.matrix)
-
-        _c.set(floorColor)
-        _c.multiplyScalar(floorOpacity / 0.2)
-        mesh.setColorAt(idx, _c)
-        idx++
-      }
-    }
-
-    for (; idx < floorLineCount; idx++) {
-      dummy.position.set(0, -1000, 0)
-      dummy.scale.set(0, 0, 0)
-      dummy.updateMatrix()
-      mesh.setMatrixAt(idx, dummy.matrix)
-    }
-
-    mesh.instanceMatrix.needsUpdate = true
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
-  }, [snapshot.files, getDimensions, visibleMask, count, relatedFiles, floorLineCount, loadedIndices, enableDetailGeometry, enableFloorLines])
+  }, [snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visualizationMode, visibleMask, decorationData, relatedFiles, loadedIndices, loadedFileIndices, buildingGeometry, selectedFile])
 
   // Track previous selected/hovered indices for smooth scale reset
   const prevSelectedIndex = useRef<number | null>(null)
@@ -715,8 +555,6 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
 
     if (!enableGrowAnimation && !growComplete.current) {
       growComplete.current = true
-      if (edgesMeshRef.current) edgesMeshRef.current.visible = enableDetailGeometry
-      if (floorLinesMeshRef.current) floorLinesMeshRef.current.visible = enableFloorLines && enableDetailGeometry
     }
 
     if (enableGrowAnimation && !growComplete.current) {
@@ -745,15 +583,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       }
 
       meshRef.current.instanceMatrix.needsUpdate = true
-
-      if (edgesMeshRef.current) edgesMeshRef.current.visible = false
-      if (floorLinesMeshRef.current) floorLinesMeshRef.current.visible = false
-
-      if (allDone) {
-        growComplete.current = true
-        if (edgesMeshRef.current) edgesMeshRef.current.visible = true
-        if (floorLinesMeshRef.current) floorLinesMeshRef.current.visible = true
-      }
+      if (allDone) growComplete.current = true
       return
     }
 
@@ -892,7 +722,8 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
     <group>
       <instancedMesh
         ref={meshRef}
-        args={[undefined, undefined, count]}
+        args={[buildingGeometry, buildingMaterial, count]}
+        customDepthMaterial={buildingDepthMaterial}
         castShadow
         receiveShadow
         onPointerDown={handlePointerDown}
@@ -900,33 +731,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
         onPointerMove={handlePointerMove}
         onPointerOut={handlePointerOut}
         frustumCulled={false}
-      >
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial
-          ref={buildingMatRef}
-          metalness={0.35}
-          roughness={0.32}
-          emissive="#2a2a5a"
-          emissiveIntensity={0.12}
-          side={THREE.FrontSide}
-        />
-      </instancedMesh>
-
-      {/* Batched edges — single draw call */}
-      <lineSegments ref={edgesMeshRef}>
-        <bufferGeometry />
-        <lineBasicMaterial vertexColors transparent opacity={0.3} depthWrite={false} />
-      </lineSegments>
-
-      {/* Batched floor lines — single InstancedMesh */}
-      <instancedMesh
-        ref={floorLinesMeshRef}
-        args={[undefined, undefined, floorLineCount]}
-        frustumCulled={false}
-      >
-        <boxGeometry args={[1, 1, 1]} />
-        <meshBasicMaterial transparent opacity={0.2} />
-      </instancedMesh>
+      />
 
       {decorationData.platforms.length > 0 && (
         <instancedMesh
@@ -935,7 +740,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
           frustumCulled={false}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial transparent opacity={0.35} roughness={0.8} />
+          <meshStandardMaterial roughness={0.85} metalness={0.1} />
         </instancedMesh>
       )}
 
@@ -946,16 +751,16 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
             args={[undefined, undefined, decorationData.antennas.length]}
             frustumCulled={false}
           >
-            <cylinderGeometry args={[0.04, 0.04, 1.2, 6]} />
-            <meshBasicMaterial color="#ff4040" />
+            <cylinderGeometry args={[0.025, 0.035, 1.2, 6]} />
+            <meshStandardMaterial color="#3a3f4b" roughness={0.5} metalness={0.6} />
           </instancedMesh>
           <instancedMesh
             ref={antennaTipRef}
             args={[undefined, undefined, decorationData.antennas.length]}
             frustumCulled={false}
           >
-            <sphereGeometry args={[0.14, 6, 6]} />
-            <meshBasicMaterial color="#ff4040" transparent opacity={0.85} />
+            <sphereGeometry args={[0.09, 8, 8]} />
+            <meshBasicMaterial color="#ff3b30" />
           </instancedMesh>
         </>
       )}
@@ -968,12 +773,13 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
         >
           <sphereGeometry args={[0.35, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial
-            color="#4d94ff"
+            color="#a8c8ff"
             transparent
             opacity={0.55}
-            metalness={0.5}
-            emissive="#4d94ff"
-            emissiveIntensity={0.15}
+            metalness={0.6}
+            roughness={0.15}
+            emissive="#6a9cff"
+            emissiveIntensity={0.3}
           />
         </instancedMesh>
       )}
@@ -984,8 +790,8 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
           args={[undefined, undefined, decorationData.typeRings.length]}
           frustumCulled={false}
         >
-          <torusGeometry args={[0.85, 0.05, 6, 16]} />
-          <meshBasicMaterial color="#fbbf24" transparent opacity={0.55} />
+          <torusGeometry args={[0.85, 0.06, 6, 24]} />
+          <meshBasicMaterial color="#fbbf24" transparent opacity={0.85} />
         </instancedMesh>
       )}
     </group>

@@ -2,12 +2,13 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
-import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { Canvas, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
 import { getCityBounds, type CityBounds } from "@/lib/visualization/city-bounds"
 import { DistrictGround } from "./district-ground"
 import { InstancedBuildings } from "./instanced-buildings"
+import { NIGHT_HORIZON } from "./city-atmosphere"
 
 interface MiniCityPreviewProps {
   snapshot: CitySnapshot
@@ -41,68 +42,22 @@ function MiniCameraFit({ cityBounds, maxLines }: { cityBounds: CityBounds; maxLi
 function MiniPreviewLights() {
   return (
     <>
-      <hemisphereLight color="#f5f7ff" groundColor="#20243a" intensity={1.15} />
-      <ambientLight color="#c8d1ff" intensity={0.58} />
-      <directionalLight color="#fff7e8" intensity={2.8} position={[45, 70, 52]} />
-      <directionalLight color="#8fb1ff" intensity={1.1} position={[-55, 35, -34]} />
-      <directionalLight color="#ffd3a3" intensity={0.55} position={[-20, 28, 60]} />
+      <hemisphereLight color="#6f82b4" groundColor="#0b0d14" intensity={0.9} />
+      <ambientLight color="#26304a" intensity={0.5} />
+      <directionalLight color="#c9d6ff" intensity={1.6} position={[45, 70, 52]} />
+      <directionalLight color="#4d6bb3" intensity={0.45} position={[-55, 35, -34]} />
+      <directionalLight color="#ff9a5c" intensity={0.3} position={[-20, 12, 60]} />
     </>
   )
 }
 
 function MiniPreviewGround({ cityBounds }: { cityBounds: CityBounds }) {
   const groundSize = Math.max(160, cityBounds.spread * 3.8)
-  const gridDivisions = Math.min(80, Math.max(24, Math.round(groundSize / 8)))
-
   return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cityBounds.centerX, -0.015, cityBounds.centerZ]}>
-        <planeGeometry args={[groundSize, groundSize]} />
-        <meshBasicMaterial color="#111216" />
-      </mesh>
-      <gridHelper
-        args={[groundSize, gridDivisions, new THREE.Color("#3b3f4a"), new THREE.Color("#232630")]}
-        position={[cityBounds.centerX, 0.01, cityBounds.centerZ]}
-      />
-    </group>
-  )
-}
-
-/** Lightweight floating particles for atmosphere */
-function MiniParticles({ spread = 40 }: { spread?: number }) {
-  const mesh = useRef<THREE.Points>(null)
-  const count = 80
-
-  const positions = useMemo(() => {
-    const arr = new Float32Array(count * 3)
-    for (let i = 0; i < count; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * spread
-      arr[i * 3 + 1] = Math.random() * 30 + 3
-      arr[i * 3 + 2] = (Math.random() - 0.5) * spread
-    }
-    return arr
-  }, [spread])
-
-  useFrame(({ clock }) => {
-    if (!mesh.current) return
-    mesh.current.rotation.y = clock.getElapsedTime() * 0.004
-    mesh.current.position.y = Math.sin(clock.getElapsedTime() * 0.12) * 0.4
-  })
-
-  return (
-    <points ref={mesh}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#99aaff"
-        size={0.18}
-        transparent
-        opacity={0.45}
-        sizeAttenuation
-        depthWrite={false}
-      />
-    </points>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cityBounds.centerX, -0.015, cityBounds.centerZ]}>
+      <planeGeometry args={[groundSize, groundSize]} />
+      <meshStandardMaterial color="#0c0e13" roughness={0.92} />
+    </mesh>
   )
 }
 
@@ -129,7 +84,7 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
           gl={{
             antialias: false, // off for perf in thumbnail
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.95,
+            toneMappingExposure: 1.4,
             powerPreference: "low-power",
           }}
           shadows={false} // no shadows for thumbnails — big perf win
@@ -139,7 +94,7 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
             gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
           }}
         >
-          <color attach="background" args={["#0b0c10"]} />
+          <color attach="background" args={[NIGHT_HORIZON]} />
           <Suspense fallback={null}>
             <MiniCameraFit cityBounds={cityBounds} maxLines={maxLines} />
             <MiniPreviewLights />
@@ -148,8 +103,7 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
               <DistrictGround key={d.name} district={d} />
             ))}
             <InstancedBuildings snapshot={snapshot} />
-            <MiniParticles spread={40} />
-          </Suspense>
+            </Suspense>
         </Canvas>
       )}
     </div>
