@@ -7,11 +7,11 @@ import { useCityStore } from "./use-city-store"
 const LEGEND_ITEMS = [
   { icon: "\u25AE", label: "Height = Lines of code", color: "#38f0ff" },
   { icon: "\u25AC", label: "Width = Functions", color: "#4aeaab" },
-  { icon: "\u25AD", label: "Platform = 200+ lines", color: "#6ab0ff" },
-  { icon: "\u2502", label: "Antenna = High complexity", color: "#ff5050" },
+  { icon: "\u25AD", label: "Wide base = 200+ lines", color: "#6ab0ff" },
+  { icon: "\u2502", label: "Antenna + red light = High complexity", color: "#ff5050" },
   { icon: "\u2312", label: "Dome = React component", color: "#4d94ff" },
-  { icon: "\u25CB", label: "Ring = Rich types", color: "#ffd34e" },
-  { icon: "\u25A3", label: "Ground = Directory", color: "#b99eff" },
+  { icon: "\u25CB", label: "Roof ring = Rich types", color: "#ffd34e" },
+  { icon: "\u25A3", label: "City block = Directory", color: "#b99eff" },
 ]
 
 const SHORTCUTS = [

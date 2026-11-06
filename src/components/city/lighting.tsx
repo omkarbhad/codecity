@@ -45,17 +45,18 @@ export function Lighting({ snapshot, cityBounds }: { snapshot?: CitySnapshot; ci
 
   return (
     <>
-      <hemisphereLight color="#b0bfe0" groundColor="#080820" intensity={0.6} />
-      <ambientLight color="#666880" intensity={0.3} />
+      {/* Night: cool sky, dark ground bounce */}
+      <hemisphereLight color="#5c6f9e" groundColor="#0b0d14" intensity={0.6} />
+      <ambientLight color="#1c2236" intensity={0.4} />
 
-      {/* Key light — strong for building contrast */}
+      {/* Moonlight — key light with shadows */}
       <directionalLight
-        color="#fff5ea"
-        intensity={2.2}
+        color="#c9d6ff"
+        intensity={1.3}
         position={[50, 80, 40]}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
         shadow-camera-left={-shadowSize}
         shadow-camera-right={shadowSize}
         shadow-camera-top={shadowSize}
@@ -65,19 +66,11 @@ export function Lighting({ snapshot, cityBounds }: { snapshot?: CitySnapshot; ci
         shadow-bias={-0.0004}
       />
 
-      {/* Fill light */}
-      <directionalLight
-        color="#6688dd"
-        intensity={0.45}
-        position={[-40, 30, -20]}
-      />
+      {/* Cool fill from the opposite side */}
+      <directionalLight color="#4d6bb3" intensity={0.35} position={[-40, 30, -20]} />
 
-      {/* Rim/back light */}
-      <directionalLight
-        color="#ff9977"
-        intensity={0.28}
-        position={[-20, 40, 60]}
-      />
+      {/* Low warm bounce — the glow of the streets */}
+      <directionalLight color="#ff9a5c" intensity={0.3} position={[-20, 10, 60]} />
 
       {/* Selection spotlight */}
       <pointLight

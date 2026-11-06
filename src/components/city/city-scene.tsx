@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber"
+import { Canvas, type ThreeEvent } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
 import { Lighting } from "./lighting"
@@ -12,6 +12,7 @@ import { DependencyPipes } from "./dependency-pipes"
 import { CameraController } from "./camera-controller"
 import { SelectionMarker } from "./selection-marker"
 import { BuildingLabels } from "./building-labels"
+import { NightSky, StreetLights, NIGHT_HORIZON } from "./city-atmosphere"
 import { useCityStore } from "./use-city-store"
 import { getCityBounds } from "@/lib/visualization/city-bounds"
 
@@ -79,46 +80,6 @@ function ClickCatcher() {
   )
 }
 
-/** Ambient floating particles for atmosphere */
-function AmbientParticles({ count = 200, spread = 200 }: { count?: number; spread?: number }) {
-  const mesh = useRef<THREE.Points>(null)
-
-  const positions = useMemo(() => {
-    const arr = new Float32Array(count * 3)
-    for (let i = 0; i < count; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * spread
-      arr[i * 3 + 1] = Math.random() * 40 + 5
-      arr[i * 3 + 2] = (Math.random() - 0.5) * spread
-    }
-    return arr
-  }, [count, spread])
-
-  useFrame(({ clock }) => {
-    if (!mesh.current) return
-    mesh.current.rotation.y = clock.getElapsedTime() * 0.005
-    mesh.current.position.y = Math.sin(clock.getElapsedTime() * 0.15) * 0.5
-  })
-
-  return (
-    <points ref={mesh}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#99aaff"
-        size={0.22}
-        transparent
-        opacity={0.55}
-        sizeAttenuation
-        depthWrite={false}
-      />
-    </points>
-  )
-}
-
 /** Canvas-only scene — zustand store is global, no provider needed. */
 export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneProps) {
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
@@ -150,13 +111,12 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
     return () => clearTimeout(timeoutId)
   }, [buildingLoadProgress?.complete, isProgressivelyLoading])
 
-  // Compute dynamic fog density and spread based on city size
+  // Fog scales with city size so far districts fade into the horizon at any scale
   const cityMetrics = useMemo(() => {
-    const spread = cityBounds.spread
+    const spread = Math.max(cityBounds.spread, 20)
     return {
-      fogDensity: Math.max(0.0002, Math.min(0.002, 1.5 / spread)),
+      fogDensity: Math.max(0.0003, Math.min(0.01, 0.2 / spread)),
       spread,
-      particleCount: Math.min(500, Math.max(100, Math.round(spread * 1.5))),
     }
   }, [cityBounds])
 
@@ -170,7 +130,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.4,
+        toneMappingExposure: 1.25,
         powerPreference: "high-performance",
       }}
       shadows={{ type: THREE.PCFShadowMap }}
@@ -199,7 +159,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
         }
       }}
     >
-      <color attach="background" args={["#040408"]} />
+      <color attach="background" args={[NIGHT_HORIZON]} />
       <Suspense fallback={null}>
         <Lighting snapshot={snapshot} cityBounds={cityBounds} />
         <Ground snapshot={snapshot} cityBounds={cityBounds} />
@@ -221,11 +181,12 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
         )}
         <CameraController snapshot={snapshot} cityBounds={cityBounds} />
 
-        {/* Ambient atmosphere */}
-        <AmbientParticles count={cityMetrics.particleCount} spread={cityMetrics.spread * 1.5} />
+        {/* Night atmosphere */}
+        <NightSky centerX={cityBounds.centerX} centerZ={cityBounds.centerZ} radius={farPlane * 0.8} />
+        <StreetLights districts={snapshot.districts} />
       </Suspense>
 
-      <fogExp2 attach="fog" args={["#040408", cityMetrics.fogDensity * 0.22]} />
+      <fogExp2 attach="fog" args={[NIGHT_HORIZON, cityMetrics.fogDensity]} />
     </Canvas>
     </div>
   )

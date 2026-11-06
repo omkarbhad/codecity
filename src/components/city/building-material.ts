@@ -1,0 +1,239 @@
+import * as THREE from "three"
+
+/**
+ * Building facade material + geometry.
+ *
+ * Each building is one instance of a two-part box: a body and a crown. Towers
+ * at least SETBACK_MIN_HEIGHT tall get a narrower crown (a setback) in the
+ * vertex shader; shorter buildings keep the crown flush, so they read as a
+ * plain block. The total height is never changed — height still encodes size.
+ *
+ * The fragment shader draws an architectural facade in world units:
+ * - three facade styles picked per building: glass curtain wall, ribbon
+ *   windows, punched windows (small buildings always use punched)
+ * - corner pilasters, a dark storefront ground floor, a top band in the data color
+ * - warm interior light per office bay (a minority lit, dim), never white
+ * - roofs and terraces carry the data color, so color coding reads from above
+ * Per-instance `aLit` scales the light (dimmed buildings switch theirs off).
+ * Fine detail fades to its average below a pixel, so distant towers don't shimmer.
+ */
+
+const SETBACK_MIN_HEIGHT = 6.0
+const CROWN_INSET = 0.78
+/** Placeholder crown fraction baked into the geometry; the vertex shader moves the ledge per building. */
+const GEOMETRY_CROWN_FRACTION = 0.15
+
+const VERTEX_DECLARATIONS = /* glsl */ `
+attribute float aLit;
+attribute float aCrown;
+attribute float aLedge;
+varying vec3 vCcObjPos;
+varying vec3 vCcObjNormal;
+varying vec3 vCcScale;
+varying vec2 vCcSeed;
+varying float vCcLit;
+varying float vCcCrown;`
+
+/** Shared by the color and depth materials so the shadow matches the silhouette. */
+const SETBACK_TRANSFORM = /* glsl */ `
+#ifdef USE_INSTANCING
+  vec3 ccScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+  vec2 ccSeedV = instanceMatrix[3].xz;
+#else
+  vec3 ccScale = vec3(1.0);
+  vec2 ccSeedV = vec2(0.0);
+#endif
+float ccSetback = step(${SETBACK_MIN_HEIGHT.toFixed(1)}, ccScale.y);
+float ccCrownH = clamp(ccScale.y * 0.12, 0.7, 3.0);
+if (aLedge > 0.5) transformed.y = mix(transformed.y, 0.5 - ccCrownH / max(ccScale.y, 0.001), ccSetback);
+if (aCrown > 0.5) transformed.xz *= mix(1.0, ${CROWN_INSET.toFixed(2)}, ccSetback);`
+
+const FACADE_FRAGMENT = /* glsl */ `
+vec3 ccBase = diffuseColor.rgb;
+float ccTop = step(0.5, vCcObjNormal.y);
+float ccSide = 1.0 - step(0.5, abs(vCcObjNormal.y));
+float ccOnX = step(0.5, abs(vCcObjNormal.x));
+
+// Face coordinates in world units. Columns align to the body face so crown windows line up with the body.
+float ccHalf = mix(0.5, ${(CROWN_INSET / 2).toFixed(3)}, vCcCrown);
+float ccW = mix(vCcScale.x, vCcScale.z, ccOnX);
+float ccU = mix((vCcObjPos.x + 0.5) * vCcScale.x, (vCcObjPos.z + 0.5) * vCcScale.z, ccOnX);
+float ccEdgeLo = (0.5 - ccHalf) * ccW;
+float ccEdgeHi = (0.5 + ccHalf) * ccW;
+float ccH = (vCcObjPos.y + 0.5) * vCcScale.y;
+float ccFace = ccOnX * 2.0 + step(0.0, vCcObjNormal.x + vCcObjNormal.z);
+
+// 0 = glass curtain wall, 1 = ribbon windows, 2 = punched windows
+float ccStyle = vCcScale.y < 1.4 ? 2.0 : floor(ccHash(vec3(vCcSeed * 0.173, 1.0)) * 2.999);
+
+const float CC_COL = 0.30;
+const float CC_FLOOR = 0.34;
+const float CC_LOBBY = 0.32;
+const float CC_PARAPET = 0.16;
+float ccCols = max(1.0, floor((ccW - 0.14) / CC_COL));
+float ccOff = (ccW - ccCols * CC_COL) * 0.5;
+vec2 ccCell = vec2((ccU - ccOff) / CC_COL, (ccH - CC_LOBBY) / CC_FLOOR);
+vec2 ccId = floor(ccCell);
+vec2 ccFr = fract(ccCell);
+vec2 ccFw = max(fwidth(ccCell), vec2(1e-4));
+float ccFar = smoothstep(0.25, 0.6, max(ccFw.x, ccFw.y));
+
+float ccHasLobby = step(0.9, vCcScale.y);
+float ccLobby = ccHasLobby * (1.0 - step(CC_LOBBY, ccH));
+float ccParapet = step(vCcScale.y - CC_PARAPET, ccH);
+float ccInBody = (1.0 - ccLobby) * (1.0 - ccParapet);
+float ccPilaster = 1.0 - step(0.07, min(ccU - ccEdgeLo, ccEdgeHi - ccU));
+
+float ccMullion = ccBand(ccFr.x, 0.06, 0.94, ccFw.x);
+float ccGlass;
+if (ccStyle < 0.5) {
+  ccGlass = mix(ccMullion * ccBand(ccFr.y, 0.07, 0.95, ccFw.y), 0.82, ccFar);
+} else if (ccStyle < 1.5) {
+  ccGlass = mix(ccMullion * ccBand(ccFr.y, 0.36, 0.92, ccFw.y), 0.5, ccFar);
+} else {
+  ccGlass = mix(ccBand(ccFr.x, 0.24, 0.76, ccFw.x) * ccBand(ccFr.y, 0.3, 0.78, ccFw.y), 0.25, ccFar);
+}
+ccGlass *= ccInBody * (1.0 - ccPilaster) * ccSide;
+
+// Interior light per office bay: a minority lit, at varied dim levels
+float ccBayW = ccStyle < 1.5 ? 2.0 : 1.0;
+vec2 ccBay = vec2(floor(ccId.x / ccBayW), ccId.y);
+float ccR1 = ccHash(vec3(ccBay, ccFace) + vec3(vCcSeed * 0.731, 0.0));
+float ccR2 = ccHash(vec3(ccBay.yx, ccFace + 7.0) + vec3(vCcSeed.yx * 1.37, 3.0));
+float ccLit = step(ccR1, 0.2) * (0.45 + 0.55 * ccR2);
+ccLit = mix(ccLit, 0.2 * 0.72, ccFar);
+
+vec3 ccWallCol = mix(vec3(0.055, 0.058, 0.066), ccBase * 0.55, 0.65);
+vec3 ccGlassCol = ccBase * 0.14 + vec3(0.018, 0.024, 0.04) + vec3(0.02, 0.03, 0.05) * clamp(ccH / max(vCcScale.y, 0.01), 0.0, 1.0);
+vec3 ccSideCol = mix(ccWallCol, ccGlassCol, ccGlass);
+ccSideCol = mix(ccSideCol, ccBase * 0.08 + vec3(0.02), ccLobby * (1.0 - ccPilaster));
+ccSideCol = mix(ccSideCol, ccBase * 0.7, ccParapet);
+
+float ccEx = (ccHalf - abs(vCcObjPos.x)) * vCcScale.x;
+float ccEz = (ccHalf - abs(vCcObjPos.z)) * vCcScale.z;
+float ccRim = 1.0 - smoothstep(0.05, 0.09, min(ccEx, ccEz));
+vec3 ccRoof = mix(ccBase * 0.9, ccBase * 0.5, ccRim);
+
+diffuseColor.rgb = mix(ccSideCol, ccRoof, ccTop);
+
+vec3 ccLight = vec3(1.0, 0.58, 0.26); // plain warm amber, never tinted toward white
+vec3 ccEmit = (ccLight * ccGlass * ccLit + vec3(1.0, 0.62, 0.32) * ccLobby * ccSide * 0.1) * uWindowGlow * vCcLit;`
+
+export function createBuildingMaterial(): THREE.MeshStandardMaterial {
+  const material = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.7, metalness: 0.1 })
+  const uniforms = { uWindowGlow: { value: 0.45 } }
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uWindowGlow = uniforms.uWindowGlow
+
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>\n${VERTEX_DECLARATIONS}`)
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+${SETBACK_TRANSFORM}
+vCcObjPos = transformed;
+vCcObjNormal = normal;
+vCcScale = ccScale;
+vCcSeed = ccSeedV;
+vCcLit = aLit;
+vCcCrown = aCrown * ccSetback;`
+      )
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+uniform float uWindowGlow;
+varying vec3 vCcObjPos;
+varying vec3 vCcObjNormal;
+varying vec3 vCcScale;
+varying vec2 vCcSeed;
+varying float vCcLit;
+varying float vCcCrown;
+
+float ccHash(vec3 p) {
+  p = fract(p * 0.3183099 + 0.1);
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+// 1 inside [a, b], antialiased over w
+float ccBand(float x, float a, float b, float w) {
+  return smoothstep(a - w, a + w, x) - smoothstep(b - w, b + w, x);
+}`
+      )
+      .replace("#include <color_fragment>", `#include <color_fragment>\n${FACADE_FRAGMENT}`)
+      .replace(
+        "#include <metalnessmap_fragment>",
+        `#include <metalnessmap_fragment>
+// Glass gets a low-roughness sheen; walls stay matte
+roughnessFactor = mix(roughnessFactor, 0.3, ccGlass);
+metalnessFactor = mix(metalnessFactor, 0.25, ccGlass);`
+      )
+      .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\ntotalEmissiveRadiance += ccEmit;`)
+  }
+
+  material.customProgramCacheKey = () => "codecity-building-facade-v6"
+  return material
+}
+
+/** Shadow-pass material that applies the same setback, so shadows match the crown. */
+export function createBuildingDepthMaterial(): THREE.MeshDepthMaterial {
+  const material = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking })
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>\n${VERTEX_DECLARATIONS}`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>\n${SETBACK_TRANSFORM}`)
+  }
+  material.customProgramCacheKey = () => "codecity-building-depth-v1"
+  return material
+}
+
+/**
+ * Unit two-part box (body + crown, centered, 1×1×1) with per-vertex flags the
+ * shader uses for the setback, plus the per-instance `aLit` attribute.
+ */
+export function createBuildingGeometry(count: number): THREE.BufferGeometry {
+  const ledge = 0.5 - GEOMETRY_CROWN_FRACTION
+  const positions: number[] = []
+  const normals: number[] = []
+  const crownFlags: number[] = []
+  const ledgeFlags: number[] = []
+  const indices: number[] = []
+
+  // One quad: four corners, counter-clockwise seen from the side the normal points to
+  function quad(corners: number[][], normal: number[], crown: number) {
+    const base = positions.length / 3
+    for (const [x, y, z] of corners) {
+      positions.push(x, y, z)
+      normals.push(normal[0], normal[1], normal[2])
+      crownFlags.push(crown)
+      ledgeFlags.push(Math.abs(y - ledge) < 1e-6 ? 1 : 0)
+    }
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3)
+  }
+
+  // Four walls plus a top face for a slab spanning y0..y1
+  function part(y0: number, y1: number, crown: number) {
+    quad([[0.5, y0, 0.5], [0.5, y0, -0.5], [0.5, y1, -0.5], [0.5, y1, 0.5]], [1, 0, 0], crown)
+    quad([[-0.5, y0, -0.5], [-0.5, y0, 0.5], [-0.5, y1, 0.5], [-0.5, y1, -0.5]], [-1, 0, 0], crown)
+    quad([[-0.5, y0, 0.5], [0.5, y0, 0.5], [0.5, y1, 0.5], [-0.5, y1, 0.5]], [0, 0, 1], crown)
+    quad([[0.5, y0, -0.5], [-0.5, y0, -0.5], [-0.5, y1, -0.5], [0.5, y1, -0.5]], [0, 0, -1], crown)
+    quad([[-0.5, y1, 0.5], [0.5, y1, 0.5], [0.5, y1, -0.5], [-0.5, y1, -0.5]], [0, 1, 0], crown)
+  }
+
+  part(-0.5, ledge, 0) // body; its top face becomes the terrace when the crown is set back
+  part(ledge, 0.5, 1) // crown
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3))
+  geometry.setAttribute("aCrown", new THREE.Float32BufferAttribute(crownFlags, 1))
+  geometry.setAttribute("aLedge", new THREE.Float32BufferAttribute(ledgeFlags, 1))
+  geometry.setIndex(indices)
+  geometry.setAttribute("aLit", new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, count)).fill(1), 1))
+  geometry.computeBoundingBox()
+  geometry.computeBoundingSphere()
+  return geometry
+}

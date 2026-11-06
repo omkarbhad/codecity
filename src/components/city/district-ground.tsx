@@ -102,6 +102,10 @@ const FilledGround = memo(function FilledGround({
 })
 
 const MAX_SUBDIST_DEPTH = 3
+/** Districts are raised pavement blocks; streets are the asphalt between them. */
+const BLOCK_HEIGHT = 0.05
+const BLOCK_MARGIN = 0.2
+const PAVEMENT = new THREE.Color("#1d2027")
 
 /** Recursively render sub-district boundaries.
  *  Parent sub-districts show only borders.
@@ -115,8 +119,8 @@ const RecursiveSubDistricts = memo(function RecursiveSubDistricts({
 }) {
   if (depth >= MAX_SUBDIST_DEPTH) return null
 
-  const borderOpacity = Math.max(0.2, 0.5 - depth * 0.1)
-  const y = 0.08 + depth * 0.02
+  const borderOpacity = Math.max(0.14, 0.32 - depth * 0.07)
+  const y = BLOCK_HEIGHT + 0.004 + depth * 0.004
 
   return (
     <>
@@ -130,7 +134,7 @@ const RecursiveSubDistricts = memo(function RecursiveSubDistricts({
               <FilledGround
                 bounds={sub.bounds}
                 color={sub.color}
-                fillOpacity={0.08}
+                fillOpacity={0.035}
                 borderOpacity={borderOpacity}
                 y={y}
               />
@@ -163,31 +167,30 @@ interface DistrictGroundProps {
 export const DistrictGround = memo(function DistrictGround({ district }: DistrictGroundProps) {
   const { bounds, color, subDistricts } = district
   const hasChildren = subDistricts && subDistricts.length > 0
+  const block = useMemo(
+    () => ({
+      x: bounds.x - BLOCK_MARGIN,
+      z: bounds.z - BLOCK_MARGIN,
+      width: bounds.width + BLOCK_MARGIN * 2,
+      depth: bounds.depth + BLOCK_MARGIN * 2,
+    }),
+    [bounds]
+  )
+  const slabColor = useMemo(() => PAVEMENT.clone().lerp(new THREE.Color(color), 0.05), [color])
 
   return (
     <group>
-      {/* Main district: border only if it has sub-districts, filled if it's a flat district */}
-      {hasChildren ? (
-        <BorderOnly
-          bounds={bounds}
-          color={color}
-          opacity={0.65}
-          y={0.06}
-        />
-      ) : (
-        <FilledGround
-          bounds={bounds}
-          color={color}
-          fillOpacity={0.12}
-          borderOpacity={0.65}
-          y={0.06}
-        />
-      )}
+      {/* Pavement block, tinted toward the district color */}
+      <mesh position={[block.x + block.width / 2, BLOCK_HEIGHT / 2, block.z + block.depth / 2]} receiveShadow>
+        <boxGeometry args={[block.width, BLOCK_HEIGHT, block.depth]} />
+        <meshStandardMaterial color={slabColor} roughness={0.95} metalness={0} />
+      </mesh>
 
-      {/* Recursive sub-district boundaries */}
-      {hasChildren && (
-        <RecursiveSubDistricts subDistricts={subDistricts} depth={0} />
-      )}
+      {/* District-colored curb keeps the legend color visible */}
+      <BorderOnly bounds={block} color={color} opacity={0.6} y={BLOCK_HEIGHT - 0.008} />
+
+      {/* Lot lines for sub-folders */}
+      {hasChildren && <RecursiveSubDistricts subDistricts={subDistricts} depth={0} />}
     </group>
   )
 })
