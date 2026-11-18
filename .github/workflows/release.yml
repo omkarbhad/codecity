@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # The security scan runs opengrep as a sidecar, and Tauri refuses to build without
       # the file for the target. Each download is pinned to a checksum.
