@@ -820,13 +820,15 @@ fn opengrep_binary_path() -> Result<std::path::PathBuf, String> {
 
     // Tauri appends the target triple as a suffix; try with the current triple
     // first, then fall back to the plain name for dev builds.
+    // Windows binaries carry `.exe`; without it the file is never found there.
+    let suffix = std::env::consts::EXE_SUFFIX;
     let triple = env!("TAURI_ENV_TARGET_TRIPLE");
-    let with_triple = dir.join(format!("opengrep-{}", triple));
+    let with_triple = dir.join(format!("opengrep-{}{}", triple, suffix));
     if with_triple.exists() {
         return Ok(with_triple);
     }
 
-    let plain = dir.join("opengrep");
+    let plain = dir.join(format!("opengrep{}", suffix));
     if plain.exists() {
         return Ok(plain);
     }
