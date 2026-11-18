@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Check, Download, Loader2, RefreshCw, RotateCcw } from "lucide-react"
+import { DownloadIcon, LoaderCircleIcon, RefreshCwIcon, RotateCcwIcon, CheckIcon } from "@/components/ui/icons"
+import { AppIcon } from "@/components/ui/app-icon"
 import { checkForAppUpdate, installAppUpdate, relaunchApp, type AppUpdateInfo } from "@/lib/app-updater"
 import { isTauri } from "@/lib/tauri"
 
@@ -67,15 +68,15 @@ export function UpdateButton() {
 
   const disabled = state === "checking" || state === "downloading"
   const action = state === "available" ? handleInstall : state === "installed" ? relaunchApp : handleCheck
-  const Icon = state === "checking" || state === "downloading"
-    ? Loader2
+  const icon = state === "checking" || state === "downloading"
+    ? LoaderCircleIcon
     : state === "available"
-      ? Download
+      ? DownloadIcon
       : state === "installed"
-        ? RotateCcw
+        ? RotateCcwIcon
         : state === "current"
-          ? Check
-          : RefreshCw
+          ? CheckIcon
+          : RefreshCwIcon
 
   return (
     <div className="relative flex shrink-0 justify-end">
@@ -85,14 +86,14 @@ export function UpdateButton() {
         disabled={disabled}
         title={message}
         aria-label={message}
-        className="flex size-7 items-center justify-center rounded-none border-2 border-transparent bg-transparent text-[var(--muted)] transition-colors hover:border-[var(--border-pixel)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)] disabled:cursor-wait disabled:opacity-70"
+        className="flex size-7 items-center justify-center border border-transparent bg-transparent text-[var(--muted)] transition-colors hover:border-[var(--border-pixel)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)] disabled:cursor-wait disabled:opacity-70 rounded-md"
       >
-        <Icon className={`size-3.5 shrink-0 ${disabled ? "animate-spin text-primary" : ""}`} />
+        <AppIcon icon={icon} className={`size-3.5 shrink-0 ${disabled ? "animate-spin text-primary" : ""}`} />
       </button>
       {state === "downloading" && (
-        <div className="absolute -bottom-1 left-0 right-0 h-0.5 overflow-hidden rounded-none bg-[var(--border-pixel)]">
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 overflow-hidden bg-[var(--border-pixel)]">
           <div
-            className="h-full rounded-none bg-primary transition-all duration-300"
+            className="h-full bg-primary transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>

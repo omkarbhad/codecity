@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { SidebarSimple as PanelLeftIcon } from "@phosphor-icons/react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@codecity/ui/lib/utils"
@@ -251,7 +251,7 @@ const Sidebar = React.forwardRef<
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
+              ? "px-2.5 pb-3 pt-1.5 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
               : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className
           )}
@@ -289,7 +289,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      <PanelLeftIcon className="size-4" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -334,7 +334,9 @@ const SidebarInset = React.forwardRef<
       ref={ref}
       className={cn(
         "relative flex w-full flex-1 flex-col bg-background",
-        "md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        // Inset: Ghostly's page card — 8px from the window edge, 16px corners,
+        // a hairline border, no shadow, and the soft light from the top left.
+        "md:peer-data-[variant=inset]:my-2 md:peer-data-[variant=inset]:mr-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:min-h-[calc(100svh-16px)] md:peer-data-[variant=inset]:overflow-hidden md:peer-data-[variant=inset]:rounded-[16px] md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-(--border-pixel) md:peer-data-[variant=inset]:[background-image:var(--ground-lit)]",
         className
       )}
       {...props}

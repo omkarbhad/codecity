@@ -1,125 +1,137 @@
 "use client"
 
-import { useRef, useEffect, useState, useCallback, type ReactNode } from "react"
+import { useRef, useEffect, useMemo, useState, useCallback, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import {
-  ArrowLeft,
-  ExternalLink,
-  FolderTree,
-  FileCode,
-  Brain,
-  Search,
-  X,
-  Filter,
-  Map,
-  Palette,
-  GitCommit,
-  Box,
-  Square,
-  Share2,
-  ShieldAlert,
-} from "lucide-react"
+import { DropdownMenu } from "radix-ui"
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CheckIcon, ArrowUpRightIcon, XIcon, NetworkIcon, BoxIcon, FileCodeIcon, ListFilterIcon, FolderIcon, FolderTreeIcon, GitCommitHorizontalIcon, LayersIcon, LayoutGridIcon, WaypointsIcon, SearchIcon, ShieldCheckIcon, SettingsIcon, PanelLeftIcon, PaletteIcon, CircleHelpIcon, TriangleAlertIcon } from "@/components/ui/icons"
+import type { AppIconType } from "@/components/ui/icons"
 import { cn } from "@codecity/ui/lib/utils"
-import { IconButton } from "@codecity/ui/components/icon-button"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
 import type { SecurityScanResult } from "@/lib/tauri"
 import { startSecurityScan, isTauri } from "@/lib/tauri"
 import { pollSecurityScan } from "@/lib/security"
+import { isTypingTarget } from "@/lib/keyboard"
+import { AppIcon } from "@/components/ui/app-icon"
 import { useCityStore, type VisualizationMode } from "./use-city-store"
 import { FileTree } from "./file-tree"
-import { ExtensionFilter } from "./extension-filter"
+import { ExtensionFilter, getExtension } from "./extension-filter"
 import { DistrictLegend } from "./district-legend"
-import { Minimap } from "./minimap"
 import { SidePanel } from "./side-panel"
 import { SecuritySidebar } from "./security-sidebar"
-import { BottomBar } from "./bottom-bar"
+import { HelpDialog } from "./help-dialog"
+import { SettingsPanel } from "./settings-panel"
 import { CityTooltip } from "./city-tooltip"
 import { CommitTimeline } from "./commit-timeline"
-import { CodeViewer } from "./code-viewer"
+import { EditorPane, EditorTabStrip, FileDialogs, NewFileButton, useEditorBridge } from "./editor-pane"
 import { LogoMark } from "@/components/logo"
+import { FrameNav, shellIconButton, ThemeToggle, TRAFFIC_LIGHTS_HEIGHT, useReserveTrafficLights } from "@/components/window-frame"
 
 // ── Resize Handle ───────────────────────────────────────────────────────────
 
 function ResizeHandle({
   side,
-  onResize,
+  width,
+  onWidthChange,
 }: {
   side: "left" | "right"
-  onResize: (delta: number) => void
+  width: number
+  onWidthChange: (width: number) => void
 }) {
   const handleRef = useRef<HTMLDivElement>(null)
+  const widthRef = useRef(width)
+  widthRef.current = width
 
   useEffect(() => {
     const el = handleRef.current
     if (!el) return
 
     let startX = 0
+    let startWidth = 0
     let dragging = false
 
-    function onMouseDown(e: MouseEvent) {
-      e.preventDefault()
-      startX = e.clientX
-      dragging = true
-      document.body.style.cursor = "col-resize"
-      document.body.style.userSelect = "none"
-      window.addEventListener("mousemove", onMouseMove)
-      window.addEventListener("mouseup", onMouseUp)
-    }
-
-    function onMouseMove(e: MouseEvent) {
-      if (!dragging) return
-      const delta = e.clientX - startX
-      startX = e.clientX
-      onResize(side === "left" ? delta : -delta)
-    }
-
-    function onMouseUp() {
+    function endDrag() {
       dragging = false
       document.body.style.cursor = ""
       document.body.style.userSelect = ""
       window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("mouseup", onMouseUp)
+      window.removeEventListener("mouseup", endDrag)
+    }
+
+    function onMouseDown(e: MouseEvent) {
+      e.preventDefault()
+      startX = e.clientX
+      startWidth = widthRef.current
+      dragging = true
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+      window.addEventListener("mousemove", onMouseMove)
+      window.addEventListener("mouseup", endDrag)
+    }
+
+    // Width is measured from where the drag started, so the handle stays under
+    // the cursor even after the panel hits its min or max width.
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging) return
+      const delta = e.clientX - startX
+      onWidthChange(clampPanel(startWidth + (side === "left" ? delta : -delta)))
     }
 
     el.addEventListener("mousedown", onMouseDown)
     return () => {
       el.removeEventListener("mousedown", onMouseDown)
-      window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("mouseup", onMouseUp)
+      if (dragging) endDrag()
     }
-  }, [side, onResize])
+  }, [side, onWidthChange])
 
   return (
     <div
       ref={handleRef}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={side === "left" ? "Resize side panel" : "Resize details panel"}
       className={cn(
-        "group flex w-[5px] shrink-0 cursor-col-resize items-stretch justify-center bg-(--bg-deep) transition-colors hover:bg-(--bg-raised) active:bg-primary/15",
-        side === "left" ? "border-r-2 border-(--border-pixel)" : "border-l-2 border-(--border-pixel)"
+        "group hidden w-[7px] shrink-0 cursor-col-resize items-stretch justify-center md:flex",
+        side === "left" ? "-mx-[3px] mb-2" : "border-l border-(--border-pixel)"
       )}
     >
-      <span className="my-3 w-px bg-(--border-light) transition-colors group-hover:bg-primary" />
+      <span className="my-3 w-px rounded-full bg-transparent transition-colors group-hover:bg-(--border-light) group-active:bg-(--muted)" />
     </div>
   )
 }
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type PrimaryView = "explorer" | "search" | "filters" | "minimap" | "legend" | "commits"
+// "home" is the sidebar's list of sections; the rest are the sections you go into.
+// Search lives inside Explorer; Commits shows only for GitHub projects.
+type PrimaryView = "home" | "explorer" | "filters" | "legend" | "commits" | "settings"
 
-const MODES: { key: VisualizationMode; label: string; title: string; shortcut: string }[] = [
-  { key: "dependencies", label: "Deps", title: "Color by dependencies", shortcut: "1" },
-  { key: "complexity", label: "Complexity", title: "Color by complexity", shortcut: "2" },
-  { key: "unused", label: "Unused", title: "Highlight unused exports", shortcut: "3" },
-  { key: "filesize", label: "Size", title: "Color by file size", shortcut: "4" },
-  { key: "types", label: "Types", title: "Color by type count", shortcut: "5" },
+const MODES: { key: VisualizationMode; label: string; hint: string; shortcut: string }[] = [
+  { key: "dependencies", label: "Dependencies", hint: "District colours, busier files stronger", shortcut: "1" },
+  { key: "complexity", label: "Complexity", hint: "Green is simple, red is complex", shortcut: "2" },
+  { key: "unused", label: "Unused", hint: "Files whose exports nothing imports", shortcut: "3" },
+  { key: "filesize", label: "Size", hint: "Blue is small, red is large", shortcut: "4" },
+  { key: "types", label: "Types", hint: "Files that declare many types", shortcut: "5" },
 ]
 
-const LAYOUTS: { key: LayoutMode; label: string; title: string; icon: typeof FolderTree }[] = [
-  { key: "folder", label: "Folder", title: "Group by folder", icon: FolderTree },
-  { key: "extension", label: "Ext", title: "Group by file extension", icon: FileCode },
-  { key: "semantic", label: "Cluster", title: "Group by import cluster", icon: Brain },
+const LAYOUTS: { key: LayoutMode; label: string; hint: string; icon: AppIconType }[] = [
+  { key: "folder", label: "Folder", hint: "One district per top-level folder", icon: FolderIcon },
+  { key: "extension", label: "Extension", hint: "One district per file type", icon: FileCodeIcon },
+  { key: "semantic", label: "Cluster", hint: "Files that import each other", icon: NetworkIcon },
 ]
+
+const VIEWS = [
+  { key: "3d", label: "3D", icon: BoxIcon },
+  { key: "2d", label: "2D", icon: LayoutGridIcon },
+  { key: "network", label: "Network", icon: WaypointsIcon },
+] as const
+
+const MIN_PANEL = 180
+const MAX_PANEL = 480
+
+function clampPanel(width: number) {
+  return Math.min(MAX_PANEL, Math.max(MIN_PANEL, width))
+}
 
 interface ProjectShellProps {
   snapshot: CitySnapshot
@@ -129,75 +141,225 @@ interface ProjectShellProps {
   projectRoot?: string
   repoUrl?: string
   navbarActions?: ReactNode
+  onFilesChanged?: () => void
   children: ReactNode
 }
 
 // ── Activity Bar (VS Code-style icon strip) ────────────────────────────────
 
 interface ActivityBarProps {
+  chrome: ShellChrome
+  items: ActivityItem[]
   activeView: PrimaryView | null
   onViewChange: (view: PrimaryView) => void
-  position: "left" | "right"
 }
 
 interface ActivityItem {
   id: PrimaryView
-  icon: typeof FolderTree
+  icon: AppIconType
   label: string
   shortcut?: string
+  /** A count or short fact shown beside the section on the sidebar's home list. */
+  meta?: string
 }
 
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
-  { id: "explorer", icon: FolderTree, label: "Explorer", shortcut: "E" },
-  { id: "search", icon: Search, label: "Search", shortcut: "/" },
-  { id: "filters", icon: Filter, label: "Filters" },
-  { id: "legend", icon: Palette, label: "Legend" },
-  { id: "minimap", icon: Map, label: "Minimap" },
-  { id: "commits", icon: GitCommit, label: "Commits" },
+  { id: "explorer", icon: FolderTreeIcon, label: "Explorer", shortcut: "⌘E" },
+  { id: "legend", icon: LayersIcon, label: "Districts" },
+  { id: "filters", icon: ListFilterIcon, label: "File types" },
+  { id: "commits", icon: GitCommitHorizontalIcon, label: "Commits" },
 ]
 
-function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
-  const items = PRIMARY_ACTIVITIES
+/** The sections this project can show: Commits needs a GitHub repository. */
+function activitiesFor(repoUrl?: string): ActivityItem[] {
+  const hasGithub = !!repoUrl?.startsWith("http")
+  return PRIMARY_ACTIVITIES.filter((item) => item.id !== "commits" || hasGithub)
+}
 
+// Pinned to the bottom of the rail and of the sidebar's home list.
+const SETTINGS_ACTIVITY: ActivityItem = { id: "settings", icon: SettingsIcon, label: "Settings", shortcut: "⌘," }
+
+function ActivityBar({ chrome, items, activeView, onViewChange }: ActivityBarProps) {
+  // The collapsed sidebar, as in Ghostly: a 76px rail of 40px rounded squares on
+  // the window frame (the macOS window buttons sit above it). Clicking one opens
+  // the sidebar on that panel.
+  const reserveLights = useReserveTrafficLights()
+  const button = (item: ActivityItem) => {
+    const active = activeView === item.id
+    const label = `${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onViewChange(item.id)}
+        title={label}
+        aria-label={label}
+        aria-pressed={active}
+        className={cn(
+          "flex size-10 items-center justify-center rounded-[10px] transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] active:scale-[0.97]",
+          active ? "bg-(--bg-raised) text-(--cream)" : "text-(--muted) hover:bg-(--bg-raised) hover:text-(--cream)"
+        )}
+      >
+        <AppIcon icon={item.icon} className="size-[18px]" active={active} />
+      </button>
+    )
+  }
+  const group = "flex flex-col items-center gap-1 rounded-[14px] border border-(--border-pixel) bg-(--bg) p-1"
+
+  // On macOS the rail is wide enough that the window buttons sit inside it,
+  // clear of the page card; the panel icons sit in a card-style block below them.
   return (
-    <div
-      className={cn(
-        "flex w-12 shrink-0 flex-col items-center gap-1 bg-(--bg-deep) px-1.5 py-2",
-        position === "left" ? "border-r-2 border-(--border-pixel)" : "border-l-2 border-(--border-pixel)"
-      )}
+    <nav
+      aria-label="Side panels"
+      data-tauri-drag-region
+      className="hidden shrink-0 flex-col items-center pb-2 md:flex"
+      style={{ width: reserveLights ? 92 : 64, paddingTop: reserveLights ? TRAFFIC_LIGHTS_HEIGHT + 6 : 8 }}
     >
-      {items.map((item) => {
-        const Icon = item.icon
-        const active = activeView === item.id
-        const label = `${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`
-        return (
-          <button
-            key={item.id}
-            onClick={() => onViewChange(item.id)}
-            title={label}
-            aria-label={label}
-            aria-pressed={active}
-            className={cn(
-              "relative flex h-9 w-9 items-center justify-center border-2 transition-colors",
-              active
-                ? "border-(--border-light) bg-(--bg-raised) text-primary"
-                : "border-transparent text-(--muted) hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
-            )}
-          >
-            {/* Active indicator bar */}
-            {active && (
-              <div
-                className={cn(
-                  "absolute bottom-1.5 top-1.5 w-[3px] bg-primary",
-                  position === "left" ? "-left-2" : "-right-2"
-                )}
-              />
-            )}
-            <Icon className="size-[18px]" />
+      <div className={group}>
+        <div className="flex size-10 items-center justify-center"><SidebarToggle chrome={chrome} /></div>
+        <span className="h-px w-6 bg-(--border-pixel)" aria-hidden="true" />
+        {items.map(button)}
+      </div>
+      <div data-tauri-drag-region className="flex-1" />
+      <div className={group}>
+        <div className="flex size-10 items-center justify-center"><ThemeToggle /></div>
+        {chrome.securityEnabled && <div className="flex size-10 items-center justify-center"><SecurityButton chrome={chrome} /></div>}
+        <div className="flex size-10 items-center justify-center">
+          <button type="button" className={shellIconButton} title="Help and shortcuts (?)" aria-label="Help and shortcuts" onClick={chrome.onHelp}>
+            <AppIcon icon={CircleHelpIcon} />
           </button>
-        )
-      })}
+        </div>
+        {button(SETTINGS_ACTIVITY)}
+      </div>
+    </nav>
+  )
+}
+
+// ── Sidebar (open) ──────────────────────────────────────────────────────────
+
+const navRow =
+  "group flex h-9 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[13.5px] text-(--cream-dark) transition-[color,background-color,transform] duration-150 hover:bg-(--bg-raised) hover:text-(--cream) active:scale-[0.99]"
+
+/** One line of the sidebar's home list: an icon, a name, and what is behind it. */
+function NavRow({
+  icon,
+  label,
+  meta,
+  trailing,
+  onClick,
+  href,
+  title,
+}: {
+  icon: AppIconType
+  label: string
+  meta?: ReactNode
+  /** Replaces the "go in" chevron, e.g. an external-link arrow or a key hint. */
+  trailing?: ReactNode
+  onClick?: () => void
+  href?: string
+  title?: string
+}) {
+  const body = (
+    <>
+      <AppIcon icon={icon} className="size-[18px] shrink-0 text-(--muted) transition-colors group-hover:text-(--cream)" />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {meta !== undefined && <span className="shrink-0 text-[12px] tabular-nums text-(--muted)">{meta}</span>}
+      {trailing ?? <AppIcon icon={ChevronRightIcon} className="size-3 shrink-0 text-(--dim) transition-colors group-hover:text-(--cream-dark)" />}
+    </>
+  )
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" title={title} className={navRow}>
+        {body}
+      </a>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} title={title} className={navRow}>
+      {body}
+    </button>
+  )
+}
+
+function NavGroupLabel({ children }: { children: string }) {
+  return <p className="px-2.5 pb-1 pt-3 text-[11px] font-medium text-(--muted)">{children}</p>
+}
+
+/** The sidebar's first screen: the sections you can go into, then the project's tools. */
+function SidebarHome({ chrome, items, onSelect }: { chrome: ShellChrome; items: ActivityItem[]; onSelect: (view: PrimaryView) => void }) {
+  const hasRepoLink = !!chrome.repoUrl?.startsWith("http")
+  const hasScan = !!chrome.securityEnabled && !!chrome.onSecurityClick
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <nav aria-label="Sections" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 scroll-thin">
+        <NavGroupLabel>Browse</NavGroupLabel>
+        {items.map((item) => (
+          <NavRow key={item.id} icon={item.icon} label={item.label} meta={item.meta} onClick={() => onSelect(item.id)} title={item.shortcut ? `${item.label} (${item.shortcut})` : item.label} />
+        ))}
+
+        <NavGroupLabel>Tools</NavGroupLabel>
+        <NavRow icon={SearchIcon} label="Search files" onClick={chrome.onSearch} trailing={<kbd className="shrink-0 font-sans text-[11px] text-(--muted)">/</kbd>} />
+        {hasScan && (
+          <NavRow
+            icon={ShieldCheckIcon}
+            label="Security scan"
+            onClick={chrome.onSecurityClick}
+            meta={chrome.securityRunning ? "Running" : undefined}
+            trailing={chrome.securityRunning ? <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary motion-safe:animate-pulse" /> : undefined}
+          />
+        )}
+        {hasRepoLink && (
+          <NavRow icon={ArrowUpRightIcon} label="Open on GitHub" href={chrome.repoUrl} trailing={<span />} />
+        )}
+        <NavRow icon={CircleHelpIcon} label="Help and shortcuts" onClick={chrome.onHelp} trailing={<kbd className="shrink-0 font-sans text-[11px] text-(--muted)">?</kbd>} />
+        {!!chrome.warnings?.length && (
+          <div
+            className="mt-2 flex items-start gap-2 rounded-[10px] bg-[color-mix(in_srgb,var(--sev-med)_12%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-(--sev-med)"
+            title={`${chrome.warnings.slice(0, 10).join("\n")}${chrome.warnings.length > 10 ? "\n…" : ""}`}
+          >
+            <AppIcon icon={TriangleAlertIcon} className="mt-px size-3.5 shrink-0" />
+            {chrome.warnings.length === 1 ? "1 file could not be parsed" : `${chrome.warnings.length.toLocaleString()} files could not be parsed`}
+          </div>
+        )}
+      </nav>
+
+      <div className="flex shrink-0 items-center gap-1 px-2 pt-2">
+        <div className="min-w-0 flex-1">
+          <NavRow icon={SETTINGS_ACTIVITY.icon} label={SETTINGS_ACTIVITY.label} onClick={() => onSelect("settings")} title="Settings (⌘,)" />
+        </div>
+        <ThemeToggle />
+      </div>
     </div>
+  )
+}
+
+function SidebarColumn({
+  chrome,
+  items,
+  activeView,
+  onSelect,
+  width,
+  children,
+}: {
+  chrome: ShellChrome
+  items: ActivityItem[]
+  activeView: PrimaryView
+  onSelect: (view: PrimaryView) => void
+  width: number
+  children: ReactNode
+}) {
+  // A single column on the window frame. Its first screen lists the sections;
+  // picking one replaces the list with that section, and its header leads back.
+  // Collapsed, the column becomes the ActivityBar rail.
+  return (
+    <aside style={{ width }} className="hidden shrink-0 flex-col overflow-hidden pb-2 md:flex">
+      <SidebarHeader chrome={chrome} />
+      {activeView === "home" ? (
+        <SidebarHome chrome={chrome} items={items} onSelect={onSelect} />
+      ) : (
+        <div key={activeView} className="cc-drill-in flex min-h-0 flex-1 flex-col">{children}</div>
+      )}
+    </aside>
   )
 }
 
@@ -205,11 +367,15 @@ function ActivityBar({ activeView, onViewChange, position }: ActivityBarProps) {
 
 function PrimaryPanelContent({
   view,
+  onBack,
+  searchFocusKey,
   snapshot,
   explorerSnapshot,
   repoUrl,
 }: {
   view: PrimaryView
+  onBack: () => void
+  searchFocusKey: number
   snapshot: CitySnapshot
   explorerSnapshot: CitySnapshot
   repoUrl?: string
@@ -218,281 +384,301 @@ function PrimaryPanelContent({
   const setSearch = useCityStore((s) => s.setSearch)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // "/" and ⌘F open Explorer with its search box focused.
   useEffect(() => {
-    if (view === "search") {
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [view])
+    if (view !== "explorer" || searchFocusKey === 0) return
+    const id = window.setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }, 50)
+    return () => window.clearTimeout(id)
+  }, [view, searchFocusKey])
 
   switch (view) {
+    case "home":
+      return null
     case "explorer":
       return (
         <>
-          <PanelHeader title="Explorer" subtitle={`${explorerSnapshot.files.length.toLocaleString()} files`} />
-          <FileTree snapshot={explorerSnapshot} selectionSnapshot={snapshot} />
-        </>
-      )
-    case "search":
-      return (
-        <>
-          <PanelHeader title="Search" />
-          <div className="border-b-2 border-(--border-pixel) px-3 py-2.5">
-            <div className="relative group">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-(--muted) pointer-events-none group-focus-within:text-primary transition-colors" />
+          <PanelHeader onBack={onBack} title="Explorer" subtitle={`${explorerSnapshot.files.length.toLocaleString()} files`} action={<NewFileButton />} />
+          <div className="shrink-0 px-2.5 pb-2 pt-0.5">
+            <div className="group relative">
+              <AppIcon icon={SearchIcon} className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-(--muted) transition-colors group-focus-within:text-(--cream)" />
               <input
                 ref={inputRef}
-                type="text"
+                type="search"
                 value={searchQuery}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search files..."
+                onKeyDown={(e) => { if (e.key === "Escape" && searchQuery) { e.stopPropagation(); setSearch("") } }}
+                placeholder="Search files"
                 aria-label="Search files"
-                className="h-8 w-full border-2 border-(--border-pixel) bg-(--bg-card) pl-7 pr-7 font-mono text-[12px] text-(--cream) outline-none transition-colors placeholder:text-(--muted) focus:border-primary"
+                className="h-8 w-full rounded-[10px] border border-transparent bg-(--bg-card) pl-8 pr-8 text-[13px] text-(--cream) outline-none transition-colors placeholder:text-(--muted) focus:border-(--border-light) [&::-webkit-search-cancel-button]:hidden"
               />
-              {searchQuery && (
-                <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center text-(--muted) transition-colors hover:text-(--cream)">
-                  <X className="w-3 h-3" />
+              {searchQuery ? (
+                <button onClick={() => setSearch("")} aria-label="Clear search" title="Clear search (Esc)" className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-[6px] text-(--muted) transition-colors hover:text-(--cream)">
+                  <AppIcon icon={XIcon} className="size-3.5" />
                 </button>
+              ) : (
+                <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-(--muted)">/</kbd>
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
-            <FileTree snapshot={explorerSnapshot} selectionSnapshot={snapshot} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <FileTree snapshot={explorerSnapshot} selectionSnapshot={snapshot} filterQuery={searchQuery} />
           </div>
         </>
       )
     case "filters":
       return (
         <>
-          <PanelHeader title="Filters" subtitle={`${explorerSnapshot.files.length.toLocaleString()} files`} />
+          <PanelHeader onBack={onBack} title="File types" subtitle={`${explorerSnapshot.files.length.toLocaleString()} files`} />
           <ExtensionFilter snapshot={explorerSnapshot} />
         </>
       )
     case "legend":
       return (
         <>
-          <PanelHeader title="Districts" subtitle={`${snapshot.districts.length}`} />
+          <PanelHeader onBack={onBack} title="Districts" subtitle={`${snapshot.districts.length}`} />
           <DistrictLegend snapshot={snapshot} />
         </>
       )
-    case "minimap":
+    case "settings":
       return (
         <>
-          <PanelHeader title="Minimap" subtitle="Click to navigate" />
-          <Minimap snapshot={snapshot} />
+          <PanelHeader onBack={onBack} title="Settings" />
+          <SettingsPanel />
         </>
       )
     case "commits":
       return (
         <>
-          <PanelHeader title="Commits" />
-          {repoUrl ? (
-            <CommitTimeline repoUrl={repoUrl} />
-          ) : (
-            <div className="flex items-center justify-center p-6">
-              <p className="text-xs text-(--muted) text-center">No repository URL available</p>
-            </div>
-          )}
+          <PanelHeader onBack={onBack} title="Commits" />
+          {repoUrl && <CommitTimeline repoUrl={repoUrl} />}
         </>
       )
   }
 }
 
-function PanelHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+/** Top of a section: the way back to the section list, the section's name, a count, an action. */
+function PanelHeader({ title, subtitle, action, onBack }: { title: string; subtitle?: string; action?: ReactNode; onBack: () => void }) {
   return (
-    <div className="flex h-11 shrink-0 items-center justify-between border-b-2 border-(--border-pixel) bg-(--bg) px-3">
-      <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
-        {title}
-      </span>
-      {subtitle && (
-        <span className="border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-(--cream-dark)">{subtitle}</span>
-      )}
+    <div className="flex h-10 shrink-0 items-center gap-1 pl-1.5 pr-3">
+      <button
+        type="button"
+        onClick={onBack}
+        title="All sections"
+        aria-label={`Back to all sections from ${title}`}
+        className="group flex h-7 min-w-0 items-center gap-1 rounded-[8px] pl-1 pr-2 text-[13.5px] font-medium text-(--cream) transition-colors hover:bg-(--bg-raised)"
+      >
+        <AppIcon icon={ChevronLeftIcon} className="size-3.5 shrink-0 text-(--muted) transition-colors group-hover:text-(--cream)" />
+        <span className="truncate">{title}</span>
+      </button>
+      <span className="flex-1" />
+      {subtitle && <span className="text-[12px] tabular-nums text-(--muted)">{subtitle}</span>}
+      {action}
     </div>
   )
 }
 
 // ── Secondary Panel (right) ─────────────────────────────────────────────────
 
-function SecondaryPanel({ snapshot, width, onResize }: { snapshot: CitySnapshot; width: number; onResize: (delta: number) => void }) {
+function SecondaryPanel({ snapshot, width, onWidthChange }: { snapshot: CitySnapshot; width: number; onWidthChange: (width: number) => void }) {
   const selectedFile = useCityStore((s) => s.selectedFile)
 
   if (!selectedFile) return null
 
   return (
     <>
-      <ResizeHandle side="right" onResize={onResize} />
-      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden bg-(--bg) md:flex">
+      <ResizeHandle side="right" width={width} onWidthChange={onWidthChange} />
+      <div style={{ width }} className="hidden shrink-0 flex-col overflow-hidden md:flex">
         <SidePanel snapshot={snapshot} />
       </div>
     </>
   )
 }
 
-// ── Project Navbar ──────────────────────────────────────────────────────────
+// ── Card top bar (the page's title and its controls) ─────────────────────
 
-function ProjectNavbar({
-  projectName,
-  repoUrl,
-  snapshot,
-  actions,
-  onSecurityClick,
-  securityActive,
-  securityEnabled,
-}: {
+/** Everything the old card top bar held; now rendered in the sidebar. */
+interface ShellChrome {
+  sidebarOpen: boolean
+  onToggleSidebar: () => void
+  onSearch: () => void
   projectName: string
   repoUrl?: string
-  snapshot: CitySnapshot
   actions?: ReactNode
   onSecurityClick?: () => void
   securityActive?: boolean
   securityEnabled?: boolean
+  securityRunning?: boolean
+  onHelp: () => void
+  /** Files the analysis could not parse; listed in the sidebar when there are any. */
+  warnings?: string[]
+}
+
+function SidebarToggle({ chrome }: { chrome: ShellChrome }) {
+  return (
+    <button
+      type="button"
+      className={shellIconButton}
+      title={chrome.sidebarOpen ? "Hide sidebar (L)" : "Show sidebar (L)"}
+      aria-label={chrome.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+      aria-pressed={chrome.sidebarOpen}
+      onClick={chrome.onToggleSidebar}
+    >
+      <AppIcon icon={PanelLeftIcon} />
+    </button>
+  )
+}
+
+function SecurityButton({ chrome }: { chrome: ShellChrome }) {
+  if (!chrome.securityEnabled || !chrome.onSecurityClick) return null
+  return (
+    <button
+      type="button"
+      onClick={chrome.onSecurityClick}
+      title={chrome.securityRunning ? "Security scan running" : "Security scan"}
+      aria-label="Security scan"
+      aria-pressed={!!chrome.securityActive}
+      className={cn(shellIconButton, "relative aria-pressed:bg-(--bg-raised)")}
+    >
+      <AppIcon icon={ShieldCheckIcon} />
+      {chrome.securityRunning && (
+        <span aria-hidden="true" className="absolute right-1 top-1 size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
+      )}
+    </button>
+  )
+}
+
+/**
+ * Top of the open sidebar: the window-button row (sidebar toggle, back, forward
+ * beside the macOS buttons), then the project's name and its actions.
+ */
+function SidebarHeader({ chrome }: { chrome: ShellChrome }) {
+  const reserveLights = useReserveTrafficLights()
+  return (
+    <div className="shrink-0">
+      <div
+        data-tauri-drag-region
+        className="flex h-[38px] items-center justify-end pr-2"
+        style={{ paddingLeft: reserveLights ? 82 : 8 }}
+      >
+        <FrameNav>
+          <SidebarToggle chrome={chrome} />
+        </FrameNav>
+      </div>
+      <div className="flex items-center gap-2 px-3.5 pb-2 pt-1">
+        <Link href="/dashboard" aria-label="All cities" title="All cities" className="shrink-0 opacity-90 transition-opacity hover:opacity-100">
+          <LogoMark className="size-[18px]" />
+        </Link>
+        <span className="min-w-0 flex-1 truncate text-[14px] font-medium tracking-[-0.01em] text-(--cream)" title={chrome.projectName}>
+          {chrome.projectName}
+        </span>
+        <div className="flex shrink-0 items-center">{chrome.actions}</div>
+      </div>
+    </div>
+  )
+}
+
+// ── Canvas toolbar (floating over the city) ─────────────────────────────
+
+const menuContent =
+  "z-50 min-w-[232px] rounded-[14px] border border-(--border-pixel) bg-(--bg-card) p-1 shadow-(--shadow-lg) outline-none"
+const menuItem =
+  "flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-1.5 outline-none transition-colors data-[highlighted]:bg-(--bg-raised)"
+
+/** A toolbar button that names the current choice and opens the list of choices. */
+function ToolbarMenu<K extends string>({
+  label,
+  icon,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  icon: AppIconType
+  value: K
+  options: { key: K; label: string; hint: string; shortcut?: string; icon?: AppIconType }[]
+  onChange: (key: K) => void
 }) {
-  const router = useRouter()
+  const current = options.find((o) => o.key === value)
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label={`${label}: ${current?.label}`}
+          title={label}
+          className="cc-seg-btn gap-1.5 pl-2.5 pr-2 data-[state=open]:bg-(--bg-on) data-[state=open]:text-(--cream)"
+        >
+          <AppIcon icon={current?.icon ?? icon} />
+          <span className="hidden text-(--cream) @[520px]:inline">{current?.label}</span>
+          <AppIcon icon={ChevronDownIcon} className="!size-3 text-(--muted)" />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="center" sideOffset={10} className={menuContent}>
+          <DropdownMenu.Label className="px-2 pb-1 pt-1.5 text-[11px] font-medium text-(--muted)">{label}</DropdownMenu.Label>
+          <DropdownMenu.RadioGroup value={value} onValueChange={(key) => onChange(key as K)}>
+            {options.map((o) => (
+              <DropdownMenu.RadioItem key={o.key} value={o.key} className={menuItem}>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[13px] font-medium text-(--cream)">{o.label}</span>
+                  <span className="truncate text-[11.5px] text-(--muted)">{o.hint}</span>
+                </span>
+                {o.shortcut && <kbd className="shrink-0 rounded-[5px] bg-(--bg-raised) px-1.5 py-px font-sans text-[11px] text-(--cream-dark)">{o.shortcut}</kbd>}
+                <span className="flex size-4 shrink-0 items-center justify-center text-(--cream)">
+                  <DropdownMenu.ItemIndicator>
+                    <AppIcon icon={CheckIcon} className="size-3.5" />
+                  </DropdownMenu.ItemIndicator>
+                </span>
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+
+function CanvasToolbar() {
   const visualizationMode = useCityStore((s) => s.visualizationMode)
   const setMode = useCityStore((s) => s.setMode)
   const layoutMode = useCityStore((s) => s.layoutMode)
   const setLayoutMode = useCityStore((s) => s.setLayoutMode)
   const viewDimension = useCityStore((s) => s.viewDimension)
   const setViewDimension = useCityStore((s) => s.setViewDimension)
+  const flat = { background: "transparent", padding: 0 }
 
+  // One small floating pill: the view switch, then two menus that each show
+  // their current choice (how files are grouped, what the colours mean).
   return (
-    <header className="z-50 grid h-[52px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-deep) px-3">
-      {/* Left */}
-      <div className="flex items-center gap-2 min-w-0">
-        <IconButton onClick={() => router.back()} aria-label="Go back" title="Go back">
-          <ArrowLeft />
-        </IconButton>
-        <Link href="/dashboard" className="flex items-center gap-2 text-(--cream) transition-colors hover:text-primary">
-          <LogoMark className="size-6" />
-          <span className="hidden font-mono text-[12px] font-semibold uppercase tracking-[0.05em] xl:inline">CodeCity</span>
-        </Link>
-        <span className="hidden text-(--muted) sm:inline">/</span>
-        <span className="max-w-[90px] truncate font-mono text-[12px] text-(--cream-dark) sm:max-w-[240px]">{projectName}</span>
-        {repoUrl?.startsWith("http") && (
-          <a
-            href={repoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden size-7 shrink-0 items-center justify-center text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream) sm:flex"
-            title="Open repository on GitHub"
-            aria-label="Open repository on GitHub"
-          >
-            <ExternalLink className="size-3.5" />
-          </a>
-        )}
-      </div>
-
-      {/* Center — view, layout and color mode */}
-      <div className="col-start-2 hidden min-w-0 items-center gap-2 overflow-x-auto scrollbar-none sm:flex">
-        <div className="cc-seg" role="group" aria-label="View">
-          {([
-            { key: "3d" as const, label: "3D", Icon: Box },
-            { key: "2d" as const, label: "2D", Icon: Square },
-            { key: "network" as const, label: "Network", Icon: Share2 },
-          ]).map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              onClick={() => setViewDimension(key)}
-              aria-pressed={viewDimension === key}
-              aria-label={`${label} view`}
-              title={`${label} view`}
-              className="cc-seg-btn"
-            >
-              <Icon />
-              <span className="hidden min-[1440px]:inline">{label}</span>
+    <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+      <div className="pointer-events-auto flex max-w-full items-center gap-1 rounded-full border border-(--border-pixel) bg-[color-mix(in_srgb,var(--bg-card)_88%,transparent)] p-1 shadow-(--shadow-lg) backdrop-blur-md">
+        <div className="cc-seg" style={flat} role="group" aria-label="View">
+          {VIEWS.map(({ key, label, icon }) => (
+            <button key={key} onClick={() => setViewDimension(key)} aria-pressed={viewDimension === key} aria-label={`${label} view`} title={`${label} view`} className="cc-seg-btn">
+              <AppIcon icon={icon} active={viewDimension === key} />
+              <span className="hidden @[640px]:inline">{label}</span>
             </button>
           ))}
         </div>
-
-        <div className="cc-seg" role="group" aria-label="Layout">
-          {LAYOUTS.map((l) => {
-            const Icon = l.icon
-            return (
-              <button
-                key={l.key}
-                onClick={() => setLayoutMode(l.key)}
-                aria-pressed={layoutMode === l.key}
-                aria-label={l.title}
-                title={l.title}
-                className="cc-seg-btn"
-              >
-                <Icon />
-                <span className="hidden min-[1440px]:inline">{l.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="cc-seg" role="group" aria-label="Color mode">
-          {MODES.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => setMode(m.key)}
-              aria-pressed={visualizationMode === m.key}
-              title={`${m.title} (${m.shortcut})`}
-              className="cc-seg-btn"
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <span className="h-4 w-px shrink-0 bg-(--border-light)" aria-hidden="true" />
+        <ToolbarMenu label="Group files by" icon={FolderIcon} value={layoutMode} options={LAYOUTS} onChange={setLayoutMode} />
+        <ToolbarMenu label="Colour buildings by" icon={PaletteIcon} value={visualizationMode} options={MODES} onChange={setMode} />
       </div>
-
-      <div className="col-start-3 flex min-w-0 justify-end gap-2 font-mono text-[11px] text-(--muted)">
-        {actions}
-        {securityEnabled && onSecurityClick && (
-          <div className="cc-seg">
-            <button
-              onClick={onSecurityClick}
-              title="Security scan"
-              aria-label="Security scan"
-              aria-pressed={!!securityActive}
-              className="cc-seg-btn"
-            >
-              <ShieldAlert />
-              <span className="hidden xl:inline">Security</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile center — tap to cycle */}
-      <div className="col-start-2 row-start-1 flex items-center justify-center gap-1 sm:hidden">
-        <button
-          onClick={() => {
-            const idx = LAYOUTS.findIndex((l) => l.key === layoutMode)
-            setLayoutMode(LAYOUTS[(idx + 1) % LAYOUTS.length].key)
-          }}
-          aria-label={`Layout: ${LAYOUTS.find((l) => l.key === layoutMode)?.title}. Tap to change`}
-          className="flex h-7 items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-card) px-2 text-(--cream)"
-        >
-          {(() => {
-            const ActiveIcon = LAYOUTS.find((l) => l.key === layoutMode)!.icon
-            return <ActiveIcon className="w-3 h-3" />
-          })()}
-        </button>
-        <button
-          onClick={() => {
-            const idx = MODES.findIndex((m) => m.key === visualizationMode)
-            setMode(MODES[(idx + 1) % MODES.length].key)
-          }}
-          aria-label={`Color mode: ${MODES.find((m) => m.key === visualizationMode)?.title}. Tap to change`}
-          className="h-7 bg-primary px-2 font-mono text-[11px] font-medium uppercase tracking-[0.05em] text-primary-foreground"
-        >
-          {MODES.find((m) => m.key === visualizationMode)?.label}
-        </button>
-      </div>
-    </header>
+    </div>
   )
 }
 
 // ── Project Shell ───────────────────────────────────────────────────────────
 
-const MIN_PANEL = 180
-const MAX_PANEL = 480
-
-export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectName, projectId, projectRoot, repoUrl, navbarActions, children }: ProjectShellProps) {
-  const [activeView, setActiveView] = useState<PrimaryView | null>("explorer")
-  const [primaryWidth, setPrimaryWidth] = useState(240)
+export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectName, projectId, projectRoot, repoUrl, navbarActions, onFilesChanged, children }: ProjectShellProps) {
+  useEditorBridge(onFilesChanged)
+  const [activeView, setActiveView] = useState<PrimaryView | null>("home")
+  const [searchFocusKey, setSearchFocusKey] = useState(0)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [primaryWidth, setPrimaryWidth] = useState(260)
   const [secondaryWidth, setSecondaryWidth] = useState(280)
   const selectedFile = useCityStore((s) => s.selectedFile)
 
@@ -506,13 +692,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
   const isDesktop = isTauri()
   const canScan = isDesktop && !!projectId && !!projectRoot
 
-  const handleSecurityClick = useCallback(async () => {
-    if (securityOpen && !securityLoading) {
-      setSecurityOpen(false)
-      return
-    }
-    setSecurityOpen(true)
-
+  const runSecurityScan = useCallback(async () => {
     if (!canScan || !projectId || !projectRoot) return
 
     // If already running, just open the panel
@@ -536,7 +716,17 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
       setSecurityError(err instanceof Error ? err.message : String(err))
       setSecurityLoading(false)
     }
-  }, [securityOpen, securityLoading, canScan, projectId, projectRoot])
+  }, [securityLoading, canScan, projectId, projectRoot])
+
+  const handleSecurityClick = useCallback(() => {
+    // Closing the panel never cancels a running scan; reopening shows its progress.
+    if (securityOpen) {
+      setSecurityOpen(false)
+      return
+    }
+    setSecurityOpen(true)
+    void runSecurityScan()
+  }, [securityOpen, runSecurityScan])
 
   const handleSecurityClose = useCallback(() => {
     setSecurityOpen(false)
@@ -551,98 +741,122 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
     setActiveView((prev) => (prev === view ? null : view))
   }, [])
 
-  const handlePrimaryResize = useCallback((delta: number) => {
-    setPrimaryWidth((w) => Math.min(MAX_PANEL, Math.max(MIN_PANEL, w + delta)))
+  const openSearch = useCallback(() => {
+    setActiveView("explorer")
+    setSearchFocusKey((k) => k + 1)
   }, [])
 
-  const handleSecondaryResize = useCallback((delta: number) => {
-    setSecondaryWidth((w) => Math.min(MAX_PANEL, Math.max(MIN_PANEL, w + delta)))
-  }, [])
-
+  // File details and the security report share the right-hand slot: picking a
+  // file brings its details back in front of an open security report.
   useEffect(() => {
-    if (selectedFile) setActiveView("explorer")
+    if (selectedFile) setSecurityOpen(false)
   }, [selectedFile])
 
   // Keyboard shortcuts for activity bar
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).tagName === "INPUT") return
-      if (e.metaKey || e.ctrlKey) {
-        if (e.key === "e" || e.key === "E") { e.preventDefault(); handleViewChange("explorer") }
-        if (e.key === "f" || e.key === "F") { e.preventDefault(); handleViewChange("search") }
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+        const key = e.key.toLowerCase()
+        if (key === "e") { e.preventDefault(); handleViewChange("explorer"); return }
+        if (key === "f") { e.preventDefault(); openSearch(); return }
+        if (key === ",") { e.preventDefault(); handleViewChange("settings"); return }
+      }
+      if (isTypingTarget(e)) return
+      if (e.key === "/") {
+        e.preventDefault()
+        openSearch()
+        return
+      }
+      if (e.key === "?") {
+        e.preventDefault()
+        setHelpOpen((v) => !v)
+        return
       }
       if (e.key === "l" || e.key === "L") {
-        if (!e.metaKey && !e.ctrlKey) {
-          e.preventDefault()
-          setActiveView((prev) => prev ? null : "explorer")
-        }
+        e.preventDefault()
+        setActiveView((prev) => prev ? null : "home")
       }
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [handleViewChange])
+  }, [handleViewChange, openSearch])
 
   const showSecurityPanel = securityOpen && canScan
+  const fileTypeCount = useMemo(() => new Set(explorerSnapshot.files.map((f) => getExtension(f.path))).size, [explorerSnapshot.files])
+  const activities = activitiesFor(repoUrl).map((item) => ({
+    ...item,
+    meta:
+      item.id === "explorer" ? explorerSnapshot.files.length.toLocaleString()
+      : item.id === "legend" ? String(snapshot.districts.length)
+      : item.id === "filters" ? String(fileTypeCount)
+      : undefined,
+  }))
+  const chrome: ShellChrome = {
+    sidebarOpen: !!activeView,
+    onToggleSidebar: () => setActiveView((prev) => (prev ? null : "home")),
+    onSearch: openSearch,
+    projectName,
+    repoUrl,
+    actions: navbarActions,
+    onSecurityClick: handleSecurityClick,
+    securityActive: securityOpen,
+    securityEnabled: canScan,
+    securityRunning: securityLoading,
+    onHelp: () => setHelpOpen(true),
+    warnings: snapshot.warnings,
+  }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-(--bg-deep)">
-      {/* Top navbar — full width */}
-      <ProjectNavbar
-        projectName={projectName}
-        repoUrl={repoUrl}
-        snapshot={snapshot}
-        actions={navbarActions}
-        onSecurityClick={handleSecurityClick}
-        securityActive={securityOpen}
-        securityEnabled={canScan}
-      />
-
-      {/* Main area: activity bar + panel + canvas + secondary */}
-      <div className="flex flex-1 overflow-hidden border-t border-black/30">
-        {/* Activity bar (icon strip) */}
-        <ActivityBar
-          activeView={activeView}
-          onViewChange={handleViewChange}
-          position="left"
-        />
-
-        {/* Primary sidebar panel — slides in/out */}
-        {activeView && (
+    // Ghostly's frame: the rail and side panel run to the top of the window on the
+    // near-black frame, and the page is a rounded card beside them, 8px from the edges.
+    <div className="flex h-screen flex-col overflow-hidden bg-(--bg-deep) text-(--cream)">
+      <FileDialogs />
+      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      <div className="flex min-h-0 flex-1">
+        {/* Sidebar: one column when open, the icon rail when collapsed */}
+        {activeView ? (
           <>
-            <div style={{ width: primaryWidth }} className="hidden shrink-0 flex-col overflow-hidden bg-(--bg) md:flex">
-              <PrimaryPanelContent view={activeView} snapshot={snapshot} explorerSnapshot={explorerSnapshot} repoUrl={repoUrl} />
-            </div>
-            <ResizeHandle side="left" onResize={handlePrimaryResize} />
+            <SidebarColumn chrome={chrome} items={activities} activeView={activeView} onSelect={setActiveView} width={primaryWidth}>
+              <PrimaryPanelContent view={activeView} onBack={() => setActiveView("home")} searchFocusKey={searchFocusKey} snapshot={snapshot} explorerSnapshot={explorerSnapshot} repoUrl={repoUrl} />
+            </SidebarColumn>
+            <ResizeHandle side="left" width={primaryWidth} onWidthChange={setPrimaryWidth} />
           </>
+        ) : (
+          <ActivityBar chrome={chrome} items={activities} activeView={activeView} onViewChange={handleViewChange} />
         )}
 
-        {/* Canvas area */}
-        <div className="flex flex-col flex-1 overflow-hidden bg-(--bg-deep)">
-          <div className="relative flex-1 overflow-hidden">
-            {children}
-            <CityTooltip snapshot={snapshot} />
-            <CodeViewer />
+        {/* The page card */}
+        <section
+          className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-[16px] border border-(--border-pixel) bg-(--bg) max-md:ml-2"
+          style={{ backgroundImage: "var(--ground-lit)" }}
+        >
+
+          <div className="flex min-h-0 flex-1">
+            {/* Canvas */}
+            <div className="@container flex min-w-0 flex-1 flex-col overflow-hidden">
+              <EditorTabStrip />
+              <div className="relative flex-1 overflow-hidden">
+                <CanvasToolbar />
+                {children}
+                <CityTooltip snapshot={snapshot} />
+                <EditorPane />
+              </div>
+            </div>
+
+            {/* File details; the security report takes this slot while open */}
+            {!showSecurityPanel && (
+              <SecondaryPanel snapshot={snapshot} width={secondaryWidth} onWidthChange={setSecondaryWidth} />
+            )}
+            {showSecurityPanel && (
+              <>
+                <ResizeHandle side="right" width={secondaryWidth} onWidthChange={setSecondaryWidth} />
+                <div style={{ width: secondaryWidth }} className="hidden shrink-0 flex-col overflow-hidden md:flex">
+                  <SecuritySidebar result={securityResult} loading={securityLoading} error={securityError} onRetry={canScan ? runSecurityScan : undefined} onClose={handleSecurityClose} />
+                </div>
+              </>
+            )}
           </div>
-          <BottomBar stats={snapshot.stats} warnings={snapshot.warnings} />
-        </div>
-
-        {/* Secondary panel (file details) */}
-        <SecondaryPanel snapshot={snapshot} width={secondaryWidth} onResize={handleSecondaryResize} />
-
-        {/* Security panel */}
-        {showSecurityPanel && (
-          <>
-            <ResizeHandle side="right" onResize={handleSecondaryResize} />
-            <div style={{ width: secondaryWidth }} className="hidden shrink-0 flex-col overflow-hidden bg-(--bg) md:flex">
-              <SecuritySidebar
-                result={securityResult}
-                loading={securityLoading}
-                error={securityError}
-                onClose={handleSecurityClose}
-              />
-            </div>
-          </>
-        )}
+        </section>
       </div>
     </div>
   )

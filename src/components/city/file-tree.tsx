@@ -1,25 +1,11 @@
 "use client"
 
 import { useMemo, useState, useEffect, useCallback, memo, useRef } from "react"
-import { ChevronRight, ChevronDown, Eye, EyeOff } from "lucide-react"
-import { getIconForFile as _getIconForFile, getIconForFolder as _getIconForFolder, getIconForOpenFolder as _getIconForOpenFolder } from "vscode-icons-js"
-
-// vscode-icons-js returns "light_" variants by default, which are invisible on dark backgrounds.
-// Remap to dark variants when available.
-function darkIcon(icon: string): string {
-  if (!icon.includes("_light_")) return icon
-  const dark = icon.replace("_light_", "_")
-  return dark
-}
-function getFileIcon(name: string): string {
-  return darkIcon(_getIconForFile(name) ?? "default_file.svg")
-}
-function getFolderIcon(name: string): string {
-  return darkIcon(_getIconForFolder(name))
-}
-function getOpenFolderIcon(name: string): string {
-  return darkIcon(_getIconForOpenFolder(name))
-}
+import { ChevronDownIcon, ChevronRightIcon, FileSearchIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons"
+import { AppIcon } from "@/components/ui/app-icon"
+import { FileIcon } from "./file-icons"
+import { FileContextMenu } from "./editor-pane"
+import { useSettings } from "@/lib/settings"
 import type { CitySnapshot } from "@/lib/types/city"
 import { isPathHidden as isStorePathHidden, useCityStore } from "./use-city-store"
 import { getExtension } from "./extension-filter"
@@ -27,6 +13,8 @@ import { getExtension } from "./extension-filter"
 interface FileTreeProps {
   snapshot: CitySnapshot
   selectionSnapshot?: CitySnapshot
+  /** When set, only files whose path contains this text are listed (the Search panel). */
+  filterQuery?: string
 }
 
 interface TreeNode {
@@ -39,7 +27,8 @@ interface TreeNode {
   fileCount: number
 }
 
-function buildTree(snapshot: CitySnapshot, hiddenExtensions: Set<string>): TreeNode {
+function buildTree(snapshot: CitySnapshot, hiddenExtensions: Set<string>, filterQuery = ""): TreeNode {
+  const needle = filterQuery.trim().toLowerCase()
   const root: TreeNode = { name: "root", path: "", isFile: false, parsed: false, children: [], fileCount: 0 }
 
   const districtColorMap = new Map<string, string>()
@@ -58,6 +47,9 @@ function buildTree(snapshot: CitySnapshot, hiddenExtensions: Set<string>): TreeN
 
   for (const entry of entries) {
     if (entry.isFile && hiddenExtensions.has(getExtension(entry.path))) {
+      continue
+    }
+    if (needle && (!entry.isFile || !entry.path.toLowerCase().includes(needle))) {
       continue
     }
 
@@ -141,6 +133,24 @@ function getAncestorPaths(filePath: string): Set<string> {
   return paths
 }
 
+/** One faint vertical line per ancestor level, centred on that level's chevron. */
+function IndentGuides({ depth }: { depth: number }) {
+  const show = useSettings((s) => s.indentGuides)
+  if (!show || depth === 0) return null
+  return (
+    <>
+      {Array.from({ length: depth }, (_, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 w-px bg-(--border-pixel)"
+          style={{ left: 8 + i * 16 + 7 }}
+        />
+      ))}
+    </>
+  )
+}
+
 const TreeNodeItem = memo(function TreeNodeItem({
   node,
   depth,
@@ -172,25 +182,31 @@ const TreeNodeItem = memo(function TreeNodeItem({
   // Highlight search matches
   const isMatch = searchQuery && node.name.toLowerCase().includes(searchQuery.toLowerCase())
 
-  // Indent: 8px base + 16px per depth level
-  // Files get extra 16px to align with folder content (past the chevron)
-  const indent = node.isFile ? depth * 16 + 24 : depth * 16 + 8
+  // Indent: 8px base + 16px per depth level. Files and folders share one
+  // column grid: a 16px chevron slot (empty for files), then the icon.
+  const indent = depth * 16 + 8
 
   if (node.isFile) {
     return (
+      <FileContextMenu path={node.path} isFile>
       <div
-        className={`group flex h-7 select-none items-center border-l-2 pr-2 font-mono text-[11px] transition-colors ${isSelectable ? "cursor-pointer" : "cursor-default"} ${
+        className={`group relative mx-1.5 flex h-7 select-none items-center rounded-md pr-2 text-[12px] transition-colors ${isSelectable ? "cursor-pointer" : "cursor-default"} ${
           isSelected
-            ? "border-primary bg-[color-mix(in_srgb,var(--lime)_12%,transparent)] text-(--cream)"
+            ? "bg-(--bg-on) text-(--cream) shadow-[inset_0_0_0_1px_var(--border-light)]"
             : isHidden
-              ? "border-transparent text-(--dim)"
+              ? "text-(--muted)"
               : isUnparsed
-                ? "border-transparent text-(--dim)"
+                ? "text-(--muted)"
               : isMatch
-                ? "border-primary bg-[color-mix(in_srgb,var(--lime)_6%,transparent)] text-primary"
-                : "border-transparent text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
+                ? "bg-[color-mix(in_srgb,var(--lime)_6%,transparent)] text-primary"
+                : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
         }`}
         style={{ paddingLeft: indent }}
+        role="treeitem"
+        tabIndex={0}
+        aria-selected={isSelected}
+        aria-disabled={!isSelectable || undefined}
+        title={node.path}
         data-file-path={node.path}
         data-selected-file={isSelected ? "true" : undefined}
         onClick={() => {
@@ -199,15 +215,28 @@ const TreeNodeItem = memo(function TreeNodeItem({
         onDoubleClick={() => {
           if (isSelectable) openCodeViewer(node.path)
         }}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget || !isSelectable) return
+          if (e.key === "Enter") {
+            e.preventDefault()
+            if (isSelected) openCodeViewer(node.path)
+            else selectFile(node.path, selectableIndex)
+          } else if (e.key === " ") {
+            e.preventDefault()
+            selectFile(node.path, selectableIndex)
+          }
+        }}
       >
-        <img
-          src={`/icons/vscode/${getFileIcon(node.name)}`}
-          alt=""
-          className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
+        <IndentGuides depth={depth} />
+        <span className="w-4 shrink-0" aria-hidden="true" />
+        <FileIcon
+          name={node.name}
+          color={node.districtColor}
+          className={`mr-1.5 ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
         />
-        <span className={`flex-1 truncate ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
+        <span className={`flex-1 truncate ${isHidden ? "line-through" : ""}`}>{node.name}</span>
         {isUnparsed && !isHidden && (
-          <span className="ml-1 shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--muted)">
+          <span className="ml-1 shrink-0 rounded-full bg-(--bg-card) px-1.5 py-px text-[11px] text-(--muted) rounded-md">
             skip
           </span>
         )}
@@ -217,42 +246,59 @@ const TreeNodeItem = memo(function TreeNodeItem({
             event.stopPropagation()
             togglePathVisibility(node.path)
           }}
-          className="ml-1 flex size-5 shrink-0 items-center justify-center rounded-none text-(--muted) opacity-0 transition-colors hover:bg-(--bg-raised) hover:text-(--cream) group-hover:opacity-100 focus:opacity-100"
-          title={isPathHidden ? "Show path" : "Hide path"}
+          className={`ml-1 flex size-5 shrink-0 items-center justify-center text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream) focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 ${isPathHidden ? "opacity-100" : "opacity-0"}`}
+          title={isPathHidden ? "Show in city" : "Hide from city"}
           aria-label={isPathHidden ? `Show ${node.name}` : `Hide ${node.name}`}
         >
-          {isPathHidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          <AppIcon icon={isPathHidden ? EyeOffIcon : EyeIcon} className="size-3.5" />
         </button>
       </div>
+      </FileContextMenu>
     )
   }
 
   return (
     <div>
+      <FileContextMenu path={node.path} isFile={false}>
       <div
-        className={`group flex h-7 cursor-pointer select-none items-center border-l-2 pr-2 font-mono text-[11px] transition-colors ${
+        className={`group relative mx-1.5 flex h-7 cursor-pointer select-none items-center rounded-md pr-2 text-[12px] transition-colors ${
           isHidden
-            ? "border-transparent text-(--dim)"
+            ? "text-(--muted)"
             : isUnparsed
-              ? "border-transparent text-(--dim)"
+              ? "text-(--muted)"
             : isMatch
-              ? "border-primary text-primary"
-              : "border-transparent text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
+              ? "text-primary"
+              : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
         }`}
         style={{ paddingLeft: indent }}
+        role="treeitem"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        title={node.path}
         onClick={() => toggleFolder(node.path)}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            toggleFolder(node.path)
+          } else if ((e.key === "ArrowRight" && !isExpanded) || (e.key === "ArrowLeft" && isExpanded)) {
+            e.preventDefault()
+            toggleFolder(node.path)
+          }
+        }}
       >
-        {isExpanded
-          ? <ChevronDown className="w-4 h-4 shrink-0 text-(--muted) -ml-0.5" />
-          : <ChevronRight className="w-4 h-4 shrink-0 text-(--muted) -ml-0.5" />
-        }
-        <img
-          src={`/icons/vscode/${isExpanded ? getOpenFolderIcon(node.name) : getFolderIcon(node.name)}`}
-          alt=""
-          className={`w-[14px] h-[14px] shrink-0 mr-[6px] ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
+        <IndentGuides depth={depth} />
+        <span className="flex w-4 shrink-0 items-center justify-center text-(--muted) group-hover:text-(--cream-dark)">
+          <AppIcon icon={isExpanded ? ChevronDownIcon : ChevronRightIcon} className="size-3.5" />
+        </span>
+        <FileIcon
+          name={node.name}
+          folder
+          expanded={isExpanded}
+          className={`mr-1.5 ${isHidden ? "opacity-30" : isUnparsed ? "opacity-35 grayscale" : ""}`}
         />
-        <span className={`flex-1 truncate font-semibold ${isHidden ? "line-through opacity-55" : isUnparsed ? "opacity-60" : ""}`}>{node.name}</span>
-        <span className="mr-1 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] tabular-nums text-(--muted)">
+        <span className={`flex-1 truncate font-semibold ${isHidden ? "line-through" : ""}`}>{node.name}</span>
+        <span className="mr-1 text-[11px] tabular-nums text-(--muted)">
           {node.fileCount}
         </span>
         <button
@@ -261,13 +307,14 @@ const TreeNodeItem = memo(function TreeNodeItem({
             event.stopPropagation()
             togglePathVisibility(node.path)
           }}
-          className="flex size-5 shrink-0 items-center justify-center rounded-none text-(--muted) opacity-0 transition-colors hover:bg-(--bg-raised) hover:text-(--cream) group-hover:opacity-100 focus:opacity-100"
-          title={isPathHidden ? "Show path" : "Hide path"}
+          className={`flex size-5 shrink-0 items-center justify-center text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream) focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 ${isPathHidden ? "opacity-100" : "opacity-0"}`}
+          title={isPathHidden ? "Show in city" : "Hide from city"}
           aria-label={isPathHidden ? `Show ${node.name}` : `Hide ${node.name}`}
         >
-          {isPathHidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          <AppIcon icon={isPathHidden ? EyeOffIcon : EyeIcon} className="size-3.5" />
         </button>
       </div>
+      </FileContextMenu>
       {isExpanded &&
         node.children.map((child) => (
           <TreeNodeItem
@@ -284,14 +331,15 @@ const TreeNodeItem = memo(function TreeNodeItem({
   )
 })
 
-export function FileTree({ snapshot, selectionSnapshot = snapshot }: FileTreeProps) {
+export function FileTree({ snapshot, selectionSnapshot = snapshot, filterQuery }: FileTreeProps) {
   const selectedFile = useCityStore((s) => s.selectedFile)
   const searchQuery = useCityStore((s) => s.searchQuery)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
   const showAllPaths = useCityStore((s) => s.showAllPaths)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const tree = useMemo(() => buildTree(snapshot, hiddenExtensions), [hiddenExtensions, snapshot])
+  const tree = useMemo(() => buildTree(snapshot, hiddenExtensions, filterQuery), [hiddenExtensions, snapshot, filterQuery])
+  const isFiltering = !!filterQuery?.trim()
   const selectableFiles = useMemo(() => {
     const files = new Map<string, number>()
     selectionSnapshot.files.forEach((file, index) => files.set(file.path, index))
@@ -351,8 +399,19 @@ export function FileTree({ snapshot, selectionSnapshot = snapshot }: FileTreePro
   }, [])
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-(--bg-deep)">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain py-1.5 scroll-thin">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      {isFiltering && tree.children.length > 0 && (
+        <div className="shrink-0 px-3.5 pb-1.5 text-[12px] text-(--muted)">
+          <span className="tabular-nums text-(--cream-dark)">{tree.fileCount}</span> {tree.fileCount === 1 ? "match" : "matches"}
+        </div>
+      )}
+      <div ref={scrollRef} role="tree" aria-label="Project files" className="flex-1 overflow-y-auto overscroll-contain py-1.5 scroll-thin">
+        {isFiltering && tree.children.length === 0 && (
+          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+            <AppIcon icon={FileSearchIcon} className="size-5 text-(--dim)" />
+            <p className="text-[12px] text-(--muted)">No files match</p>
+          </div>
+        )}
         {tree.children.map((child) => (
           <TreeNodeItem
             key={child.path}
@@ -366,13 +425,13 @@ export function FileTree({ snapshot, selectionSnapshot = snapshot }: FileTreePro
         ))}
       </div>
       {hiddenPaths.size > 0 && (
-        <div className="flex shrink-0 items-center justify-between border-t-2 border-(--border-pixel) bg-(--bg-card) px-3 py-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-med)">
+        <div className="flex shrink-0 items-center justify-between border-t border-(--border-pixel) px-3.5 py-2">
+          <span className="text-[12px] text-(--sev-med)">
             <span className="tabular-nums">{hiddenPaths.size}</span> hidden
           </span>
           <button
             onClick={showAllPaths}
-            className="btn-press border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.05em] text-(--sev-med) transition-colors hover:bg-[color-mix(in_srgb,var(--sev-med)_15%,transparent)]"
+            className="h-6 rounded-full bg-[color-mix(in_srgb,var(--sev-med)_14%,transparent)] px-2.5 text-[12px] text-(--sev-med) transition-colors active:translate-y-px hover:bg-[color-mix(in_srgb,var(--sev-med)_22%,transparent)] rounded-full"
           >
             Show all
           </button>

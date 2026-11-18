@@ -2,7 +2,14 @@
 
 import { useMemo } from "react"
 import type { CitySnapshot } from "@/lib/types/city"
-import { useCityStore } from "./use-city-store"
+import { isPathHidden, useCityStore } from "./use-city-store"
+import { getExtension } from "./extension-filter"
+
+function formatLines(lines: number): string {
+  if (lines >= 1_000_000) return `${(lines / 1_000_000).toFixed(1)}M`
+  if (lines >= 1000) return `${(lines / 1000).toFixed(1)}k`
+  return String(lines)
+}
 
 interface DistrictLegendProps {
   snapshot: CitySnapshot
@@ -11,6 +18,8 @@ interface DistrictLegendProps {
 export function DistrictLegend({ snapshot }: DistrictLegendProps) {
   const selectFile = useCityStore((s) => s.selectFile)
   const selectedFile = useCityStore((s) => s.selectedFile)
+  const hiddenPaths = useCityStore((s) => s.hiddenPaths)
+  const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
 
   // Compute total lines per district
   const districtStats = useMemo(() => {
@@ -31,17 +40,21 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
     return file?.district ?? null
   }, [selectedFile, snapshot.files])
 
+  // Jump to the district's biggest visible file, passing its index so the
+  // building gets the same highlight as a click in the city.
   function handleDistrictClick(districtName: string) {
-    const district = snapshot.districts.find((d) => d.name === districtName)
-    if (district && district.files.length > 0) {
-      selectFile(district.files[0])
-    }
+    let best = -1
+    snapshot.files.forEach((file, index) => {
+      if (file.district !== districtName) return
+      if (isPathHidden(file.path, hiddenPaths) || hiddenExtensions.has(getExtension(file.path))) return
+      if (best === -1 || file.lines > snapshot.files[best].lines) best = index
+    })
+    if (best !== -1) selectFile(snapshot.files[best].path, best)
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-
-      <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto overscroll-contain py-1 scroll-thin">
         {snapshot.districts.map((district) => {
           const stats = districtStats.get(district.name)
           const isActive = selectedDistrict === district.name
@@ -49,24 +62,20 @@ export function DistrictLegend({ snapshot }: DistrictLegendProps) {
           return (
             <button
               key={district.name}
+              type="button"
               onClick={() => handleDistrictClick(district.name)}
-              className={`flex w-full items-center gap-2 border-b border-dashed border-(--border-pixel) px-2 py-1.5 text-left font-mono text-[11px] transition-colors
-                ${isActive
-                  ? "bg-(--bg-raised) text-(--cream)"
+              aria-current={isActive || undefined}
+              title={`${district.name}: ${district.files.length} files, ${stats ? formatLines(stats.lines) : 0} lines`}
+              className={`mx-1.5 flex h-7 w-[calc(100%-12px)] items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] transition-colors ${
+                isActive
+                  ? "bg-(--bg-on) text-(--cream) shadow-[inset_0_0_0_1px_var(--border-light)]"
                   : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
-                }`}
+              }`}
             >
-              <span
-                className={`inline-block size-2.5 shrink-0 border ${isActive ? "border-(--cream)" : "border-(--border-strong)"}`}
-                style={{ backgroundColor: district.color }}
-              />
+              <span className="size-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: district.color }} />
               <span className="flex-1 truncate">{district.name}</span>
-              <span className="shrink-0 font-mono text-[10px] tabular-nums text-(--muted)">
-                {stats ? `${(stats.lines / 1000).toFixed(1)}k` : ""}
-              </span>
-              <span className="shrink-0 border-2 border-(--border-pixel) bg-(--bg-deep) px-1 py-px font-mono text-[10px] tabular-nums text-(--cream-dark)">
-                {district.files.length}
-              </span>
+              {/* Files in the district; lines are in the tooltip */}
+              <span className="shrink-0 text-[12px] tabular-nums text-(--muted)">{district.files.length}</span>
             </button>
           )
         })}

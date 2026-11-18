@@ -1,13 +1,9 @@
-import { SidebarProvider } from "@codecity/ui/components/sidebar"
+import { WindowFrame } from "@/components/window-frame"
 
 export default function ReposLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <SidebarProvider className="min-h-svh">
-      {children}
-    </SidebarProvider>
-  )
+  return <WindowFrame>{children}</WindowFrame>
 }

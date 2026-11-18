@@ -49,7 +49,9 @@ if (aLedge > 0.5) transformed.y = mix(transformed.y, 0.5 - ccCrownH / max(ccScal
 if (aCrown > 0.5) transformed.xz *= mix(1.0, ${CROWN_INSET.toFixed(2)}, ccSetback);`
 
 const FACADE_FRAGMENT = /* glsl */ `
-vec3 ccBase = diffuseColor.rgb;
+// Each building is a shade lighter or darker than its neighbours (same hue), so a
+// district reads as many buildings instead of one block of flat colour.
+vec3 ccBase = diffuseColor.rgb * (0.86 + 0.28 * ccHash(vec3(vCcSeed * 0.291, 5.0)));
 float ccTop = step(0.5, vCcObjNormal.y);
 float ccSide = 1.0 - step(0.5, abs(vCcObjNormal.y));
 float ccOnX = step(0.5, abs(vCcObjNormal.x));
@@ -66,8 +68,8 @@ float ccFace = ccOnX * 2.0 + step(0.0, vCcObjNormal.x + vCcObjNormal.z);
 // 0 = glass curtain wall, 1 = ribbon windows, 2 = punched windows
 float ccStyle = vCcScale.y < 1.4 ? 2.0 : floor(ccHash(vec3(vCcSeed * 0.173, 1.0)) * 2.999);
 
-const float CC_COL = 0.30;
-const float CC_FLOOR = 0.34;
+const float CC_COL = 0.38;
+const float CC_FLOOR = 0.42;
 const float CC_LOBBY = 0.32;
 const float CC_PARAPET = 0.16;
 float ccCols = max(1.0, floor((ccW - 0.14) / CC_COL));
@@ -76,7 +78,8 @@ vec2 ccCell = vec2((ccU - ccOff) / CC_COL, (ccH - CC_LOBBY) / CC_FLOOR);
 vec2 ccId = floor(ccCell);
 vec2 ccFr = fract(ccCell);
 vec2 ccFw = max(fwidth(ccCell), vec2(1e-4));
-float ccFar = smoothstep(0.25, 0.6, max(ccFw.x, ccFw.y));
+// Window detail dissolves into a smooth facade early, so mid-distance towers do not sparkle
+float ccFar = smoothstep(0.1, 0.38, max(ccFw.x, ccFw.y));
 
 float ccHasLobby = step(0.9, vCcScale.y);
 float ccLobby = ccHasLobby * (1.0 - step(CC_LOBBY, ccH));
@@ -86,6 +89,8 @@ float ccPilaster = 1.0 - step(0.07, min(ccU - ccEdgeLo, ccEdgeHi - ccU));
 
 float ccMullion = ccBand(ccFr.x, 0.06, 0.94, ccFw.x);
 float ccGlass;
+// Window head height within a floor, per style (used for the reveal shadow)
+float ccHead = ccStyle < 0.5 ? 0.95 : (ccStyle < 1.5 ? 0.92 : 0.78);
 if (ccStyle < 0.5) {
   ccGlass = mix(ccMullion * ccBand(ccFr.y, 0.07, 0.95, ccFw.y), 0.82, ccFar);
 } else if (ccStyle < 1.5) {
@@ -94,34 +99,62 @@ if (ccStyle < 0.5) {
   ccGlass = mix(ccBand(ccFr.x, 0.24, 0.76, ccFw.x) * ccBand(ccFr.y, 0.3, 0.78, ccFw.y), 0.25, ccFar);
 }
 ccGlass *= ccInBody * (1.0 - ccPilaster) * ccSide;
+// A thin dark reveal along the top of each window gives the facade some depth.
+float ccReveal = ccSide * ccInBody * (1.0 - ccFar) * (1.0 - ccPilaster) * ccBand(ccFr.y, ccHead - 0.07, ccHead, ccFw.y) * step(0.01, ccGlass);
 
 // Interior light per office bay: a minority lit, at varied dim levels
-float ccBayW = ccStyle < 1.5 ? 2.0 : 1.0;
-vec2 ccBay = vec2(floor(ccId.x / ccBayW), ccId.y);
-float ccR1 = ccHash(vec3(ccBay, ccFace) + vec3(vCcSeed * 0.731, 0.0));
-float ccR2 = ccHash(vec3(ccBay.yx, ccFace + 7.0) + vec3(vCcSeed.yx * 1.37, 3.0));
-float ccLit = step(ccR1, 0.2) * (0.45 + 0.55 * ccR2);
-ccLit = mix(ccLit, 0.2 * 0.72, ccFar);
+// Lit windows are scattered one by one (no blocky clusters); some floors are busier than others.
+float ccR1 = ccHash(vec3(ccId, ccFace) + vec3(vCcSeed * 0.731, 0.0));
+float ccR2 = ccHash(vec3(ccId.yx, ccFace + 7.0) + vec3(vCcSeed.yx * 1.37, 3.0));
+float ccFloorBusy = ccHash(vec3(ccId.y, ccFace + 3.0, vCcSeed.x * 0.517));
+float ccLit = step(ccR1, 0.07 + 0.1 * ccFloorBusy) * (0.45 + 0.35 * ccR2);
+ccLit = mix(ccLit, 0.12 * 0.62, ccFar);
 
-vec3 ccWallCol = mix(vec3(0.055, 0.058, 0.066), ccBase * 0.55, 0.65);
-vec3 ccGlassCol = ccBase * 0.14 + vec3(0.018, 0.024, 0.04) + vec3(0.02, 0.03, 0.05) * clamp(ccH / max(vCcScale.y, 0.01), 0.0, 1.0);
+// Dusk palette: walls carry most of the district colour so files read clearly.
+vec3 ccWallCol = mix(vec3(0.12, 0.125, 0.14), ccBase, 0.94);
+float ccPaneY = mix(clamp(ccFr.y, 0.0, 1.0), 0.5, ccFar);
+vec3 ccSky = vec3(0.55, 0.68, 0.82);
+// Glass is a darker shade of the wall, not a black grid: low contrast is easier on the eye
+vec3 ccGlassCol = ccBase * 0.6 + vec3(0.02, 0.025, 0.035) + vec3(0.02, 0.03, 0.05) * clamp(ccH / max(vCcScale.y, 0.01), 0.0, 1.0);
+// Each pane reflects a little sky near its head; a soft diagonal streak breaks up the grid.
+float ccStreak = smoothstep(0.35, 0.0, abs(fract((ccU + ccH) * 0.18 + vCcSeed.x * 0.37) - 0.5));
+ccGlassCol += ccSky * (0.03 + 0.05 * smoothstep(0.35, 0.95, ccPaneY) + 0.02 * ccStreak) * (1.0 - ccFar * 0.5);
 vec3 ccSideCol = mix(ccWallCol, ccGlassCol, ccGlass);
-ccSideCol = mix(ccSideCol, ccBase * 0.08 + vec3(0.02), ccLobby * (1.0 - ccPilaster));
-ccSideCol = mix(ccSideCol, ccBase * 0.7, ccParapet);
+ccSideCol *= 1.0 - 0.15 * ccReveal;
+ccSideCol = mix(ccSideCol, ccBase * 0.22 + vec3(0.04), ccLobby * (1.0 - ccPilaster));
+ccSideCol = mix(ccSideCol, ccBase * 1.0, ccParapet);
 
 float ccEx = (ccHalf - abs(vCcObjPos.x)) * vCcScale.x;
 float ccEz = (ccHalf - abs(vCcObjPos.z)) * vCcScale.z;
-float ccRim = 1.0 - smoothstep(0.05, 0.09, min(ccEx, ccEz));
-vec3 ccRoof = mix(ccBase * 0.9, ccBase * 0.5, ccRim);
+// Roof: a light coping on the parapet, a shadowed gutter inside it, then a
+// darker membrane with faint panel seams (seams fade out with distance).
+float ccEdge = min(ccEx, ccEz);
+float ccCope = 1.0 - smoothstep(0.06, 0.085, ccEdge);
+float ccGutter = (1.0 - smoothstep(0.09, 0.16, ccEdge)) * (1.0 - ccCope);
+vec2 ccRoofP = vec2(vCcObjPos.x * vCcScale.x, vCcObjPos.z * vCcScale.z) / 0.55;
+vec2 ccRoofD = min(fract(ccRoofP), 1.0 - fract(ccRoofP));
+vec2 ccRoofW = max(fwidth(ccRoofP), vec2(1e-4));
+float ccSeam = 1.0 - smoothstep(0.5, 1.5, min(ccRoofD.x / ccRoofW.x, ccRoofD.y / ccRoofW.y));
+ccSeam *= 1.0 - smoothstep(0.15, 0.4, max(ccRoofW.x, ccRoofW.y));
+vec3 ccMembrane = ccBase * 0.8 + vec3(0.025);
+ccMembrane *= 1.0 - 0.1 * ccSeam;
+ccMembrane *= 1.0 - 0.22 * ccGutter;
+vec3 ccRoof = mix(ccMembrane, ccBase * 1.12 + vec3(0.05), ccCope);
 
 diffuseColor.rgb = mix(ccSideCol, ccRoof, ccTop);
+// Contact shadow: walls darken toward the street, as if the ground occluded the sky light.
+diffuseColor.rgb *= mix(1.0, mix(0.6, 1.0, smoothstep(0.0, 0.9, ccH)), ccSide);
+// Street canyon: the lower floors of a tower get less sky than the top ones.
+diffuseColor.rgb *= mix(1.0, mix(0.8, 1.04, smoothstep(0.0, 7.0, ccH)), ccSide);
 
-vec3 ccLight = vec3(1.0, 0.58, 0.26); // plain warm amber, never tinted toward white
-vec3 ccEmit = (ccLight * ccGlass * ccLit + vec3(1.0, 0.62, 0.32) * ccLobby * ccSide * 0.1) * uWindowGlow * vCcLit;`
+vec3 ccLight = vec3(1.0, 0.9, 0.74); // soft warm white
+vec3 ccEmit = (ccLight * ccGlass * ccLit + vec3(1.0, 0.9, 0.74) * ccLobby * ccSide * 0.1) * uWindowGlow * vCcLit;`
 
 export function createBuildingMaterial(): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.7, metalness: 0.1 })
   const uniforms = { uWindowGlow: { value: 0.45 } }
+  // Lets the scene dim lit windows by day (see InstancedBuildings).
+  material.userData.windowGlow = uniforms.uWindowGlow
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uWindowGlow = uniforms.uWindowGlow
@@ -174,7 +207,7 @@ metalnessFactor = mix(metalnessFactor, 0.25, ccGlass);`
       .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\ntotalEmissiveRadiance += ccEmit;`)
   }
 
-  material.customProgramCacheKey = () => "codecity-building-facade-v6"
+  material.customProgramCacheKey = () => "codecity-building-facade-v11"
   return material
 }
 

@@ -4,8 +4,9 @@ import { useRef, useMemo, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
-import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
+import { getBuildingHeight, getBuildingWidth } from "@/lib/visualization/building-dimensions"
 import { useCityStore } from "./use-city-store"
+import { THEME } from "@/lib/theme"
 
 interface SelectionMarkerProps {
   snapshot: CitySnapshot
@@ -26,13 +27,13 @@ export const SelectionMarker = memo(function SelectionMarker({ snapshot }: Selec
   }, [selectedFile, snapshot.files])
 
   const districtColor = useMemo(() => {
-    if (!fileData) return "#ffffff"
-    return snapshot.districts.find((d) => d.name === fileData.district)?.color ?? "#ffffff"
+    if (!fileData) return THEME.cream
+    return snapshot.districts.find((d) => d.name === fileData.district)?.color ?? THEME.cream
   }, [fileData, snapshot.districts])
 
   useFrame(({ clock }) => {
     if (!ringRef.current || !matRef.current || !glowRef.current || !glowMatRef.current) return
-    const t = clock.getElapsedTime()
+    const t = clock.elapsedTime
 
     ringRef.current.rotation.z = t * 0.4
     glowRef.current.rotation.z = -t * 0.25
@@ -48,12 +49,13 @@ export const SelectionMarker = memo(function SelectionMarker({ snapshot }: Selec
 
   if (!fileData) return null
 
-  const buildingWidth = Math.max(1.2, Math.min(2.8, 1.2 + fileData.functions.length * 0.15))
+  const buildingWidth = getBuildingWidth(fileData) + 0.2
   const buildingHeight = getBuildingHeight(fileData)
   const ringRadius = buildingWidth * 0.8 + 0.3
 
+  // Above the district and lot lines so the ring is not buried in them
   return (
-    <group position={[fileData.position.x, 0.04, fileData.position.z]}>
+    <group position={[fileData.position.x, 0.12, fileData.position.z]}>
       {/* Vertical beam */}
       <mesh ref={beamRef} position={[0, buildingHeight / 2 + 5, 0]}>
         <cylinderGeometry args={[ringRadius * 0.1, ringRadius * 0.6, buildingHeight + 10, 8, 1, true]} />

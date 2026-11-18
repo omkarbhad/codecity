@@ -4,38 +4,43 @@
 @source "../";
 
 /* ============================================================
-   CodeCity Design System — Pixel Theme
+   CodeCity Design System — Ghostly shell
    ============================================================
-   Retro arcade aesthetic for a modern dev tool.
-   Sharp corners, hard offset shadows, warm cream + electric
-   lime palette. Inter for UI, JetBrains Mono for code.
+   Matches the Ghostly workspace: a near-black window frame, the
+   page as a rounded card on #121212, 1px hairlines, no card
+   shadows, neutral grey selection fills, pill segments, the
+   6/10/16px corner scale. Instrument Sans for the UI, DM Mono
+   for code. Lime stays as CodeCity's brand accent.
+   (Legacy token names like --cream are kept so every component
+   picks up the new values without renaming.)
    ============================================================ */
 
-/* Fonts (Inter + JetBrains Mono) are loaded via next/font in app/layout.tsx */
+/* Fonts (Instrument Sans + DM Mono) are loaded via next/font in app/layout.tsx */
 
 :root {
   /* ── Type families ─────────────────────────────────────── */
-  --font-display: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono-stack: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  --font-display: var(--font-ui), "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono-stack: var(--font-mono), "DM Mono", ui-monospace, monospace;
 
   /* ── Backgrounds ───────────────────────────────────────── */
-  --bg:           #0d0d0f;
-  --bg-raised:    #161618;
-  --bg-card:      #1c1c20;
-  --bg-deep:      #06060b;
+  --bg:           #121212;   /* page card */
+  --bg-raised:    #262626;   /* hover and active fills */
+  --bg-card:      #1e1e1e;   /* raised surfaces, segment track */
+  --bg-deep:      #0a0a0a;   /* window frame, sidebar */
+  --bg-on:        #303030;   /* selected segment */
 
   /* ── Borders ───────────────────────────────────────────── */
-  --border-pixel:        #2a2a30;
-  --border-light:        #3a3a44;
-  --border-strong:       #0d0d0f;
+  --border-pixel:        #262626;
+  --border-light:        #333333;
+  --border-strong:       #0a0a0a;
 
-  /* ── Text ramp (warm cream → dim) ──────────────────────── */
-  --cream:        #e8dcc8;
-  --cream-dark:   #c8b89c;
-  --warm:         #d4cfc4;
-  --muted:        #8c8c9c;
-  --dim:          #5c5c6c;
-  --very-dim:     #3a3a44;
+  /* ── Text ramp (cool neutral, bright → dim) ────────────── */
+  --cream:        #f3f3f3;
+  --cream-dark:   #b4b4b4;
+  --warm:         #d4d4d4;
+  --muted:        #8f8f8f;
+  --dim:          #5f5f5f;
+  --very-dim:     #3a3a3a;
 
   --fg-1: var(--cream);
   --fg-2: var(--warm);
@@ -58,15 +63,26 @@
   --sev-low:      #3dd4ff;  --sev-low-shadow:     #005a7a;
   --sev-ok:       #c8e64a;  --sev-ok-shadow:      #5a7a00;
 
-  /* ── Pixel shadows — hard offsets, NO blur ─────────────── */
-  --shadow-sm:    2px 2px 0 0 rgba(0,0,0,0.6);
-  --shadow:       4px 4px 0 0 rgba(0,0,0,0.6);
-  --shadow-lg:    6px 6px 0 0 rgba(0,0,0,0.6);
-  --shadow-accent: 4px 4px 0 0 var(--accent-shadow);
+  /* ── Soft shadows ──────────────────────────────────────── */
+  /* Cards never cast shadows; only floating windows (menus, dialogs, popups) do. */
+  --shadow-sm:    none;
+  --shadow:       none;
+  --shadow-lg:    0 12px 40px rgba(0,0,0,0.32);
+  --shadow-accent: none;
 
-  --br:        2px solid var(--border-pixel);
-  --br-light:  2px solid var(--border-light);
-  --br-strong: 2px solid var(--border-strong);
+  /* ── Radii ─────────────────────────────────────────────── */
+  /* Ghostly's corner scale: 6 items and chips, 10 fields, nav rows and
+     controls, 16 cards, panels and dialogs; pills for segments. */
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+  --ground-lit: radial-gradient(70% 420px at 18% 0%, color-mix(in srgb, var(--cream) 8%, transparent), transparent);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  --br:        1px solid var(--border-pixel);
+  --br-light:  1px solid var(--border-light);
+  --br-strong: 1px solid var(--border-strong);
 
   /* ── Tracking ──────────────────────────────────────────── */
   --tracking-tight:  0em;
@@ -82,46 +98,46 @@
    automatically across the 77+ components in src/.
    ============================================================ */
 @theme {
-  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: var(--font-ui), "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono), "DM Mono", ui-monospace, monospace;
 
-  --color-background: #0d0d0f;
-  --color-foreground: #d4cfc4;
+  --color-background: #121212;
+  --color-foreground: #d4d4d4;
 
-  --color-card: #1c1c20;
-  --color-card-foreground: #e8dcc8;
+  --color-card: #1e1e1e;
+  --color-card-foreground: #f3f3f3;
 
-  --color-popover: #161618;
-  --color-popover-foreground: #e8dcc8;
+  --color-popover: #1e1e1e;
+  --color-popover-foreground: #f3f3f3;
 
   --color-primary: #c8e64a;
-  --color-primary-foreground: #0d0d0f;
+  --color-primary-foreground: #0a0a0a;
 
-  --color-secondary: #161618;
-  --color-secondary-foreground: #e8dcc8;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #f3f3f3;
 
-  --color-muted: #161618;
-  --color-muted-foreground: #8c8c9c;
+  --color-muted: #1e1e1e;
+  --color-muted-foreground: #8f8f8f;
 
-  --color-accent: #161618;
-  --color-accent-foreground: #e8dcc8;
+  --color-accent: #262626;
+  --color-accent-foreground: #f3f3f3;
 
-  --color-border: #2a2a30;
-  --color-input: #3a3a44;
+  --color-border: #262626;
+  --color-input: #333333;
   --color-ring: #c8e64a;
 
   --color-destructive: #ff3d8a;
   --color-destructive-foreground: #ffffff;
 
   --color-success: #c8e64a;
-  --color-success-foreground: #0d0d0f;
+  --color-success-foreground: #0a0a0a;
 
-  /* Sharp corners — the pixel theme has no rounding */
-  --radius-xs: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
+  /* Soft block corners */
+  --radius-xs: 6px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 16px;
 
   /* ── District palette (3D city) — kept vibrant for clarity ── */
   --district-cyan: #00e5ff;
@@ -149,12 +165,15 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  ::selection { background: rgba(200, 230, 74, 0.35); color: var(--cream); }
+  ::selection { background: color-mix(in srgb, var(--lime) 35%, transparent); color: var(--cream); }
+
+  /* Block style: every control is a soft-cornered block. */
+  :where(button, input, select, textarea, kbd, [role="button"]) { border-radius: var(--r); }
 
   /* Keyboard focus is always visible. Components that draw their own
      focus ring (outline-none + ring) keep it: utilities beat this layer. */
   :where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
-    outline: 2px solid var(--lime);
+    outline: 2px solid color-mix(in srgb, var(--cream) 55%, transparent);
     outline-offset: 2px;
   }
 }
@@ -170,12 +189,15 @@
 }
 
 /* Segmented toggle (view, layout and mode switches).
-   Mark the active button with aria-pressed="true". */
+   Mark the active button with aria-pressed="true".
+   Block style: a recessed track holding solid blocks. */
 .cc-seg {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  border: 2px solid var(--border-pixel);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-pill);
   background: var(--bg-card);
 }
 .cc-seg-btn {
@@ -183,20 +205,21 @@
   height: 1.75rem;
   align-items: center;
   gap: 0.375rem;
-  padding-inline: 0.5rem;
-  font-family: var(--font-mono-stack);
-  font-size: 11px;
+  padding-inline: 0.75rem;
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--cream-dark);
+  color: var(--muted);
   cursor: pointer;
-  transition: background-color 120ms, color 120ms;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease), transform 140ms var(--ease);
 }
-.cc-seg-btn:hover { background: var(--bg-raised); color: var(--cream); }
-.cc-seg-btn[aria-pressed="true"] { background: var(--lime); color: var(--bg); }
+.cc-seg-btn:hover { color: var(--cream); }
+.cc-seg-btn:active { transform: translateY(1px); }
+/* Selected: a neutral pill, never an accent (as in Ghostly). */
+.cc-seg-btn[aria-pressed="true"] { background: var(--bg-on); color: var(--cream); }
 .cc-seg-btn:focus-visible { outline-offset: -2px; }
-.cc-seg-btn svg { width: 0.875rem; height: 0.875rem; }
+.cc-seg-btn svg { width: 0.9375rem; height: 0.9375rem; }
 
 /* ── Animations ── */
 @keyframes fade-in {
@@ -211,73 +234,79 @@
 
 .animate-fade-in        { animation: fade-in 0.5s ease-out both; }
 
+/* A sidebar section or panel list sliding in after you pick it from a list. */
+@keyframes drill-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.cc-drill-in { animation: drill-in 160ms var(--ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-drill-in { animation: none; }
+}
+
 /* ── Scrollbar styling ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
 ::-webkit-scrollbar-thumb {
   background: var(--border-light);
-  border-radius: 0;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* Thin scrollbar for panels */
-.scroll-thin::-webkit-scrollbar { width: 2px; }
+.scroll-thin::-webkit-scrollbar { width: 4px; }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
 .scroll-thin::-webkit-scrollbar-thumb {
   background: var(--border-light);
-  border-radius: 0;
+  border-radius: 999px;
 }
 .scroll-thin::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* ============================================================
-   Pixel theme utility classes
+   Block utilities (class names kept from the pixel theme)
    ============================================================ */
 
-/* Hard-offset shadows */
-.pixel-shadow-sm    { box-shadow: var(--shadow-sm); }
-.pixel-shadow       { box-shadow: var(--shadow); }
-.pixel-shadow-lg    { box-shadow: var(--shadow-lg); }
+/* Soft shadows; anything that casts one is a rounded block. */
+.pixel-shadow-sm    { box-shadow: var(--shadow-sm); border-radius: var(--r); }
+.pixel-shadow       { box-shadow: var(--shadow); border-radius: var(--r); }
+.pixel-shadow-lg    { box-shadow: var(--shadow-lg); border-radius: var(--r-lg); }
 .pixel-shadow-accent,
-.pixel-shadow-lime  { box-shadow: var(--shadow-accent); }
+.pixel-shadow-lime  { box-shadow: var(--shadow-accent); border-radius: var(--r); }
 
-/* Press behavior — slide on hover, sink on active */
+/* Press behavior — sink a pixel on click */
 .btn-press {
-  transition: transform 80ms steps(2), box-shadow 80ms steps(2);
+  transition: transform 100ms ease, box-shadow 100ms ease, background-color 120ms, border-color 120ms;
 }
-.btn-press:hover { transform: translate(2px, 2px); }
-.btn-press:hover.pixel-shadow,
-.btn-press:hover.pixel-shadow-sm { box-shadow: var(--shadow-sm); }
-.btn-press:hover.pixel-shadow-accent,
-.btn-press:hover.pixel-shadow-lime { box-shadow: 2px 2px 0 0 var(--accent-shadow); }
-.btn-press:active { transform: translate(4px, 4px); box-shadow: none !important; }
+/* (no hover lift: buttons only press, as in Ghostly) */
+.btn-press:active { transform: translateY(1px); box-shadow: none !important; }
 
-/* Terminal-style frame */
+/* Framed surface */
 .cc-frame {
   background: var(--bg-deep);
   border: var(--br-light);
+  border-radius: var(--r-lg);
   position: relative;
   overflow: hidden;
 }
 
 .caption {
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--muted);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
 }
 
 /* ============================================================
    Sidebar — pixel theme bridge
    ============================================================ */
 :root {
-  --sidebar: #06060b;
-  --sidebar-foreground: #e8dcc8;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f3f3f3;
   --sidebar-primary: #c8e64a;
-  --sidebar-primary-foreground: #0d0d0f;
-  --sidebar-accent: #161618;
-  --sidebar-accent-foreground: #e8dcc8;
-  --sidebar-border: #2a2a30;
-  --sidebar-ring: #c8e64a;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #f3f3f3;
+  --sidebar-border: #262626;
+  --sidebar-ring: #8f8f8f;
 }
 
 @theme inline {
@@ -292,12 +321,114 @@
 }
 
 .dark {
-  --sidebar: #06060b;
-  --sidebar-foreground: #e8dcc8;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f3f3f3;
   --sidebar-primary: #c8e64a;
-  --sidebar-primary-foreground: #0d0d0f;
-  --sidebar-accent: #161618;
-  --sidebar-accent-foreground: #e8dcc8;
-  --sidebar-border: #2a2a30;
-  --sidebar-ring: #c8e64a;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #f3f3f3;
+  --sidebar-border: #262626;
+  --sidebar-ring: #8f8f8f;
+}
+
+/* ============================================================
+   Syntax colours (editor) — dark defaults
+   ============================================================ */
+:root {
+  --syn-keyword:  #c4a1ff;
+  --syn-string:   #b5e08a;
+  --syn-number:   #f5a97f;
+  --syn-comment:  #6e6e76;
+  --syn-function: #8ab4ff;
+  --syn-type:     #f0c674;
+  --syn-property: #8fd6e8;
+  --syn-tag:      #f28b82;
+}
+
+/* ============================================================
+   Light mode — Ghostly's light workspace palette
+   (set by ThemeApplier as <html data-theme="light">)
+   ============================================================ */
+:root[data-theme="light"] {
+  --bg:           #ffffff;   /* page card */
+  --bg-raised:    #e4e4e7;   /* hover and active fills */
+  --bg-card:      #ececee;   /* raised surfaces, segment track */
+  --bg-deep:      #f5f5f6;   /* window frame, sidebar */
+  --bg-on:        #ffffff;   /* selected segment */
+
+  --border-pixel: #e5e5e7;
+  --border-light: #d6d6da;
+  --border-strong:#f5f5f6;
+
+  --cream:        #111113;
+  --cream-dark:   #4a4a50;
+  --warm:         #2a2a2e;
+  --muted:        #6b6b72;
+  --dim:          #9a9aa2;
+  --very-dim:     #c6c6cc;
+
+  /* Lime stays the brand for filled buttons; as text and tint it is
+     darkened so it reads on white. */
+  --lime:         #5b8a00;
+  --lime-dark:    #4a7000;
+  --lime-shadow:  #3d5c00;
+  --sev-high:     #d1245f;
+  --sev-med:      #c85a12;
+  --sev-low:      #0b84b8;
+  --sev-ok:       #5b8a00;
+
+  --shadow-lg:    0 12px 36px rgba(16, 16, 24, 0.12), 0 2px 6px rgba(16, 16, 24, 0.06);
+  --ground-lit: radial-gradient(70% 420px at 18% 0%, color-mix(in srgb, #ffffff 70%, transparent), transparent);
+
+  --color-background: #ffffff;
+  --color-foreground: #2a2a2e;
+  --color-card: #ececee;
+  --color-card-foreground: #111113;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #111113;
+  --color-primary: #c8e64a;
+  --color-primary-foreground: #111113;
+  /* Lime is a fill colour on white; as text, rings and status it needs the darker green (5.8:1). */
+  --color-ring: #4a7000;
+  --color-success: #4a7000;
+  --color-success-foreground: #ffffff;
+  --color-secondary: #e4e4e7;
+  --color-secondary-foreground: #111113;
+  --color-muted: #ececee;
+  --color-muted-foreground: #6b6b72;
+  --color-accent: #e4e4e7;
+  --color-accent-foreground: #111113;
+  --color-border: #e5e5e7;
+  --color-input: #d6d6da;
+  --color-destructive: #d1245f;
+
+  --sidebar: #f5f5f6;
+  --sidebar-foreground: #111113;
+  --sidebar-accent: #e4e4e7;
+  --sidebar-accent-foreground: #111113;
+  --sidebar-border: #e5e5e7;
+
+  --syn-keyword:  #8839ef;
+  --syn-string:   #2f8a1c;
+  --syn-number:   #d35400;
+  --syn-comment:  #9a9aa2;
+  --syn-function: #1e66f5;
+  --syn-type:     #b7791f;
+  --syn-property: #0b84b8;
+  --syn-tag:      #c4264b;
+
+  color-scheme: light;
+}
+/* A selected pill on a light track needs a lift to read as raised. */
+:root[data-theme="light"] .cc-seg-btn[aria-pressed="true"] { box-shadow: 0 1px 2px rgba(16, 16, 24, 0.1); }
+
+/* Light mode: lime fails as text on white (1.4:1), so primary-coloured text uses the dark lime. */
+:root[data-theme="light"] .text-primary {
+  color: var(--lime-dark);
+}
+
+/* Selected building label: lime with near-white text is 3.8:1 in light mode, so use the dark lime there. */
+:root[data-theme="light"] .cc-label-selected {
+  background-color: var(--lime-dark);
+  color: #ffffff;
 }

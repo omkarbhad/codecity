@@ -2,34 +2,13 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import {
-  Trash2,
-  ExternalLink,
-  RefreshCw,
-  AlertCircle,
-  X,
-  Check,
-  Loader2,
-} from "lucide-react"
-import {
-  Activity01Icon,
-  Add01Icon,
-  Building03Icon,
-  CodeIcon,
-  DocumentCodeIcon,
-  GitBranchIcon,
-  GridViewIcon,
-  LayoutTable01Icon,
-  SquareIcon,
-  WorkflowSquare01Icon,
-} from "@hugeicons/core-free-icons"
+import { PlusIcon, CircleAlertIcon, TriangleAlertIcon, XIcon, Building2Icon, Trash2Icon, GithubIcon, LayoutGridIcon, ListIcon, LoaderCircleIcon, RefreshCwIcon, CircleStopIcon, SquareIcon, CheckIcon } from "@/components/ui/icons"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@codecity/ui/components/button"
-import { IconButton } from "@codecity/ui/components/icon-button"
 import { MiniCityPreview } from "@/components/city/mini-city-preview"
 import type { CitySnapshot } from "@/lib/types/city"
-import { getProjectSnapshot, deleteProject as deleteProjectTauri, analyze, getProject, cancelProject } from "@/lib/tauri"
-import { HugeIcon } from "@/components/ui/huge-icon"
+import { getProjectSnapshot, deleteProject as deleteProjectTauri, refreshAnalysis, getProject, cancelProject } from "@/lib/tauri"
+import { AppIcon } from "@/components/ui/app-icon"
 import { fetchProjects, type Project } from "@/lib/projects"
 import { EmptyState } from "@/components/ui/empty-state"
 
@@ -132,6 +111,10 @@ function timeAgo(dateStr: string): string {
   return new Date(t).toLocaleDateString()
 }
 
+/** A small square button on a card: over the preview in the grid, at the row's end in the list. */
+const cardAction =
+  "flex size-7 shrink-0 items-center justify-center rounded-[8px] border border-(--border-pixel) bg-(--bg) text-(--muted) transition-[color,background-color,transform] duration-150 hover:bg-(--bg-raised) hover:text-(--cream) active:translate-y-px disabled:pointer-events-none disabled:opacity-60"
+
 function DeleteButton({
   projectId,
   onDelete,
@@ -170,36 +153,24 @@ function DeleteButton({
   if (confirmOpen) {
     return (
       <div
-        className="pixel-shadow-sm flex h-8 items-center gap-0.5 overflow-hidden rounded-none border-2 border-[var(--sev-high)] bg-[var(--bg-card)]"
+        className="flex h-7 items-center gap-0.5 overflow-hidden rounded-[8px] border border-(--sev-high) bg-(--bg-card) pl-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="px-2 text-[10px] font-medium uppercase tracking-[0.08em] leading-none text-[var(--cream)]">Remove?</span>
-        <IconButton
-          onClick={confirm}
-          className="size-7 rounded-none border-transparent bg-transparent text-[var(--sev-high)] hover:bg-[color-mix(in_srgb,var(--sev-high)_15%,transparent)]"
-          aria-label="Confirm remove"
-        >
-          <Check />
-        </IconButton>
-        <IconButton
-          onClick={cancel}
-          className="size-7 rounded-none border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--cream)]"
-          aria-label="Cancel delete"
-        >
-          <X />
-        </IconButton>
+        <span className="pr-1 text-[11px] font-medium leading-none text-(--cream)">Remove?</span>
+        <button type="button" onClick={confirm} aria-label="Confirm remove" className="flex size-6 items-center justify-center rounded-[6px] text-(--sev-high) transition-colors hover:bg-[color-mix(in_srgb,var(--sev-high)_15%,transparent)]">
+          <AppIcon icon={CheckIcon} className="size-3.5" />
+        </button>
+        <button type="button" onClick={cancel} aria-label="Cancel remove" className="flex size-6 items-center justify-center rounded-[6px] text-(--muted) transition-colors hover:text-(--cream)">
+          <AppIcon icon={XIcon} className="size-3.5" />
+        </button>
       </div>
     )
   }
 
   return (
-    <IconButton
-      onClick={openConfirm}
-      className="pixel-shadow-sm btn-press size-8 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] hover:border-[var(--sev-high)] hover:text-[var(--sev-high)]"
-      aria-label="Remove project"
-    >
-      <Trash2 />
-    </IconButton>
+    <button type="button" onClick={openConfirm} aria-label="Remove city" title="Remove city" className={`${cardAction} hover:text-(--sev-high)`}>
+      <AppIcon icon={Trash2Icon} className="size-3.5" />
+    </button>
   )
 }
 
@@ -224,6 +195,7 @@ function ProjectCard({
   onDelete,
   onCancel,
   onRetry,
+  retrying,
   queryClient,
   view,
 }: {
@@ -232,6 +204,7 @@ function ProjectCard({
   onDelete: (id: string) => void
   onCancel: (id: string) => void
   onRetry: (project: Project) => void
+  retrying: boolean
   queryClient: ReturnType<typeof useQueryClient>
   view: "grid" | "list"
 }) {
@@ -242,7 +215,36 @@ function ProjectCard({
   const isProcessing = project.status === "PROCESSING" || project.status === "PENDING"
   const isCompleted = project.status === "COMPLETED"
   const isFailed = project.status === "FAILED"
+  // CANCELLED or any status the UI doesn't know yet — shown as a neutral "stopped" card.
+  const isStopped = !isProcessing && !isCompleted && !isFailed
+  const canRetry = isFailed || isStopped
   const isActive = isProcessing && !isQueued
+
+  const { owner, repo, isExternal } = getProjectLabel(project)
+
+  const retryButton = canRetry && (
+    <button
+      type="button"
+      onClick={(e) => { e.preventDefault(); onRetry(project) }}
+      disabled={retrying}
+      className={`${cardAction} w-auto gap-1.5 px-2 text-[12px] font-medium text-(--cream-dark)`}
+    >
+      <AppIcon icon={retrying ? LoaderCircleIcon : RefreshCwIcon} className={`size-3.5 ${retrying ? "animate-spin" : ""}`} />
+      {retrying ? "Queueing" : "Retry"}
+    </button>
+  )
+  const stopButton = isProcessing && (
+    <button type="button" onClick={(e) => { e.preventDefault(); onCancel(project.id) }} title="Stop analysis" aria-label="Stop analysis" className={cardAction}>
+      <AppIcon icon={SquareIcon} className="size-3.5" />
+    </button>
+  )
+  const githubLink = isExternal && project.repoUrl && (
+    <a href={project.repoUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Open on GitHub" aria-label="Open repository on GitHub" className={cardAction}>
+      <AppIcon icon={GithubIcon} className="size-3.5" />
+    </a>
+  )
+  const href = `/project?id=${encodeURIComponent(project.id)}`
+  const statusWord = isActive ? "Building" : isQueued ? "Queued" : isFailed ? "Failed" : isStopped ? "Stopped" : null
 
   const progress = useProjectProgress(project.id, isActive)
 
@@ -251,8 +253,6 @@ function ProjectCard({
       queryClient.invalidateQueries({ queryKey: ["projects"] })
     }
   }, [progress?.stage, queryClient])
-
-  const { owner, repo, isExternal } = getProjectLabel(project)
 
   const currentProgress = isActive && progress ? Math.round(progress.progress) : 0
   const currentMessage = isActive && progress
@@ -263,268 +263,96 @@ function ProjectCard({
 
   if (view === "list") {
     return (
-      <div
-        className={`grid min-h-11 grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] items-center gap-3 border-b-2 border-(--border-pixel) px-3 py-2 transition-colors hover:bg-(--bg-raised)
-          ${isActive ? "bg-[color-mix(in_srgb,var(--lime)_4%,transparent)]" : ""}
-          ${isQueued ? "opacity-70" : ""}
-        `}
-      >
-        <div className="min-w-0">
-          <p className="truncate font-mono text-[10px] leading-[1.4] text-(--muted)">{owner}/</p>
-          <h3 className="truncate text-[13px] font-medium leading-[1.25] text-(--cream)">{repo}</h3>
+      <div className={`group/row relative grid min-h-12 grid-cols-[minmax(0,1.6fr)_88px_72px_72px_88px_auto] items-center gap-3 border-b border-(--border-pixel) px-3.5 py-2 transition-colors last:border-b-0 hover:bg-(--bg-card) ${isQueued ? "opacity-70" : ""}`}>
+        {isCompleted && <Link href={href} aria-label={`Open ${repo}`} className="absolute inset-0 rounded-[inherit]" />}
+        <div className="min-w-0 truncate text-[13.5px]">
+          <span className="text-(--muted)">{owner}/</span>
+          <span className="font-medium text-(--cream)">{repo}</span>
         </div>
-        <span className="font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-(--cream-dark)">
-          {isCompleted ? "done" : isActive ? "analyzing" : isQueued ? "queued" : "failed"}
+        <span className={`text-[12px] ${isFailed ? "text-(--sev-high)" : isActive ? "text-primary" : "text-(--muted)"}`}>
+          {isActive ? `${currentProgress}%` : statusWord ?? "Ready"}
         </span>
-        <span className="font-mono text-[11px] leading-none text-(--cream) tabular-nums">{isCompleted ? formatNumber(project.fileCount ?? 0) : "—"}</span>
-        <span className="font-mono text-[11px] leading-none text-(--cream) tabular-nums">{isCompleted ? formatNumber(project.lineCount ?? 0) : "—"}</span>
-        <span className="font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-(--muted)">{timeAgo(project.createdAt)}</span>
-        <div className="flex justify-end gap-1.5">
-          {isProcessing && (
-            <button
-              onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-              className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) text-(--muted) transition-colors hover:border-(--border-light) hover:text-(--cream)"
-              title="Stop parsing"
-              aria-label="Stop parsing"
-            >
-              <HugeIcon icon={SquareIcon} className="size-3.5" />
-            </button>
-          )}
-          {isCompleted && (
-            <Link
-              href={`/project?id=${encodeURIComponent(project.id)}`}
-              className="pixel-shadow-accent btn-press flex h-8 items-center rounded-none border-2 border-(--bg) bg-primary px-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-primary-foreground transition-colors hover:bg-primary"
-            >
-              Open
-            </Link>
-          )}
-          {isFailed && (
-            <button
-              onClick={(e) => { e.preventDefault(); onRetry(project) }}
-              className="pixel-shadow-sm btn-press flex h-8 items-center rounded-none border-2 border-(--border-pixel) bg-(--bg-raised) px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
-            >
-              Retry
-            </button>
-          )}
+        <span className="text-[12px] tabular-nums text-(--cream-dark)">{isCompleted ? formatNumber(project.fileCount ?? 0) : "—"}</span>
+        <span className="text-[12px] tabular-nums text-(--cream-dark)">{isCompleted ? formatNumber(project.lineCount ?? 0) : "—"}</span>
+        <span className="text-[12px] text-(--muted)">{timeAgo(project.createdAt)}</span>
+        <div className="relative z-10 flex min-w-[76px] justify-end gap-1.5">
+          {retryButton}
+          {stopButton}
+          {githubLink}
           <DeleteButton projectId={project.id} onDelete={onDelete} />
         </div>
       </div>
     )
   }
 
+  // Grid card: the picture of the city, its name, one line of facts. A finished
+  // city opens when the card is clicked; the other actions show on hover.
   return (
-    <div
-      className={`group/card pixel-shadow relative flex ${view === "grid" ? "min-h-[240px] flex-col" : "min-h-[92px] flex-row"} overflow-hidden border-2 p-1.5 bg-card transition-[border-color,background-color,transform] duration-150 ease-out motion-reduce:transition-none
-        ${isCompleted ? "border-[var(--border-light)] hover:border-primary hover:-translate-y-px" : ""}
-        ${isActive ? "border-primary bg-[color-mix(in_srgb,var(--lime)_4%,var(--bg-card))]" : ""}
-        ${isQueued ? "border-[var(--border-pixel)] opacity-70" : ""}
-        ${isFailed ? "border-[var(--sev-high)]" : ""}
-      `}
-    >
-      {/* Active — scanning line */}
-      {isActive && (
-        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
-          <div className="h-full bg-primary animate-[scan_2s_ease-in-out_infinite]" />
-        </div>
-      )}
+    <div className={`group/card relative flex flex-col gap-2.5 ${isQueued ? "opacity-70" : ""}`}>
+      {isCompleted && <Link href={href} aria-label={`Open ${repo}`} className="absolute inset-0 z-10 rounded-[16px]" />}
 
-      {/* 3D city preview pane */}
-      {isCompleted && view === "grid" && (
-        <div className="relative h-32 overflow-hidden border-2 border-[var(--border-pixel)] bg-[var(--bg-deep)]">
-          {snapshotLoading && (
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[var(--bg-deep)]">
-              <span className="relative z-10 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--muted)]">
-                <Loader2 className="size-3 animate-spin" />
-                loading city…
-              </span>
-            </div>
-          )}
-          {snapshot && (
-            <div className="absolute inset-0 pointer-events-none">
-              <MiniCityPreview snapshot={snapshot} speed={0.4} className="w-full h-full" />
-            </div>
-          )}
-          {!snapshotLoading && !snapshot && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-deep)]">
-              <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[var(--muted)]">preview unavailable</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Status pane — same footprint as the city preview so cards line up */}
-      {!isCompleted && view === "grid" && (
-        <div className="relative flex h-32 flex-col items-center justify-center gap-1.5 border-2 border-(--border-pixel) bg-(--bg-deep)">
-          {isActive && (
-            <>
-              <span className="font-mono text-[28px] font-bold leading-none tabular-nums text-primary">{currentProgress}%</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">building city</span>
-            </>
-          )}
-          {isQueued && (
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">in queue</span>
-          )}
-          {isFailed && (
-            <>
-              <AlertCircle className="size-6 text-(--sev-high)" aria-hidden="true" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-high)">analysis failed</span>
-            </>
-          )}
-        </div>
-      )}
-
-      <div className="relative flex flex-1 flex-col gap-3 p-3">
-        {/* Top row */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-1.5">
-              <HugeIcon icon={GitBranchIcon} className="size-3 shrink-0 text-(--muted)" />
-              <span className="truncate font-mono text-[11px] leading-none text-(--cream-dark)">{owner}/</span>
-            </div>
-            <h3 className="truncate text-[14px] font-semibold leading-[1.25] tracking-tight text-(--cream)">
-              {repo}
-            </h3>
+      <div
+        className={`relative aspect-[16/10] w-full overflow-hidden rounded-[16px] border bg-(--bg-deep) transition-[border-color,box-shadow] duration-200 ${
+          isFailed
+            ? "border-[color-mix(in_srgb,var(--sev-high)_40%,transparent)]"
+            : isActive
+              ? "border-[color-mix(in_srgb,var(--lime)_45%,transparent)]"
+              : "border-(--border-pixel) group-hover/card:border-(--border-light) group-hover/card:shadow-(--shadow-lg)"
+        }`}
+      >
+        {isCompleted && snapshot && (
+          <div className="pointer-events-none absolute inset-0">
+            <MiniCityPreview snapshot={snapshot} speed={0.4} className="h-full w-full transition-transform duration-500 ease-out group-hover/card:scale-[1.03]" />
           </div>
-
-          {/* Status pill */}
-          {isCompleted && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-none border-2 border-[var(--lime)] bg-[color-mix(in_srgb,var(--lime)_10%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--lime)]">
-              <Check className="size-3" />
-              done
-            </span>
-          )}
-          {isActive && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-none border-2 border-primary bg-[color-mix(in_srgb,var(--lime)_12%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-primary">
-              <Loader2 className="size-3 animate-spin" />
-              analyzing
-            </span>
-          )}
-          {isQueued && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-none border-2 border-[var(--sev-med)] bg-[color-mix(in_srgb,var(--sev-med)_8%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--sev-med)]">
-              queued
-            </span>
-          )}
-          {isFailed && (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-none border-2 border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_10%,transparent)] px-2 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-[var(--sev-high)]">
-              <AlertCircle className="size-3" />
-              failed
-            </span>
-          )}
-        </div>
-
-        {/* Stats — completed only */}
-        {isCompleted && (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <HugeIcon icon={DocumentCodeIcon} className="size-3.5 text-(--muted)" />
-              <span className="font-mono text-[12px] leading-none text-(--cream) tabular-nums">{formatNumber(project.fileCount ?? 0)}</span>
-              <span className="text-[10px] leading-none text-(--muted)">files</span>
-            </div>
-            <div className="h-3 w-px bg-(--bg-card)" />
-            <div className="flex items-center gap-1.5">
-              <HugeIcon icon={CodeIcon} className="size-3.5 text-(--muted)" />
-              <span className="font-mono text-[12px] leading-none text-(--cream) tabular-nums">{formatNumber(project.lineCount ?? 0)}</span>
-              <span className="text-[10px] leading-none text-(--muted)">lines</span>
-            </div>
+        )}
+        {isCompleted && !snapshot && (
+          <div className="absolute inset-0 flex items-center justify-center text-[12px] text-(--muted)">
+            {snapshotLoading ? <AppIcon icon={LoaderCircleIcon} className="size-4 animate-spin" /> : "No preview"}
           </div>
         )}
 
-        {/* Progress — active */}
         {isActive && (
-          <div className="space-y-2">
-            <span className="block truncate font-mono text-[11px] leading-none text-(--cream-dark)">{currentMessage}</span>
-            <div
-              role="progressbar"
-              aria-label="Analysis progress"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={currentProgress}
-              className="h-1.5 w-full overflow-hidden border border-(--border-pixel) bg-(--bg-deep)"
-            >
-              <div
-                className="h-full bg-primary transition-[width] duration-700 ease-out"
-                style={{ width: `${currentProgress}%` }}
-              />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-8">
+            <span className="text-[30px] font-semibold leading-none tabular-nums text-(--cream)">{currentProgress}%</span>
+            <div role="progressbar" aria-label="Analysis progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={currentProgress} className="h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-(--bg-raised)">
+              <div className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out" style={{ width: `${currentProgress}%` }} />
             </div>
-            {(project.filesDiscovered ?? 0) > 0 && (
-              <div className="flex items-center gap-3 font-mono text-[10px] leading-none text-(--muted) tabular-nums">
-                <span>{formatNumber(project.filesDiscovered ?? 0)} found</span>
-                <span>{formatNumber(project.filesParsed ?? 0)} parsed</span>
-              </div>
-            )}
+          </div>
+        )}
+        {isQueued && <div className="absolute inset-0 flex items-center justify-center text-[12px] text-(--muted)">Waiting for the city being built</div>}
+        {isFailed && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+            <AppIcon icon={CircleAlertIcon} className="size-5 text-(--sev-high)" />
+            <p className="line-clamp-3 text-[12px] leading-snug text-(--cream-dark)">{project.error || "The analysis failed."}</p>
+          </div>
+        )}
+        {isStopped && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[12px] text-(--muted)">
+            <AppIcon icon={CircleStopIcon} className="size-5" />
+            Analysis stopped
           </div>
         )}
 
-        {/* Queued message */}
-        {isQueued && (
-          <p className="font-mono text-[11px] leading-[1.4] text-(--muted)">{currentMessage}</p>
-        )}
-
-        {/* Error */}
-        {isFailed && project.error && (
-          <p className="line-clamp-2 rounded-none border-2 border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_6%,transparent)] px-3 py-2 font-mono text-[11px] leading-[1.4] text-[var(--sev-high)]">
-            {project.error}
-          </p>
-        )}
-
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-dashed border-[var(--border-pixel)] pt-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="shrink-0 font-mono text-[11px] leading-none text-[var(--muted)]">{timeAgo(project.createdAt)}</span>
-            {isExternal && project.repoUrl && (
-              <a
-                href={project.repoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex size-7 items-center justify-center rounded-none text-[var(--muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
-                title="Open on GitHub"
-                aria-label="Open repository on GitHub"
-              >
-                <HugeIcon icon={GitBranchIcon} className="size-3.5" />
-              </a>
-            )}
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            {/* Retry */}
-            {isFailed && (
-              <button
-                onClick={(e) => { e.preventDefault(); onRetry(project) }}
-                className="pixel-shadow-sm btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] px-3 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--cream-dark)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)]"
-              >
-                <RefreshCw className="size-3" />
-                Retry
-              </button>
-            )}
-
-            {isProcessing && (
-              <button
-                onClick={(e) => { e.preventDefault(); onCancel(project.id) }}
-                className="pixel-shadow-sm btn-press flex size-8 items-center justify-center rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--muted)] transition-colors hover:border-[var(--border-light)] hover:text-[var(--cream)]"
-                title="Stop parsing"
-                aria-label="Stop parsing"
-              >
-                <HugeIcon icon={SquareIcon} className="size-3.5" />
-              </button>
-            )}
-
-            {/* Open */}
-            {isCompleted && (
-              <Link
-                href={`/project?id=${encodeURIComponent(project.id)}`}
-                onClick={(e) => e.stopPropagation()}
-                className="pixel-shadow-accent btn-press flex h-8 items-center gap-1.5 rounded-none border-2 border-(--bg) bg-primary px-3 text-[10px] font-semibold uppercase leading-none tracking-[0.05em] text-primary-foreground transition-colors hover:bg-primary"
-              >
-                Open
-                <ExternalLink className="size-3" />
-              </Link>
-            )}
-
-            {/* Delete — inline confirm */}
-            <DeleteButton projectId={project.id} onDelete={onDelete} />
-          </div>
+        {/* Actions: always there for a city that needs one, on hover for a finished city */}
+        <div className={`absolute right-2 top-2 z-20 flex items-center gap-1.5 transition-opacity duration-150 ${isCompleted ? "opacity-0 focus-within:opacity-100 group-hover/card:opacity-100" : ""}`}>
+          {retryButton}
+          {stopButton}
+          {githubLink}
+          <DeleteButton projectId={project.id} onDelete={onDelete} />
         </div>
+      </div>
+
+      <div className="min-w-0 px-1">
+        <h3 className="truncate text-[14px] leading-tight tracking-[-0.01em]">
+          <span className="text-(--muted)">{owner}/</span>
+          <span className="font-medium text-(--cream)">{repo}</span>
+        </h3>
+        <p className="mt-1 truncate text-[12px] tabular-nums text-(--muted)">
+          {isCompleted && <>{formatNumber(project.fileCount ?? 0)} files · {formatNumber(project.lineCount ?? 0)} lines · </>}
+          {isActive && <>{currentMessage ?? "Building"}{(project.filesDiscovered ?? 0) > 0 && ` · ${formatNumber(project.filesParsed ?? 0)} of ${formatNumber(project.filesDiscovered ?? 0)} files`} · </>}
+          {!isCompleted && !isActive && statusWord && <span className={isFailed ? "text-(--sev-high)" : undefined}>{statusWord} · </span>}
+          {timeAgo(project.createdAt)}
+        </p>
       </div>
     </div>
   )
@@ -534,7 +362,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   const queryClient = useQueryClient()
   const [view, setView] = useState<"grid" | "list">("grid")
 
-  const { data: projects = [], isLoading } = useQuery<Project[]>({
+  const { data: projects = [], isLoading, isError, refetch } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: fetchProjects,
     refetchInterval: (query) => {
@@ -547,79 +375,101 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   const processingProjects = projects.filter((p) => p.status === "PROCESSING" || p.status === "PENDING")
   const activeProjectId = processingProjects[0]?.id ?? null
 
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(() => new Set())
+
+  function errorText(err: unknown, fallback: string) {
+    return err instanceof Error && err.message ? err.message : fallback
+  }
+
   async function handleDelete(id: string) {
+    setActionError(null)
     try {
-      await deleteProjectTauri(id).catch(() => {})
+      await deleteProjectTauri(id)
       queryClient.setQueryData<Project[]>(["projects"], (old) =>
         old ? old.filter((p) => p.id !== id) : []
       )
       queryClient.removeQueries({ queryKey: ["project-snapshot", id] })
-    } catch {
-      // ignore
+    } catch (err) {
+      setActionError(`Could not remove city: ${errorText(err, "unknown error")}`)
     }
   }
 
   async function handleCancel(id: string) {
+    setActionError(null)
     try {
       await cancelProject(id)
-      queryClient.setQueryData<Project[]>(["projects"], (old) =>
-        old ? old.filter((p) => p.id !== id) : []
-      )
-      queryClient.removeQueries({ queryKey: ["project-snapshot", id] })
-    } catch {
-      // ignore
+      // The backend keeps the project as CANCELLED — refetch so the card shows "stopped".
+      await queryClient.invalidateQueries({ queryKey: ["projects"] })
+    } catch (err) {
+      setActionError(`Could not stop analysis: ${errorText(err, "unknown error")}`)
     }
   }
 
   async function handleRetry(project: Project) {
-    if (!project.repoUrl) return
-
+    setActionError(null)
+    setRetryingIds((prev) => new Set(prev).add(project.id))
     try {
-      const result = await analyze(project.repoUrl)
-      if (!result.projectId) {
-        throw new Error("Failed to retry")
-      }
-    } catch {
-      // ignore
+      await refreshAnalysis(project.id)
+      queryClient.removeQueries({ queryKey: ["project-snapshot", project.id] })
+      await queryClient.invalidateQueries({ queryKey: ["projects"] })
+    } catch (err) {
+      setActionError(`Could not retry ${project.name}: ${errorText(err, "unknown error")}`)
+    } finally {
+      setRetryingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(project.id)
+        return next
+      })
     }
   }
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-x-5 gap-y-7">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="pixel-shadow-sm h-60 border-2 border-[var(--border-light)] bg-card p-1.5">
-            <div className="h-32 bg-[var(--bg-raised)] animate-pulse" />
-            <div className="space-y-3 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-2">
-                  <div className="h-2 w-16 bg-[var(--border-light)] animate-pulse" />
-                  <div className="h-3.5 w-32 bg-[var(--border-light)] animate-pulse" />
-                </div>
-                <div className="h-6 w-14 bg-[var(--border-light)] animate-pulse" />
-              </div>
-              <div className="h-3 w-40 bg-[var(--border-light)] animate-pulse" />
-            </div>
+          <div key={i} className="flex flex-col gap-2.5">
+            <div className="aspect-[16/10] animate-pulse rounded-[16px] bg-(--bg-card)" />
+            <div className="h-3.5 w-36 animate-pulse rounded-full bg-(--bg-card)" />
+            <div className="h-3 w-24 animate-pulse rounded-full bg-(--bg-card)" />
           </div>
         ))}
       </div>
     )
   }
 
+  // A failed load must not look like an empty library
+  if (isError && projects.length === 0) {
+    return (
+      <EmptyState
+        tone="danger"
+        icon={<AppIcon icon={TriangleAlertIcon} />}
+        title="Couldn't load your cities"
+        description="The project list didn't load. Your cities are still saved; try again."
+        action={
+          <Button onClick={() => refetch()} size="sm" variant="outline" className="h-9 gap-2 px-4 text-[12px] font-medium rounded-full">
+            <AppIcon icon={RefreshCwIcon} className="size-3.5" />
+            Try again
+          </Button>
+        }
+      />
+    )
+  }
+
   if (projects.length === 0) {
     return (
       <EmptyState
-        icon={<HugeIcon icon={Building03Icon} />}
+        icon={<AppIcon icon={Building2Icon} />}
         title="No cities yet"
         description="Analyze a GitHub repo to generate an interactive 3D city from its codebase."
         action={
           <Button
             onClick={() => onCreateCity?.()}
             size="sm"
-            className="pixel-shadow-accent btn-press h-9 gap-2 rounded-none border-2 border-(--bg) bg-primary px-4 text-[12px] font-medium uppercase leading-none tracking-[0.05em] text-primary-foreground hover:bg-primary"
+            className="h-9 gap-2 bg-primary px-4 text-[12px] font-medium leading-none text-primary-foreground active:translate-y-px rounded-full hover:brightness-105"
           >
-            <HugeIcon icon={Add01Icon} className="size-3.5" />
-            New City
+            <AppIcon icon={PlusIcon} className="size-3.5" />
+            New city
           </Button>
         }
       />
@@ -628,48 +478,9 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
 
   const settledProjects = projects.filter((p) => p.status !== "PROCESSING" && p.status !== "PENDING")
   const completedProjects = projects.filter((p) => p.status === "COMPLETED")
-  const failedProjects = projects.filter((p) => p.status === "FAILED")
-  const totalFiles = completedProjects.reduce((sum, p) => sum + (p.fileCount ?? 0), 0)
   const totalLines = completedProjects.reduce((sum, p) => sum + (p.lineCount ?? 0), 0)
-
-  function renderGroup(label: string, icon: React.ReactNode, items: Project[]) {
-    if (items.length === 0) return null
-    return (
-      <div className="space-y-2.5">
-        <div className="flex items-center gap-2 px-0.5">
-          {icon}
-          <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em] text-(--cream)">{label}</span>
-          <div className="h-px flex-1 border-t border-dashed border-(--border-pixel)" />
-          <span className="font-mono text-[10px] leading-none text-(--muted) tabular-nums">{items.length}</span>
-        </div>
-        {renderProjectCollection(items)}
-      </div>
-    )
-  }
-
-  function renderProjectCollection(items: Project[]) {
-    if (view === "grid") {
-      return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((project) => renderProject(project))}
-        </div>
-      )
-    }
-
-    return (
-      <div className="pixel-shadow overflow-hidden rounded-none border-2 border-(--border-light) bg-card">
-        <div className="grid grid-cols-[minmax(0,1.5fr)_96px_88px_88px_96px_140px] gap-3 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-3 py-2.5 text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-(--muted)">
-          <span>City</span>
-          <span>Status</span>
-          <span>Files</span>
-          <span>Lines</span>
-          <span>Updated</span>
-          <span />
-        </div>
-        {items.map((project) => renderProject(project))}
-      </div>
-    )
-  }
+  // Cities being built come first, then the rest, in one grid
+  const ordered = [...processingProjects, ...settledProjects]
 
   function renderProject(project: Project) {
     return (
@@ -683,6 +494,7 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
         onDelete={handleDelete}
         onCancel={handleCancel}
         onRetry={handleRetry}
+        retrying={retryingIds.has(project.id)}
         queryClient={queryClient}
         view={view}
       />
@@ -690,93 +502,57 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
-        <DashboardStat icon={<HugeIcon icon={Building03Icon} className="size-3.5" />} label="cities" value={projects.length} />
-        <DashboardStat highlight={processingProjects.length > 0} icon={<HugeIcon icon={Activity01Icon} className="size-3.5" />} label="active" value={processingProjects.length} />
-        <DashboardStat icon={<HugeIcon icon={DocumentCodeIcon} className="size-3.5" />} label="files" value={formatNumber(totalFiles)} />
-        <DashboardStat icon={<HugeIcon icon={CodeIcon} className="size-3.5" />} label="lines" value={formatNumber(totalLines)} />
-        <Button
-          onClick={() => onCreateCity?.()}
-          className="pixel-shadow-accent btn-press col-span-2 h-11 self-stretch gap-2 rounded-none border-2 border-(--bg) bg-primary px-4 text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-primary-foreground hover:bg-primary lg:col-span-1"
-        >
-          <HugeIcon icon={Add01Icon} className="size-3.5" />
-          New City
+    <div className="space-y-5">
+      {/* How many, how much code, then the view switch and the way to add one */}
+      <div className="flex items-center gap-3">
+        <p className="min-w-0 flex-1 truncate text-[13px] text-(--muted)">
+          {projects.length === 1 ? "1 city" : `${projects.length} cities`}
+          {totalLines > 0 && ` · ${formatNumber(totalLines)} lines of code`}
+          {processingProjects.length > 0 && <span className="text-primary"> · {processingProjects.length} building</span>}
+        </p>
+        <div className="cc-seg" role="group" aria-label="Layout">
+          <button type="button" onClick={() => setView("grid")} className="cc-seg-btn h-7 px-2.5" title="Grid view" aria-label="Grid view" aria-pressed={view === "grid"}>
+            <AppIcon icon={LayoutGridIcon} active={view === "grid"} />
+          </button>
+          <button type="button" onClick={() => setView("list")} className="cc-seg-btn h-7 px-2.5" title="List view" aria-label="List view" aria-pressed={view === "list"}>
+            <AppIcon icon={ListIcon} active={view === "list"} />
+          </button>
+        </div>
+        <Button onClick={() => onCreateCity?.()} size="sm" className="h-8 gap-1.5 px-3.5 text-[13px]">
+          <AppIcon icon={PlusIcon} className="size-3.5" />
+          New city
         </Button>
       </div>
 
-      <div className="flex justify-end">
-        <div className="cc-seg" role="group" aria-label="Layout">
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            className="cc-seg-btn h-8"
-            title="Grid view"
-            aria-label="Grid view"
-            aria-pressed={view === "grid"}
-          >
-            <HugeIcon icon={GridViewIcon} className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            className="cc-seg-btn h-8"
-            title="List view"
-            aria-label="List view"
-            aria-pressed={view === "list"}
-          >
-            <HugeIcon icon={LayoutTable01Icon} className="size-3.5" />
+      {actionError && (
+        <div role="alert" className="flex items-start gap-2 rounded-[12px] bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-3 py-2.5 text-[12.5px] leading-[1.4] text-(--sev-high)">
+          <AppIcon icon={CircleAlertIcon} className="mt-px size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 break-words">{actionError}</span>
+          <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss error" title="Dismiss" className="flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors hover:bg-[color-mix(in_srgb,var(--sev-high)_14%,transparent)]">
+            <AppIcon icon={XIcon} className="size-3.5" />
           </button>
         </div>
-      </div>
+      )}
 
-      {processingProjects.length > 0 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2 px-0.5">
-            <HugeIcon icon={WorkflowSquare01Icon} className="size-3 text-primary" />
-            <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em] text-primary">Running</span>
-            <div className="h-px flex-1 border-t border-dashed border-primary opacity-40" />
-            <span className="font-mono text-[10px] leading-none text-(--muted) tabular-nums">{processingProjects.length}</span>
+      {view === "grid" ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-x-5 gap-y-7">
+          {ordered.map(renderProject)}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-[14px] border border-(--border-pixel) scroll-thin">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[minmax(0,1.6fr)_88px_72px_72px_88px_auto] gap-3 border-b border-(--border-pixel) px-3.5 py-2.5 text-[11.5px] font-medium leading-none text-(--muted)">
+              <span>City</span>
+              <span>Status</span>
+              <span>Files</span>
+              <span>Lines</span>
+              <span>Added</span>
+              <span className="min-w-[76px]" />
+            </div>
+            {ordered.map(renderProject)}
           </div>
-          {renderProjectCollection(processingProjects)}
         </div>
       )}
-
-      {renderGroup("Cities", <HugeIcon icon={Building03Icon} className="size-3 text-(--muted)" />, settledProjects)}
-      {failedProjects.length > 0 && (
-        <div className="rounded-none border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_6%,transparent)] px-3 py-2.5 font-mono text-[11px] uppercase leading-[1.4] tracking-[0.05em] text-(--sev-high)">
-          {failedProjects.length} failed analysis {failedProjects.length === 1 ? "needs" : "need"} attention.
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DashboardStat({
-  icon,
-  label,
-  value,
-  highlight = false,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: React.ReactNode
-  highlight?: boolean
-}) {
-  return (
-    <div className="pixel-shadow-sm flex h-11 items-center justify-between border-2 border-(--border-light) bg-card px-3">
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden="true"
-          className={`flex size-7 items-center justify-center border-2 ${
-            highlight ? "border-primary bg-primary text-primary-foreground" : "border-(--border-pixel) bg-(--bg-raised) text-(--cream-dark)"
-          }`}
-        >
-          {icon}
-        </span>
-        <span className="font-mono text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-(--muted)">{label}</span>
-      </div>
-      <span className="font-mono text-[13px] leading-none text-(--cream) tabular-nums">{value}</span>
     </div>
   )
 }

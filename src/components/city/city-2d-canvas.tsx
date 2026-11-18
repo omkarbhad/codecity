@@ -21,24 +21,35 @@ import type { CitySnapshot } from "@/lib/types/city"
 import { isPathHidden, useCityStore } from "./use-city-store"
 import { getExtension } from "./extension-filter"
 import { getBuildingColor } from "@/lib/visualization/color-utils"
+import { INCOMING_COLOR, LIGHT_THEME, OUTGOING_COLOR, UNKNOWN_COLOR, usePalette } from "@/lib/theme"
 
-const WORLD_TO_PIXELS = 24
 const MIN_NODE_SIZE = 24
 const MAX_NODE_SIZE = 220
 const NODE_GAP = 8
 const DISTRICT_PADDING = 40
+/** Leaves room for the floating toolbar at the top of the canvas. */
+const FIT_VIEW = { padding: { top: "68px", right: "24px", bottom: "24px", left: "24px" }, maxZoom: 2 } as const
 const DISTRICT_HEADER = 28
+const DISTRICT_HEADER_MAX = 110
+const DISTRICT_GAP = 32
+/** Width / height the packed map aims for; matches a landscape canvas. */
+const MAP_ASPECT = 1.7
+/** File names are only drawn on tiles large enough to read them. */
+const LABEL_MIN_SIZE = 56
 
 interface FileNodeData extends Record<string, unknown> {
   color: string
   label: string
   path: string
+  showLabel: boolean
 }
 
 interface DistrictNodeData extends Record<string, unknown> {
   label: string
   color: string
   fileCount: number
+  /** Header height in px; grows with the district so names read at overview zoom. */
+  header: number
 }
 
 const FileNode = memo(function FileNode({ data }: NodeProps<Node<FileNodeData>>) {
@@ -51,7 +62,7 @@ const FileNode = memo(function FileNode({ data }: NodeProps<Node<FileNodeData>>)
       {/* Invisible edge anchors — IDs allow explicit source/target picking */}
       <Handle id="t" type="target" position={Position.Top} className="city2d-handle" isConnectable={false} />
       <Handle id="s" type="source" position={Position.Bottom} className="city2d-handle" isConnectable={false} />
-      <span className="city2d-node-label">{data.label}</span>
+      {data.showLabel && <span className="city2d-node-label">{data.label}</span>}
     </div>
   )
 })
@@ -59,7 +70,7 @@ const FileNode = memo(function FileNode({ data }: NodeProps<Node<FileNodeData>>)
 const DistrictNode = memo(function DistrictNode({ data }: NodeProps<Node<DistrictNodeData>>) {
   return (
     <div className="city2d-district" style={{ ["--district-color" as string]: data.color }}>
-      <div className="city2d-district-header">
+      <div className="city2d-district-header" style={{ height: data.header, fontSize: Math.round(data.header * 0.42) }}>
         <span className="city2d-district-dot" style={{ background: data.color }} />
         <span className="city2d-district-name" title={data.label}>{data.label}</span>
         <span className="city2d-district-count">{data.fileCount}</span>
@@ -75,6 +86,8 @@ interface Props {
 }
 
 export function City2DCanvas({ snapshot }: Props) {
+  const palette = usePalette()
+  const isLight = palette === LIGHT_THEME
   const visualizationMode = useCityStore((s) => s.visualizationMode)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
@@ -90,19 +103,12 @@ export function City2DCanvas({ snapshot }: Props) {
     return m
   }, [snapshot.files])
 
-  const districtColorMap = useMemo(() => {
-    const m = new Map<string, string>()
-    const walk = (
-      list: { name: string; color: string; subDistricts?: { name: string; color: string; subDistricts?: unknown[] }[] }[],
-    ) => {
-      for (const d of list) {
-        m.set(d.name, d.color)
-        if (d.subDistricts) walk(d.subDistricts as never)
-      }
-    }
-    walk(snapshot.districts)
-    return m
-  }, [snapshot.districts])
+  // Top-level districts only: a sub-folder that shares a district's name
+  // (src and packages/x/src) has its own entry in subDistrictColorMap.
+  const districtColorMap = useMemo(
+    () => new Map(snapshot.districts.map((d) => [d.name, d.color])),
+    [snapshot.districts]
+  )
 
   const subDistrictColorMap = useMemo(() => {
     const m = new Map<string, string>()
@@ -147,7 +153,7 @@ export function City2DCanvas({ snapshot }: Props) {
       const baseColor =
         subDistrictColorMap.get(`${file.district}::${sf}`) ??
         districtColorMap.get(file.district) ??
-        "#888888"
+        UNKNOWN_COLOR
 
       const colorObj = getBuildingColor(file, visualizationMode, baseColor, false, tmp)
       const colorHex = `#${colorObj.getHexString()}`
@@ -170,21 +176,13 @@ export function City2DCanvas({ snapshot }: Props) {
       else groups.set(p.district, [p])
     }
 
-    // District anchor positions from the original 3D bounds (top-left in 2D space)
-    const districtAnchor = new Map<string, { x: number; y: number }>()
-    for (const d of snapshot.districts) {
-      districtAnchor.set(d.name, {
-        x: d.bounds.x * WORLD_TO_PIXELS,
-        y: d.bounds.z * WORLD_TO_PIXELS,
-      })
-    }
-
     interface PlacedRect { x: number; y: number; w: number; h: number }
     interface PlacedDistrict {
       name: string
       rect: PlacedRect
       color: string
       fileCount: number
+      header: number
       childNodes: Node<FileNodeData>[]
     }
     const placedDistricts: PlacedDistrict[] = []
@@ -199,9 +197,8 @@ export function City2DCanvas({ snapshot }: Props) {
       const rows = Math.ceil(files.length / cols)
       const innerPad = DISTRICT_PADDING / 2
       const gridWidth = cols * cellSize + DISTRICT_PADDING
-      const gridHeight = rows * cellSize + DISTRICT_PADDING + DISTRICT_HEADER
-
-      const anchor = districtAnchor.get(name) ?? { x: 0, y: 0 }
+      const header = Math.round(Math.max(DISTRICT_HEADER, Math.min(DISTRICT_HEADER_MAX, gridWidth * 0.07)))
+      const gridHeight = rows * cellSize + DISTRICT_PADDING + header
 
       // Children stored with positions RELATIVE to district anchor.
       // We rebase them to absolute coords after district overlap resolution.
@@ -211,7 +208,7 @@ export function City2DCanvas({ snapshot }: Props) {
         const col = i % cols
         const row = Math.floor(i / cols)
         const cellOriginX = innerPad + col * cellSize
-        const cellOriginY = DISTRICT_HEADER + innerPad + row * cellSize
+        const cellOriginY = header + innerPad + row * cellSize
         const x = cellOriginX + (cellSize - NODE_GAP - f.size) / 2
         const y = cellOriginY + (cellSize - NODE_GAP - f.size) / 2
 
@@ -219,7 +216,7 @@ export function City2DCanvas({ snapshot }: Props) {
           id: f.path,
           type: "file",
           position: { x, y },
-          data: { color: f.color, label: f.label, path: f.path },
+          data: { color: f.color, label: f.label, path: f.path, showLabel: f.size >= LABEL_MIN_SIZE },
           style: { width: f.size, height: f.size },
           width: f.size,
           height: f.size,
@@ -231,37 +228,31 @@ export function City2DCanvas({ snapshot }: Props) {
 
       placedDistricts.push({
         name,
-        rect: { x: anchor.x, y: anchor.y, w: gridWidth, h: gridHeight },
-        color: districtColorMap.get(name) ?? "#888888",
+        rect: { x: 0, y: 0, w: gridWidth, h: gridHeight },
+        color: districtColorMap.get(name) ?? UNKNOWN_COLOR,
         fileCount: files.length,
+        header,
         childNodes,
       })
     }
 
-    // Resolve district-vs-district overlaps deterministically.
-    placedDistricts.sort((a, b) => {
-      if (a.rect.y !== b.rect.y) return a.rect.y - b.rect.y
-      if (a.rect.x !== b.rect.x) return a.rect.x - b.rect.x
-      return a.name.localeCompare(b.name)
-    })
-
-    const finalRects: PlacedRect[] = []
+    // Shelf-pack districts into rows, largest first, toward a landscape footprint
+    // so the map fills a wide canvas instead of stacking into one column.
+    placedDistricts.sort((a, b) => b.rect.h - a.rect.h || b.rect.w - a.rect.w || a.name.localeCompare(b.name))
+    const totalArea = placedDistricts.reduce((sum, d) => sum + (d.rect.w + DISTRICT_GAP) * (d.rect.h + DISTRICT_GAP), 0)
+    const rowLimit = Math.max(Math.sqrt(totalArea * MAP_ASPECT), ...placedDistricts.map((d) => d.rect.w))
+    let cursorX = 0
+    let cursorY = 0
+    let rowHeight = 0
     for (const d of placedDistricts) {
-      let rect = { ...d.rect }
-      let moved = true
-      while (moved) {
-        moved = false
-        for (const r of finalRects) {
-          const overlapX = rect.x < r.x + r.w && rect.x + rect.w > r.x
-          const overlapY = rect.y < r.y + r.h && rect.y + rect.h > r.y
-          if (overlapX && overlapY) {
-            rect = { ...rect, y: r.y + r.h + DISTRICT_PADDING }
-            moved = true
-          }
-        }
+      if (cursorX > 0 && cursorX + d.rect.w > rowLimit) {
+        cursorX = 0
+        cursorY += rowHeight + DISTRICT_GAP
+        rowHeight = 0
       }
-      d.rect = rect
-      finalRects.push(rect)
+      d.rect = { ...d.rect, x: cursorX, y: cursorY }
+      cursorX += d.rect.w + DISTRICT_GAP
+      rowHeight = Math.max(rowHeight, d.rect.h)
     }
 
     // Emit district backgrounds first (lower z), then files at absolute positions.
@@ -271,7 +262,7 @@ export function City2DCanvas({ snapshot }: Props) {
         id: `district:${d.name}`,
         type: "district",
         position: { x: d.rect.x, y: d.rect.y },
-        data: { label: d.name, color: d.color, fileCount: d.fileCount },
+        data: { label: d.name, color: d.color, fileCount: d.fileCount, header: d.header },
         style: { width: d.rect.w, height: d.rect.h },
         width: d.rect.w,
         height: d.rect.h,
@@ -356,9 +347,9 @@ export function City2DCanvas({ snapshot }: Props) {
       return true
     }
 
-    // Match 3D dependency-pipes palette: red = outgoing, blue = incoming.
-    const OUTGOING = "#ff6b6b"
-    const INCOMING = "#4dabf7"
+    // Same as the 3D dependency pipes: pink = outgoing, cyan = incoming.
+    const OUTGOING = OUTGOING_COLOR
+    const INCOMING = INCOMING_COLOR
 
     for (const target of file.imports) {
       if (!visible(target)) continue
@@ -401,8 +392,8 @@ export function City2DCanvas({ snapshot }: Props) {
     const escaped = selectedFile.replace(/["\\]/g, (m) => `\\${m}`)
     return `.city2d-node[data-path="${escaped}"] {
       opacity: 1 !important;
-      outline: 2px solid #ffffff !important;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.55), 0 6px 16px rgba(0,0,0,0.55) !important;
+      outline: 2px solid var(--lime) !important;
+      box-shadow: var(--shadow-accent) !important;
       z-index: 10;
     }`
   }, [selectedFile])
@@ -423,7 +414,8 @@ export function City2DCanvas({ snapshot }: Props) {
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 2 }}
+        fitViewOptions={FIT_VIEW}
+        onlyRenderVisibleElements
         minZoom={0.05}
         maxZoom={4}
         proOptions={{ hideAttribution: true }}
@@ -433,22 +425,22 @@ export function City2DCanvas({ snapshot }: Props) {
         panOnDrag
         selectionOnDrag={false}
         zoomOnDoubleClick={false}
-        colorMode="dark"
+        colorMode={isLight ? "light" : "dark"}
       >
-        <Background color="#1a1a1f" gap={32} size={1} />
+        <Background color={palette.border} gap={32} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
         <MiniMap
-          position="top-right"
+          position="bottom-left"
           pannable
           zoomable
-          maskColor="rgba(0,0,0,0.6)"
-          style={{ background: "#0b0b0c", border: "1px solid rgba(255,255,255,0.08)" }}
+          maskColor={isLight ? "rgba(245,245,246,0.7)" : "rgba(0,0,0,0.6)"}
+          style={{ background: palette.bgDeep, border: `1px solid ${palette.border}`, borderRadius: 10 }}
           nodeColor={(n) => {
             if (n.type === "district") return (n.data as DistrictNodeData).color
             return (n.data as FileNodeData).color
           }}
           nodeStrokeWidth={0}
-          nodeBorderRadius={2}
+          nodeBorderRadius={0}
         />
       </ReactFlow>
     </div>
@@ -456,36 +448,37 @@ export function City2DCanvas({ snapshot }: Props) {
 }
 
 const CITY2D_STYLES = `
+/* Same canvas ground as the 3D and network views. */
+.city2d .react-flow { --xy-background-color: var(--bg-deep); }
 .city2d-node {
   position: relative;
   width: 100%;
   height: 100%;
   border-radius: 3px;
-  outline: 1px solid rgba(0,0,0,0.45);
+  outline: 1px solid rgba(0,0,0,0.55);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  cursor: pointer;
   transition: outline-color 120ms, opacity 120ms;
 }
 .city2d-node-label {
   pointer-events: none;
   width: 100%;
-  padding: 0 4px 2px;
+  padding: 0 4px 3px;
   text-align: center;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 8px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
   line-height: 1;
-  color: rgba(255,255,255,0.92);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+  color: var(--bg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  mix-blend-mode: screen;
 }
 .city2d-node:hover {
-  outline: 1.5px solid rgba(255,255,255,0.85);
+  outline: 2px solid var(--cream);
   z-index: 5;
 }
 .city2d.city2d-has-selection.city2d-dim .city2d-node {
@@ -494,10 +487,9 @@ const CITY2D_STYLES = `
 .city2d-district {
   width: 100%;
   height: 100%;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--district-color) 6%, rgba(15,15,18,0.55));
-  border: 1px solid color-mix(in srgb, var(--district-color) 45%, rgba(255,255,255,0.04));
-  box-shadow: inset 0 0 24px color-mix(in srgb, var(--district-color) 8%, transparent), 0 1px 0 rgba(255,255,255,0.03);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--district-color) 5%, var(--bg-raised));
+  border: 1px solid color-mix(in srgb, var(--district-color) 55%, var(--border-pixel));
   pointer-events: none;
   overflow: hidden;
 }
@@ -505,22 +497,17 @@ const CITY2D_STYLES = `
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 26px;
-  padding: 0 12px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 12px;
+  padding: 0 0.8em;
+  font-family: var(--font-display);
   font-weight: 600;
-  color: rgba(255,255,255,0.92);
-  border-bottom: 1px solid color-mix(in srgb, var(--district-color) 30%, rgba(255,255,255,0.04));
-  background: color-mix(in srgb, var(--district-color) 14%, rgba(0,0,0,0.55));
-  letter-spacing: 0.01em;
+  color: var(--cream);
+  border-bottom: 1px solid color-mix(in srgb, var(--district-color) 35%, var(--border-pixel));
+  background: color-mix(in srgb, var(--district-color) 12%, var(--bg));
 }
 .city2d-district-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 0.7em;
+  height: 0.7em;
   flex-shrink: 0;
-  box-shadow: 0 0 6px color-mix(in srgb, var(--district-color) 60%, transparent);
 }
 .city2d-district-name {
   flex: 1;
@@ -528,14 +515,33 @@ const CITY2D_STYLES = `
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .city2d-district-count {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
+  font-size: 0.85em;
   font-weight: 500;
-  color: rgba(255,255,255,0.4);
+  color: var(--muted);
   flex-shrink: 0;
 }
+/* Zoom controls — pixel theme */
+.city2d .react-flow__controls {
+  border: 1px solid var(--border-pixel);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.city2d .react-flow__controls-button {
+  width: 28px;
+  height: 28px;
+  background: var(--bg-raised);
+  border: none;
+  border-bottom: 1px solid var(--border-pixel);
+  color: var(--cream-dark);
+  fill: var(--cream-dark);
+}
+.city2d .react-flow__controls-button:last-child { border-bottom: none; }
+.city2d .react-flow__controls-button:hover { background: var(--bg-card); color: var(--cream); fill: var(--cream); }
 /* District backgrounds — sit behind file nodes, never intercept input */
 .react-flow__node-district {
   background: transparent !important;
@@ -558,7 +564,7 @@ const CITY2D_STYLES = `
   opacity: 0;
   pointer-events: none;
 }
-/* Edges — match 3D dependency-pipes look (red out / blue in, glow + dash flow) */
+/* Edges — match 3D dependency-pipes look (pink out / cyan in, glow + dash flow) */
 .react-flow__edges {
   z-index: 1000;
   overflow: visible;
@@ -568,10 +574,10 @@ const CITY2D_STYLES = `
   stroke-linejoin: round;
 }
 .city2d-edge-out .react-flow__edge-path {
-  filter: drop-shadow(0 0 4px rgba(255, 107, 107, 0.85)) drop-shadow(0 0 10px rgba(255, 107, 107, 0.45));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--sev-high) 85%, transparent)) drop-shadow(0 0 10px color-mix(in srgb, var(--sev-high) 45%, transparent));
 }
 .city2d-edge-in .react-flow__edge-path {
-  filter: drop-shadow(0 0 4px rgba(77, 171, 247, 0.85)) drop-shadow(0 0 10px rgba(77, 171, 247, 0.45));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--sev-low) 85%, transparent)) drop-shadow(0 0 10px color-mix(in srgb, var(--sev-low) 45%, transparent));
 }
 .city2d-edge.animated .react-flow__edge-path {
   stroke-dasharray: 8 6;

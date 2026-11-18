@@ -1,52 +1,46 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
-import { X, ChevronDown, ChevronRight, ArrowRight, ArrowLeft, Package, Copy, Check, FileCode } from "lucide-react"
-import { getIconForFile as _getIconForFile } from "vscode-icons-js"
-
-function getFileIcon(name: string): string {
-  const icon = _getIconForFile(name) ?? "default_file.svg"
-  return icon.includes("_light_") ? icon.replace("_light_", "_") : icon
-}
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, ArrowRightIcon, XIcon, CopyIcon, GithubIcon, PackageIcon, CodeXmlIcon, FileCodeIcon, CheckIcon } from "@/components/ui/icons"
+import type { AppIconType } from "@/components/ui/icons"
+import { FileIcon } from "./file-icons"
+import { AppIcon } from "@/components/ui/app-icon"
 
 function getGitHubFileUrl(repoUrl: string, filePath: string): string | null {
   if (!/^https?:\/\/(www\.)?github\.com\//.test(repoUrl)) return null
-  return `${repoUrl.replace(/\.git$/, "")}/blob/main/${filePath}`
+  return `${repoUrl.replace(/\.git$/, "")}/blob/HEAD/${filePath}`
 }
 
 import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore } from "./use-city-store"
+import { UNKNOWN_COLOR } from "@/lib/theme"
 
 interface SidePanelProps {
   snapshot: CitySnapshot
 }
 
-function Section({
-  title,
-  count,
-  defaultOpen = true,
-  children,
-}: {
-  title: string
-  count?: number
-  defaultOpen?: boolean
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
+type Detail = "functions" | "types" | "imports" | "importedBy" | "packages"
+
+const iconButton =
+  "flex size-7 shrink-0 items-center justify-center rounded-[7px] text-(--muted) transition-[color,background-color] hover:bg-(--bg-raised) hover:text-(--cream)"
+const listRow =
+  "flex h-8 w-full items-center gap-2 rounded-[8px] px-2.5 text-left text-[13px] transition-colors"
+
+/** One line of the file's overview: what it has, how many, and the way in to the list. */
+function DetailRow({ icon, label, count, onOpen }: { icon: AppIconType; label: string; count: number; onOpen: () => void }) {
+  const empty = count === 0
   return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 border-t-2 border-dashed border-(--border-pixel) bg-(--bg-card) px-3 py-2.5 text-left transition-colors hover:bg-(--bg-raised)"
-      >
-        {open ? <ChevronDown className="size-3 text-(--cream-dark)" /> : <ChevronRight className="size-3 text-(--cream-dark)" />}
-        <span className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">{title}</span>
-        {count !== undefined && (
-          <span className="border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-px font-mono text-[10px] tabular-nums text-(--cream-dark)">{count}</span>
-        )}
-      </button>
-      {open && <div className="px-3 pb-3 pt-2">{children}</div>}
-    </div>
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={empty}
+      className="group flex h-9 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[13.5px] text-(--cream-dark) transition-[color,background-color,transform] duration-150 enabled:hover:bg-(--bg-raised) enabled:hover:text-(--cream) enabled:active:scale-[0.99] disabled:text-(--muted)"
+    >
+      <AppIcon icon={icon} className="size-[18px] shrink-0 text-(--muted) transition-colors group-enabled:group-hover:text-(--cream)" />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="shrink-0 text-[12px] tabular-nums text-(--muted)">{count.toLocaleString()}</span>
+      <AppIcon icon={ChevronRightIcon} className={`size-3 shrink-0 ${empty ? "invisible" : "text-(--dim) transition-colors group-hover:text-(--cream-dark)"}`} />
+    </button>
   )
 }
 
@@ -56,6 +50,7 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   const repoUrl = useCityStore((s) => s.repoUrl)
   const openCodeViewer = useCityStore((s) => s.openCodeViewer)
   const [copied, setCopied] = useState(false)
+  const [openDetail, setOpenDetail] = useState<{ path: string; detail: Detail } | null>(null)
 
   const file = useMemo(() => {
     if (!selectedFile) return null
@@ -63,8 +58,8 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   }, [selectedFile, snapshot.files])
 
   const districtColor = useMemo(() => {
-    if (!file) return "#888"
-    return snapshot.districts.find((d) => d.name === file.district)?.color ?? "#888"
+    if (!file) return UNKNOWN_COLOR
+    return snapshot.districts.find((d) => d.name === file.district)?.color ?? UNKNOWN_COLOR
   }, [file, snapshot.districts])
 
   const handleCopyPath = useCallback(() => {
@@ -83,229 +78,175 @@ export function SidePanel({ snapshot }: SidePanelProps) {
   if (!file) return null
 
   const fileName = file.path.split("/").pop() ?? file.path
-  const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : ""
+  const folder = file.path.includes("/") ? file.path.slice(0, file.path.lastIndexOf("/")) : ""
   const cplxTone = file.complexity <= 10 ? "lime" : file.complexity <= 25 ? "med" : "high"
   const cplxColorClass = cplxTone === "lime" ? "text-(--lime)" : cplxTone === "med" ? "text-(--sev-med)" : "text-(--sev-high)"
-  const cplxBadgeClass = cplxTone === "lime"
-    ? "border-(--lime) text-(--lime)"
-    : cplxTone === "med"
-      ? "border-(--sev-med) text-(--sev-med)"
-      : "border-(--sev-high) text-(--sev-high)"
-  const cplxLabel = cplxTone === "lime" ? "LOW" : cplxTone === "med" ? "MED" : "HIGH"
+  const cplxLabel = cplxTone === "lime" ? "Low" : cplxTone === "med" ? "Medium" : "High"
   const githubUrl = repoUrl ? getGitHubFileUrl(repoUrl, file.path) : null
+  const packages = file.externalImports ?? []
+  // The list being looked at; a different file starts again from its overview
+  const detail = openDetail?.path === file.path ? openDetail.detail : null
+  const open = (next: Detail) => setOpenDetail({ path: file.path, detail: next })
+
+  const details: { key: Detail; icon: AppIconType; label: string; count: number }[] = [
+    { key: "functions", icon: CodeXmlIcon, label: "Functions", count: file.functions.length },
+    { key: "types", icon: FileCodeIcon, label: "Types", count: file.types.length },
+    { key: "imports", icon: ArrowRightIcon, label: "Imports", count: file.imports.length },
+    { key: "importedBy", icon: ArrowLeftIcon, label: "Used by", count: file.importedBy.length },
+    { key: "packages", icon: PackageIcon, label: "Packages", count: packages.length },
+  ]
+  const current = details.find((d) => d.key === detail)
 
   return (
-    <div className="pixel-shadow flex h-full flex-col overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)">
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
-          File details
+    <div className="flex h-full flex-col overflow-hidden bg-transparent">
+      {/* The file: icon, name, folder, close */}
+      <div className="flex shrink-0 items-start gap-2.5 px-3.5 pb-3 pt-3.5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-(--bg-card)">
+          <FileIcon name={fileName} />
         </span>
-        <button
-          onClick={() => selectFile(null, null)}
-          aria-label="Close panel"
-          className="flex size-6 shrink-0 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
-        >
-          <X className="size-3" />
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => openCodeViewer(file.path)}
+            title={`Open ${file.path}`}
+            className="block w-full truncate text-left text-[14px] font-medium text-(--cream) transition-colors hover:underline hover:decoration-(--dim) hover:underline-offset-[3px]"
+          >
+            {fileName}
+          </button>
+          <div className="mt-0.5 flex items-center gap-1.5" title={file.path}>
+            <span className="size-2 shrink-0 rounded-[2px]" style={{ backgroundColor: districtColor }} />
+            <span className="truncate text-[12px] text-(--muted)">{folder || file.district}</span>
+          </div>
+        </div>
+        <button onClick={() => selectFile(null, null)} aria-label="Close file details" title="Close (Esc)" className={iconButton}>
+          <AppIcon icon={XIcon} className="size-3.5" />
         </button>
       </div>
 
-      {/* Identity row */}
-      <div className="shrink-0 border-b-2 border-dashed border-(--border-pixel) bg-(--bg-card) px-3 py-3">
-        <div className="flex items-start gap-2.5">
-          <span className="flex size-9 shrink-0 items-center justify-center border-2 border-(--border-pixel) bg-(--bg-raised)">
-            <img src={`/icons/vscode/${getFileIcon(fileName)}`} alt="" className="size-5" />
-          </span>
-          <div className="min-w-0 flex-1">
+      {current ? (
+        // One list, with the way back to the overview
+        <div key={current.key} className="cc-drill-in flex min-h-0 flex-1 flex-col border-t border-(--border-pixel)">
+          <div className="flex h-10 shrink-0 items-center gap-1 pl-1.5 pr-3.5">
             <button
-              onClick={() => openCodeViewer(file.path)}
-              className="block w-full truncate text-left font-mono text-[12px] font-semibold text-(--cream) transition-colors hover:text-primary"
+              type="button"
+              onClick={() => setOpenDetail(null)}
+              aria-label={`Back to the file overview from ${current.label}`}
+              title="Back to overview"
+              className="group flex h-7 min-w-0 items-center gap-1 rounded-[8px] pl-1 pr-2 text-[13.5px] font-medium text-(--cream) transition-colors hover:bg-(--bg-raised)"
             >
-              {fileName}
+              <AppIcon icon={ChevronLeftIcon} className="size-3.5 shrink-0 text-(--muted) transition-colors group-hover:text-(--cream)" />
+              <span className="truncate">{current.label}</span>
             </button>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="size-1.5 shrink-0" style={{ backgroundColor: districtColor }} />
-              <span className="truncate font-mono text-[11px] text-(--cream-dark)">{file.district}</span>
-            </div>
+            <span className="flex-1" />
+            <span className="text-[12px] tabular-nums text-(--muted)">{current.count.toLocaleString()}</span>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-3 scroll-thin">
+            {detail === "functions" && file.functions.map((fn, i) => (
+              <button
+                key={`${fn.name}-${i}`}
+                type="button"
+                onClick={() => openCodeViewer(file.path, fn.name)}
+                title={`Open ${fn.name} in the source viewer`}
+                className={`${listRow} text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)`}
+              >
+                <span className="min-w-0 flex-1 truncate">{fn.name}</span>
+                {fn.exported && <span className="shrink-0 text-[11px] text-(--muted)">exported</span>}
+                <span className="w-9 shrink-0 text-right text-[11.5px] tabular-nums text-(--muted)">{fn.lines}</span>
+              </button>
+            ))}
+
+            {detail === "types" && file.types.map((t, i) => (
+              <div key={`${t.name}-${i}`} className={`${listRow} text-(--cream-dark)`}>
+                <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                <span className="shrink-0 text-[11.5px] text-(--muted)">{t.kind}</span>
+              </div>
+            ))}
+
+            {(detail === "imports" || detail === "importedBy") && (detail === "imports" ? file.imports : file.importedBy).map((path, i) => {
+              const name = path.split("/").pop() ?? path
+              return (
+                <button
+                  key={`${path}-${i}`}
+                  type="button"
+                  onClick={() => handleNavigate(path)}
+                  title={`Go to ${path}`}
+                  className={`${listRow} text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)`}
+                >
+                  <FileIcon name={name} className="!size-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{name}</span>
+                  <span className="max-w-[45%] shrink-0 truncate text-[11.5px] text-(--muted)" dir="rtl">{path.slice(0, Math.max(0, path.length - name.length - 1))}</span>
+                </button>
+              )
+            })}
+
+            {detail === "packages" && packages.map((name, i) => (
+              <div key={`${name}-${i}`} className={`${listRow} text-(--cream-dark)`}>
+                <span className="min-w-0 flex-1 truncate">{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
+          {/* Actions on the file */}
+          <div className="flex items-center gap-1.5 px-3.5 pb-3.5">
             <button
+              type="button"
               onClick={() => openCodeViewer(file.path)}
-              aria-label="View source"
-              title="View source"
-              className="flex size-6 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+              className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[9px] bg-(--bg-card) text-[13px] font-medium text-(--cream) transition-[background-color,transform] duration-150 hover:bg-(--bg-raised) active:scale-[0.98]"
             >
-              <FileCode className="size-3" />
+              <AppIcon icon={CodeXmlIcon} className="size-4 text-(--muted)" />
+              Open file
             </button>
-            <button
-              onClick={handleCopyPath}
-              aria-label="Copy file path"
-              title="Copy path"
-              className="flex size-6 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
-            >
-              {copied ? <Check className="size-3 text-(--lime)" /> : <Copy className="size-3" />}
+            <button onClick={handleCopyPath} aria-label="Copy file path" title={copied ? "Copied" : "Copy path"} className={`${iconButton} !size-8 bg-(--bg-card)`}>
+              <AppIcon icon={copied ? CheckIcon : CopyIcon} className={`size-4 ${copied ? "text-(--lime)" : ""}`} />
             </button>
             {githubUrl && (
-              <a
-                href={githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Open on GitHub"
-                aria-label="Open file on GitHub"
-                className="flex size-6 items-center justify-center border-2 border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
-              >
-                <svg className="size-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+              <a href={githubUrl} target="_blank" rel="noopener noreferrer" title="Open on GitHub" aria-label="Open file on GitHub" className={`${iconButton} !size-8 bg-(--bg-card)`}>
+                <AppIcon icon={GithubIcon} className="size-4" />
               </a>
             )}
           </div>
-        </div>
 
-        {/* Tag row */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {ext && (
-            <span className="border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark)">
-              {ext}
-            </span>
-          )}
-          <span className={`border-2 ${cplxBadgeClass} bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]`}>
-            Complexity: {cplxLabel}
-          </span>
-          {file.isReactComponent && (
-            <span className="border-2 border-(--sev-low) bg-[color-mix(in_srgb,var(--sev-low)_8%,transparent)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-low)">
-              REACT
-            </span>
-          )}
-          {file.hasUnusedExports && (
-            <span className="border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-high)">
-              UNUSED
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
-        <div className="px-3 py-3">
-          <div className="grid grid-cols-3 gap-1.5">
+          {/* Three numbers that size the file up */}
+          <div className="mx-3.5 grid grid-cols-3 divide-x divide-(--border-pixel) rounded-[12px] border border-(--border-pixel)">
             <StatCell label="Lines" value={file.lines} />
             <StatCell label="Functions" value={file.functions.length} />
-            <StatCell label="Complexity" value={file.complexity} valueClassName={cplxColorClass} />
-            <StatCell label="Types" value={file.types.length} />
-            <StatCell label="Imports" value={file.imports.length} />
-            <StatCell label="Used by" value={file.importedBy.length} />
+            <StatCell label="Complexity" value={file.complexity} valueClassName={cplxColorClass} title={`${cplxLabel} complexity`} />
           </div>
+
+          {(file.isReactComponent || file.hasUnusedExports) && (
+            <div className="flex flex-wrap items-center gap-1.5 px-3.5 pt-3">
+              {file.isReactComponent && (
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--sev-low)_14%,transparent)] px-2 py-0.5 text-[11px] text-(--sev-low)">React component</span>
+              )}
+              {file.hasUnusedExports && (
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--sev-high)_14%,transparent)] px-2 py-0.5 text-[11px] text-(--sev-high)">Unused exports</span>
+              )}
+            </div>
+          )}
+
+          {/* What is inside; each row opens its list */}
+          <nav aria-label="File contents" className="px-2 pb-3 pt-3">
+            <p className="px-2.5 pb-1 text-[11px] font-medium text-(--muted)">Inside this file</p>
+            {details.map((d) => (
+              <DetailRow key={d.key} icon={d.icon} label={d.label} count={d.count} onOpen={() => open(d.key)} />
+            ))}
+          </nav>
         </div>
-
-        {file.functions.length > 0 && (
-          <Section title="Functions" count={file.functions.length}>
-            <div className="space-y-px">
-              {file.functions.map((fn, i) => (
-                <button
-                  key={`${fn.name}-${i}`}
-                  onClick={() => openCodeViewer(file.path, fn.name)}
-                  className="group flex w-full cursor-pointer items-center justify-between border border-transparent px-2 py-1.5 text-left transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised)"
-                >
-                  <span className="flex items-center gap-1.5 truncate font-mono text-[11px] text-(--cream) group-hover:text-primary">
-                    {fn.exported && <span className="size-1.5 shrink-0 bg-(--lime)" />}
-                    {fn.name}
-                  </span>
-                  <span className="ml-2 shrink-0 font-mono text-[10px] tabular-nums text-(--muted)">{fn.lines}L</span>
-                </button>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {file.types.length > 0 && (
-          <Section title="Types" count={file.types.length} defaultOpen={file.types.length <= 8}>
-            <div className="space-y-px">
-              {file.types.map((t, i) => (
-                <div key={`${t.name}-${i}`} className="flex items-center gap-2 border border-transparent px-2 py-1.5 transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised)">
-                  <span className="border-2 border-(--sev-med) bg-[color-mix(in_srgb,var(--sev-med)_10%,transparent)] px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-(--sev-med)">
-                    {t.kind}
-                  </span>
-                  <span className="truncate font-mono text-[11px] text-(--cream-dark)">{t.name}</span>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {(file.imports.length > 0 || file.importedBy.length > 0 || (file.externalImports && file.externalImports.length > 0)) && (
-          <Section title="Dependencies" count={file.imports.length + file.importedBy.length + (file.externalImports?.length ?? 0)}>
-            <div className="space-y-3">
-              {file.imports.length > 0 && (
-                <div>
-                  <p className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-                    <ArrowRight className="size-2.5" /> Imports
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {file.imports.map((imp, i) => (
-                      <button
-                        key={`${imp}-${i}`}
-                        onClick={() => handleNavigate(imp)}
-                        className="max-w-[130px] truncate border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] px-1.5 py-0.5 font-mono text-[10px] text-(--sev-high) transition-colors hover:bg-[color-mix(in_srgb,var(--sev-high)_14%,transparent)]"
-                        title={imp}
-                        aria-label={`Navigate to ${imp}`}
-                      >
-                        {imp.split("/").pop()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {file.importedBy.length > 0 && (
-                <div>
-                  <p className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-                    <ArrowLeft className="size-2.5" /> Imported By
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {file.importedBy.map((dep, i) => (
-                      <button
-                        key={`${dep}-${i}`}
-                        onClick={() => handleNavigate(dep)}
-                        className="max-w-[130px] truncate border-2 border-(--sev-low) bg-[color-mix(in_srgb,var(--sev-low)_8%,transparent)] px-1.5 py-0.5 font-mono text-[10px] text-(--sev-low) transition-colors hover:bg-[color-mix(in_srgb,var(--sev-low)_14%,transparent)]"
-                        title={dep}
-                        aria-label={`Navigate to ${dep}`}
-                      >
-                        {dep.split("/").pop()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {file.externalImports && file.externalImports.length > 0 && (
-                <div>
-                  <p className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-                    <Package className="size-2.5" /> External
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {file.externalImports.map((extern, i) => (
-                      <span
-                        key={`${extern}-${i}`}
-                        className="border-2 border-(--border-light) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] text-(--cream-dark)"
-                      >
-                        {extern}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Section>
-        )}
-      </div>
+      )}
     </div>
   )
 }
 
-function StatCell({ label, value, valueClassName = "" }: { label: string; value: number; valueClassName?: string }) {
+function StatCell({ label, value, valueClassName = "", title }: { label: string; value: number; valueClassName?: string; title?: string }) {
   return (
-    <div className="pixel-shadow-sm border-2 border-(--border-pixel) bg-(--bg-raised) p-2 text-center transition-colors hover:border-(--border-light)">
-      <div className={`font-mono text-[15px] font-bold tabular-nums leading-none ${valueClassName || "text-(--cream)"}`}>
+    <div className="min-w-0 px-2 py-2.5 text-center" title={title}>
+      <div className={`text-[16px] font-semibold tabular-nums leading-none ${valueClassName || "text-(--cream)"}`}>
         {value.toLocaleString()}
       </div>
-      <div className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.04em] text-(--muted)">{label}</div>
+      <div className="mt-1.5 truncate text-[11px] text-(--muted)">{label}</div>
     </div>
   )
 }
