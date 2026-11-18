@@ -1,0 +1,40 @@
+name: Bug report
+description: Something in CodeCity does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a local folder ...
+        2. Switch to the 2D map ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: CodeCity version
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS (Apple Silicon), macOS (Intel), Windows, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste any error text. Remove private paths or code you do not want public.
+      render: text
