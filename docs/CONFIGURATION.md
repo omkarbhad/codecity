@@ -72,7 +72,7 @@ Top-level fields that govern how the desktop app is built and packaged:
 - `bundle.icon`: PNG / ICNS / ICO icons under `src-tauri/icons/`.
 - `plugins.shell.open`: `true` — allows the shell plugin to open URLs.
 - `plugins.updater.endpoints`:
-  `https://github.com/MagnovaAI/codecity/releases/latest/download/latest.json`
+  `https://github.com/omkarbhad/codecity/releases/latest/download/latest.json`
   <!-- VERIFY: the public-facing updater feed URL -->
 - `plugins.updater.pubkey`: minisign public key embedded in `tauri.conf.json`.
 

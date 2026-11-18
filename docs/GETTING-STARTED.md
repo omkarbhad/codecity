@@ -46,7 +46,7 @@ See `src-tauri/binaries/README.md` for the full list of target triples (CI popul
 ## Installation
 
 ```bash
-git clone https://github.com/MagnovaAI/codecity.git
+git clone https://github.com/omkarbhad/codecity.git
 cd codecity
 pnpm install
 ```
