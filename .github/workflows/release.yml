@@ -11,6 +11,9 @@ jobs:
     name: Build ${{ matrix.label }}
     permissions:
       contents: write
+      # Build provenance: lets anyone check a download was built from this repository.
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -100,6 +103,7 @@ jobs:
         run: pnpm type-check
 
       - name: Build and publish Tauri release
+        id: tauri
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -116,3 +120,22 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           releaseAssetNamePattern: CodeCity-[version]-[platform]-[arch][setup].[ext]
+
+      # One signed statement per installer and updater file, recorded in GitHub's
+      # attestation store. Check a download with: gh attestation verify <file> --repo MagnovaAI/codecity
+      - name: List the files that were built
+        id: artifacts
+        shell: bash
+        env:
+          ARTIFACT_PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          {
+            echo "paths<<EOF"
+            echo "$ARTIFACT_PATHS" | jq -r '.[]'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.artifacts.outputs.paths }}

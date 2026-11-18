@@ -33,6 +33,10 @@ export const FAQ = [
     a: "macOS on Apple silicon and Intel, and Windows 64 bit. A Linux build is coming soon. Until then you can build the app from source on Linux.",
   },
   {
+    q: "How can I check a download is genuine?",
+    a: "Every release file is attested by GitHub, a signed record that it was built from the CodeCity repository by its release workflow. Run gh attestation verify with the file name and the repository MagnovaAI/codecity to check it.",
+  },
+  {
     q: "How do updates work?",
     a: "The app checks GitHub Releases for new versions. When one is available, an update button appears in the sidebar, and the download is verified against a signing key before it installs.",
   },
