@@ -8,7 +8,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c8e64a.svg" alt="MIT license" /></a>
     <img src="https://img.shields.io/badge/version-0.1.1-c8e64a.svg" alt="Version 0.1.1" />
     <a href="https://github.com/MagnovaAI/codecity/actions/workflows/ci.yml"><img src="https://github.com/MagnovaAI/codecity/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
-    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg" alt="macOS, Windows and Linux" />
+    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg" alt="macOS and Windows, Linux coming soon" />
   </p>
 
   <p>

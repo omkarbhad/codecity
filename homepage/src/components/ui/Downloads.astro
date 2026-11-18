@@ -1,0 +1,50 @@
+---
+import Icon from "./Icon.astro"
+import { SITE } from "../../lib/site"
+
+// The download choices: macOS and Windows link to the latest release; Linux is
+// not built yet and says so. A script puts the visitor's own system first.
+interface Props {
+  align?: "start" | "center"
+}
+const { align = "center" } = Astro.props
+---
+<div class:list={["downloads", `downloads--${align}`]}>
+  <div class="downloads-row">
+    <a class="button button--primary button-md" href={SITE.releases} rel="noopener" data-os="macos">
+      <Icon name="apple-logo" size={20} /> Download for macOS
+    </a>
+    <a class="button button--secondary button-md" href={SITE.releases} rel="noopener" data-os="windows">
+      <Icon name="windows-logo" size={20} /> Download for Windows
+    </a>
+  </div>
+  <p class="downloads-note caption-2">
+    <Icon name="linux-logo" size={16} /> Linux is coming soon.
+    <a class="text-link" href={SITE.repo} rel="noopener">Build it from source today</a>
+  </p>
+</div>
+
+<script>
+  // Lead with the system the visitor is on; the other button stays one click away.
+  const ua = navigator.userAgent
+  if (/Windows/i.test(ua)) {
+    document.querySelectorAll<HTMLElement>(".downloads-row").forEach((row) => {
+      const mac = row.querySelector<HTMLElement>('[data-os="macos"]')
+      const win = row.querySelector<HTMLElement>('[data-os="windows"]')
+      if (!mac || !win) return
+      win.classList.replace("button--secondary", "button--primary")
+      mac.classList.replace("button--primary", "button--secondary")
+      row.prepend(win)
+    })
+  }
+</script>
+
+<style>
+  .downloads { display: grid; gap: var(--s-150, 12px); }
+  .downloads--center { justify-items: center; }
+  .downloads-row { display: flex; flex-wrap: wrap; gap: var(--s-100); }
+  .downloads--center .downloads-row { justify-content: center; }
+  .downloads-note { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-75); margin: 0; color: var(--text-2); }
+  .downloads--center .downloads-note { justify-content: center; }
+  .downloads-note :global(svg) { color: var(--text-3, var(--text-2)); }
+</style>

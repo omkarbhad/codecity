@@ -30,7 +30,7 @@ export const FAQ = [
   },
   {
     q: "Which platforms are supported?",
-    a: "macOS on Apple silicon and Intel, Windows 64 bit, and Linux as an AppImage, deb or rpm package.",
+    a: "macOS on Apple silicon and Intel, and Windows 64 bit. A Linux build is coming soon. Until then you can build the app from source on Linux.",
   },
   {
     q: "How do updates work?",
