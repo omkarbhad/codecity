@@ -68,6 +68,11 @@ pub struct FileData {
     pub has_unused_exports: bool,
     pub file_type: FileType,
     pub position: Position,
+    /// Footprint side of the building, as the layout sized its lot. Absent on
+    /// snapshots made before the layout exported it (the frontend then falls
+    /// back to the old function-count width).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<f32>,
     pub district: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sub_folder: Option<String>,
@@ -264,16 +269,39 @@ pub enum LayoutMode {
     Semantic,
 }
 
+/// District name for files directly in the project root (folder mode).
+pub const ROOT_DISTRICT: &str = "(root)";
+
+/// Lowercased extension of the file name (not the whole path: `src.v2/Makefile`
+/// has none), or ".other".
 fn extension(path: &str) -> String {
-    path.rsplit_once('.')
+    let name = path.rsplit('/').next().unwrap_or(path);
+    name.rsplit_once('.')
         .map(|(_, ext)| format!(".{}", ext.to_lowercase()))
         .unwrap_or_else(|| ".other".to_string())
 }
 
+/// Building height in the 3D view. Keep in sync with `getBuildingHeight` in
+/// src/lib/visualization/building-dimensions.ts.
+fn building_height(lines: usize) -> f32 {
+    const KNEE: f32 = 16.0;
+    let height = (lines as f32).powf(0.7) / 11.6;
+    let height = if height > KNEE {
+        KNEE + (height - KNEE) * 0.4
+    } else {
+        height
+    };
+    height.clamp(0.3, 30.0)
+}
+
+/// (footprint side, height). The side grows with the function count and, for
+/// towers, with the height, so a long file with few functions is a tower and
+/// not a needle twenty times taller than it is wide.
 fn building_dimensions(file: &ParsedFile) -> (f32, f32) {
-    let height = (file.lines as f32 / 60.0).clamp(0.3, 50.0);
-    let width = (1.0 + file.functions.len() as f32 * 0.12).clamp(1.0, 2.2);
-    (width, height)
+    let height = building_height(file.lines);
+    let by_functions = 1.0 + file.functions.len() as f32 * 0.12;
+    let by_height = 1.0 + height * 0.07;
+    (by_functions.max(by_height).clamp(1.0, 2.6), height)
 }
 
 fn empty_bounds() -> Bounds {
@@ -340,13 +368,12 @@ fn common_prefix(paths: &[String]) -> String {
 fn compute_folder_districts(files: &[ParsedFile]) -> Vec<DistrictData> {
     let mut groups: HashMap<String, Vec<String>> = HashMap::new();
     for file in files {
-        let name = file
-            .path
-            .split('/')
-            .next()
-            .filter(|segment| !segment.is_empty())
-            .unwrap_or("root")
-            .to_string();
+        // Files at the project root share one district instead of each becoming
+        // a one-building district named after itself.
+        let name = match file.path.split_once('/') {
+            Some((top, _)) if !top.is_empty() => top.to_string(),
+            _ => ROOT_DISTRICT.to_string(),
+        };
         groups.entry(name).or_default().push(file.path.clone());
     }
     grouped_districts(groups, LayoutMode::Folder)
@@ -607,71 +634,36 @@ fn pack_blocks_in_grid<'a>(blocks: Vec<BlockLayout<'a>>, gap: f32) -> BlockLayou
             .partial_cmp(&(a.half_w * a.half_d))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    let total_area: f32 = sorted
+    let sizes: Vec<(f32, f32)> = sorted
         .iter()
-        .map(|block| (block.half_w * 2.0 + gap) * (block.half_d * 2.0 + gap))
-        .sum();
-    let target_width = total_area.sqrt() * 1.05;
+        .map(|block| (block.half_w, block.half_d))
+        .collect();
+    let centers = pack_rects(&sizes, gap);
 
-    let mut shelves: Vec<(Vec<(BlockLayout<'a>, f32)>, f32, f32)> = Vec::new();
-    let mut current = Vec::new();
-    let mut current_width = 0.0_f32;
-    let mut current_half_d = 0.0_f32;
-    for block in sorted {
-        let new_width =
-            current_width + if current.is_empty() { 0.0 } else { gap } + block.half_w * 2.0;
-        if !current.is_empty() && new_width > target_width {
-            shelves.push((current, current_width, current_half_d));
-            current = Vec::new();
-            current_width = 0.0;
-            current_half_d = 0.0;
-        }
-        let ox = current_width + if current.is_empty() { 0.0 } else { gap } + block.half_w;
-        current_width = ox + block.half_w;
-        current_half_d = current_half_d.max(block.half_d);
-        current.push((block, ox));
-    }
-    if !current.is_empty() {
-        shelves.push((current, current_width, current_half_d));
-    }
-
-    let total_depth: f32 = shelves
-        .iter()
-        .map(|(_, _, half_d)| half_d * 2.0)
-        .sum::<f32>()
-        + shelves.len().saturating_sub(1) as f32 * gap;
     let mut positions = Vec::new();
     let mut children = Vec::new();
     let mut min_x = f32::MAX;
     let mut max_x = f32::MIN;
     let mut min_z = f32::MAX;
     let mut max_z = f32::MIN;
-    let mut offset_z = -total_depth / 2.0;
 
-    for (items, shelf_width, shelf_half_d) in shelves {
-        let center_z = offset_z + shelf_half_d;
-        let shelf_offset_x = -shelf_width / 2.0;
-        for (block, ox) in items {
-            let world_x = shelf_offset_x + ox;
-            let world_z = center_z;
-            for position in &block.positions {
-                let x = world_x + position.lx;
-                let z = world_z + position.lz;
-                let (width, _) = building_dimensions(position.file);
-                min_x = min_x.min(x - width / 2.0);
-                max_x = max_x.max(x + width / 2.0);
-                min_z = min_z.min(z - width / 2.0);
-                max_z = max_z.max(z + width / 2.0);
-                positions.push(FilePosition {
-                    file: position.file,
-                    lx: x,
-                    lz: z,
-                    sub_folder: position.sub_folder.clone(),
-                });
-            }
-            children.push(offset_block(&block, world_x, world_z));
+    for (block, (world_x, world_z)) in sorted.iter().zip(centers) {
+        for position in &block.positions {
+            let x = world_x + position.lx;
+            let z = world_z + position.lz;
+            let (width, _) = building_dimensions(position.file);
+            min_x = min_x.min(x - width / 2.0);
+            max_x = max_x.max(x + width / 2.0);
+            min_z = min_z.min(z - width / 2.0);
+            max_z = max_z.max(z + width / 2.0);
+            positions.push(FilePosition {
+                file: position.file,
+                lx: x,
+                lz: z,
+                sub_folder: position.sub_folder.clone(),
+            });
         }
-        offset_z += shelf_half_d * 2.0 + gap;
+        children.push(offset_block(block, world_x, world_z));
     }
 
     BlockLayout {
@@ -992,7 +984,108 @@ fn offset_subdistricts(subdistricts: &mut [SubDistrictData], dx: f32, dz: f32) {
     }
 }
 
-fn pack_districts_square(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
+/// One packing attempt for a given row width. Returns each rectangle's top-left
+/// corner plus the width and depth of the whole arrangement.
+///
+/// Rectangles go into rows, deepest first, so the first one sets its row's depth.
+/// Later, shallower rectangles fill the space under an earlier one in the same
+/// row, side by side, when they fit there; that is what keeps small districts
+/// from trailing off in a long thin row of their own.
+fn pack_rows(
+    sizes: &[(f32, f32)],
+    order: &[usize],
+    gap: f32,
+    row_width: f32,
+) -> (Vec<(f32, f32)>, f32, f32) {
+    const EPS: f32 = 1e-3;
+    /// A strip under a column's first rectangle, filled left to right.
+    struct Level {
+        z: f32,
+        depth: f32,
+        used_width: f32,
+    }
+    struct Column {
+        x: f32,
+        width: f32,
+        used: f32,
+        levels: Vec<Level>,
+    }
+    struct Row {
+        z: f32,
+        depth: f32,
+        width: f32,
+        columns: Vec<Column>,
+    }
+
+    let mut rows: Vec<Row> = Vec::new();
+    // (row index, x within the row, z)
+    let mut placed = vec![(0_usize, 0.0_f32, 0.0_f32); sizes.len()];
+
+    for &index in order {
+        let w = sizes[index].0 * 2.0;
+        let d = sizes[index].1 * 2.0;
+        let mut spot = None;
+
+        // Under an earlier rectangle: beside the ones already there, or on a new strip below them
+        'stack: for (r, row) in rows.iter_mut().enumerate() {
+            for column in row.columns.iter_mut() {
+                for level in column.levels.iter_mut() {
+                    let x = level.used_width + gap;
+                    if x + w <= column.width + EPS && d <= level.depth + EPS {
+                        level.used_width = x + w;
+                        spot = Some((r, column.x + x, level.z));
+                        break 'stack;
+                    }
+                }
+                if w <= column.width + EPS && column.used + gap + d <= row.depth + EPS {
+                    let z = row.z + column.used + gap;
+                    column.levels.push(Level { z, depth: d, used_width: w });
+                    column.used += gap + d;
+                    spot = Some((r, column.x, z));
+                    break 'stack;
+                }
+            }
+        }
+        // Otherwise at the end of the first row with room
+        if spot.is_none() {
+            for (r, row) in rows.iter_mut().enumerate() {
+                let x = row.width + gap;
+                if x + w <= row_width + EPS {
+                    row.columns.push(Column { x, width: w, used: d, levels: Vec::new() });
+                    row.width = x + w;
+                    spot = Some((r, x, row.z));
+                    break;
+                }
+            }
+        }
+        // Otherwise it starts a new row
+        placed[index] = spot.unwrap_or_else(|| {
+            let z = rows.last().map_or(0.0, |row| row.z + row.depth + gap);
+            rows.push(Row {
+                z,
+                depth: d,
+                width: w,
+                columns: vec![Column { x: 0.0, width: w, used: d, levels: Vec::new() }],
+            });
+            (rows.len() - 1, 0.0, z)
+        });
+    }
+
+    let width = rows.iter().fold(0.0_f32, |m, row| m.max(row.width));
+    let depth = rows.last().map_or(0.0, |row| row.z + row.depth);
+    // Rows narrower than the widest one are centred under it
+    let corners = placed
+        .into_iter()
+        .map(|(r, x, z)| (x + (width - rows[r].width) / 2.0, z))
+        .collect();
+    (corners, width, depth)
+}
+
+/// Packs rectangles (half extents in, centres out, same order) into a compact
+/// block centred on the origin, `gap` apart. Several row widths are tried and the
+/// most compact result wins, leaning slightly towards wide over deep because the
+/// city is viewed on a landscape screen.
+fn pack_rects(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
     if sizes.is_empty() {
         return Vec::new();
     }
@@ -1000,56 +1093,37 @@ fn pack_districts_square(sizes: &[(f32, f32)], gap: f32) -> Vec<(f32, f32)> {
         return vec![(0.0, 0.0)];
     }
 
-    let mut indices: Vec<usize> = (0..sizes.len()).collect();
-    indices.sort_by(|a, b| {
-        (sizes[*b].0 * sizes[*b].1)
-            .partial_cmp(&(sizes[*a].0 * sizes[*a].1))
-            .unwrap_or(std::cmp::Ordering::Equal)
+    let mut order: Vec<usize> = (0..sizes.len()).collect();
+    order.sort_by(|a, b| {
+        sizes[*b]
+            .1
+            .total_cmp(&sizes[*a].1)
+            .then(sizes[*b].0.total_cmp(&sizes[*a].0))
+            .then(a.cmp(b))
     });
-    let total_area: f32 = indices
+    let total_area: f32 = sizes
         .iter()
-        .map(|idx| (sizes[*idx].0 * 2.0 + gap) * (sizes[*idx].1 * 2.0 + gap))
+        .map(|(half_w, half_d)| (half_w * 2.0 + gap) * (half_d * 2.0 + gap))
         .sum();
-    let target_width = total_area.sqrt() * 1.05;
+    let widest = sizes.iter().fold(0.0_f32, |m, size| m.max(size.0 * 2.0));
 
-    let mut shelves: Vec<(Vec<(usize, f32)>, f32, f32)> = Vec::new();
-    let mut current = Vec::new();
-    let mut current_width = 0.0_f32;
-    let mut current_half_d = 0.0_f32;
-    for index in indices {
-        let new_width =
-            current_width + if current.is_empty() { 0.0 } else { gap } + sizes[index].0 * 2.0;
-        if !current.is_empty() && new_width > target_width {
-            shelves.push((current, current_width, current_half_d));
-            current = Vec::new();
-            current_width = 0.0;
-            current_half_d = 0.0;
+    let mut best: Option<(f32, Vec<(f32, f32)>, f32, f32)> = None;
+    for step in 0..=24 {
+        let row_width = (total_area.sqrt() * (0.7 + 0.05 * step as f32)).max(widest);
+        let (corners, width, depth) = pack_rows(sizes, &order, gap, row_width);
+        // Side of the square the arrangement needs, then its area as a tie-break
+        let score = width.max(depth * 1.2) + width * depth * 1e-4;
+        if best.as_ref().is_none_or(|(best_score, ..)| score < *best_score) {
+            best = Some((score, corners, width, depth));
         }
-        let ox = current_width + if current.is_empty() { 0.0 } else { gap } + sizes[index].0;
-        current_width = ox + sizes[index].0;
-        current_half_d = current_half_d.max(sizes[index].1);
-        current.push((index, ox));
-    }
-    if !current.is_empty() {
-        shelves.push((current, current_width, current_half_d));
     }
 
-    let total_depth: f32 = shelves
-        .iter()
-        .map(|(_, _, half_d)| half_d * 2.0)
-        .sum::<f32>()
-        + shelves.len().saturating_sub(1) as f32 * gap;
-    let mut positions = vec![(0.0, 0.0); sizes.len()];
-    let mut offset_z = -total_depth / 2.0;
-    for (items, shelf_width, shelf_half_d) in shelves {
-        let center_z = offset_z + shelf_half_d;
-        let shelf_offset_x = -shelf_width / 2.0;
-        for (index, ox) in items {
-            positions[index] = (shelf_offset_x + ox, center_z);
-        }
-        offset_z += shelf_half_d * 2.0 + gap;
-    }
-    positions
+    let (_, corners, width, depth) = best.expect("at least one packing attempt");
+    corners
+        .into_iter()
+        .zip(sizes)
+        .map(|((x, z), (half_w, half_d))| (x + half_w - width / 2.0, z + half_d - depth / 2.0))
+        .collect()
 }
 
 pub fn layout_city(
@@ -1057,9 +1131,12 @@ pub fn layout_city(
     districts: &mut [DistrictData],
     mode: LayoutMode,
 ) -> Vec<FileData> {
-    const FILE_GAP: f32 = 0.15;
-    const BLOCK_GAP: f32 = 0.3;
-    const DISTRICT_GAP: f32 = 0.8;
+    // Lanes between buildings, side streets between folders, avenues between districts.
+    const FILE_GAP: f32 = 0.45;
+    const BLOCK_GAP: f32 = 0.9;
+    const DISTRICT_GAP: f32 = 2.6;
+    /// Pavement between the outermost buildings and the district's edge.
+    const DISTRICT_PAVEMENT: f32 = 0.35;
 
     let files_by_path: HashMap<&str, &ParsedFile> = files
         .iter()
@@ -1100,7 +1177,7 @@ pub fn layout_city(
         .iter()
         .map(|layout| (layout.half_w, layout.half_d))
         .collect();
-    let district_positions = pack_districts_square(&district_sizes, DISTRICT_GAP);
+    let district_positions = pack_rects(&district_sizes, DISTRICT_GAP);
     let mut result = Vec::new();
 
     for (index, district) in districts.iter_mut().enumerate() {
@@ -1145,6 +1222,7 @@ pub fn layout_city(
                     x: center_x + position.lx,
                     z: center_z + position.lz,
                 },
+                width: Some(building_dimensions(position.file).0),
                 district: district.name.clone(),
                 sub_folder: Some(if position.sub_folder.is_empty() {
                     "_root".to_string()
@@ -1161,10 +1239,10 @@ pub fn layout_city(
         }
 
         if let Some(mut bounds) = block_bounds(layout) {
-            bounds.x += center_x - 0.1;
-            bounds.z += center_z - 0.1;
-            bounds.width += 0.2;
-            bounds.depth += 0.2;
+            bounds.x += center_x - DISTRICT_PAVEMENT;
+            bounds.z += center_z - DISTRICT_PAVEMENT;
+            bounds.width += DISTRICT_PAVEMENT * 2.0;
+            bounds.depth += DISTRICT_PAVEMENT * 2.0;
             district.bounds = bounds;
         } else {
             district.bounds = empty_bounds();
@@ -1324,10 +1402,9 @@ fn file_to_parsed(file: &FileData, visible_paths: &HashSet<String>) -> ParsedFil
         is_react_component: file.is_react_component,
         has_unused_exports: file.has_unused_exports,
         file_type: file.file_type.clone(),
-        // Calls aren't persisted in FileData (only imports + symbol names are).
-        // On recompute the snapshot loses caller→callee edges. Acceptable for
-        // now — recompute is triggered by layout-mode toggle, not full re-analysis.
-        calls: Vec::new(),
+        // Keep call sites so a layout toggle or hide/show doesn't drop the
+        // caller→callee edges (and with them degrees, communities and hubs).
+        calls: file.calls.clone(),
     }
 }
 
@@ -1370,4 +1447,61 @@ pub fn recompute_snapshot(
     snapshot.warnings = original.warnings;
     snapshot.source_tree = original.source_tree;
     snapshot
+}
+
+#[cfg(test)]
+mod packing_tests {
+    use super::pack_rects;
+
+    /// One big district, a few medium ones and a tail of tiny ones: the usual repository shape.
+    fn city() -> Vec<(f32, f32)> {
+        let mut sizes = vec![(12.0, 16.0), (6.0, 8.0), (6.0, 12.0), (7.0, 10.0), (3.5, 3.5)];
+        sizes.extend([(2.0, 2.0), (1.5, 3.0), (2.0, 1.5), (1.5, 1.5), (1.6, 1.7)]);
+        sizes.extend(std::iter::repeat_n((0.75, 0.75), 6));
+        sizes
+    }
+
+    fn extent(sizes: &[(f32, f32)], centers: &[(f32, f32)]) -> (f32, f32, f32, f32) {
+        let mut b = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
+        for ((x, z), (w, d)) in centers.iter().zip(sizes) {
+            b = (b.0.min(x - w), b.1.max(x + w), b.2.min(z - d), b.3.max(z + d));
+        }
+        b
+    }
+
+    #[test]
+    fn rectangles_keep_the_gap_between_them() {
+        let sizes = city();
+        let gap = 2.6;
+        let centers = pack_rects(&sizes, gap);
+        assert_eq!(centers.len(), sizes.len());
+        for i in 0..sizes.len() {
+            for j in i + 1..sizes.len() {
+                let dx = (centers[i].0 - centers[j].0).abs() - sizes[i].0 - sizes[j].0;
+                let dz = (centers[i].1 - centers[j].1).abs() - sizes[i].1 - sizes[j].1;
+                assert!(dx.max(dz) >= gap - 1e-2, "{i} and {j} are {} apart", dx.max(dz));
+            }
+        }
+    }
+
+    #[test]
+    fn result_is_compact_and_centred() {
+        let sizes = city();
+        let centers = pack_rects(&sizes, 2.6);
+        let (x0, x1, z0, z1) = extent(&sizes, &centers);
+        assert!((x0 + x1).abs() < 1e-2 && (z0 + z1).abs() < 1e-2, "not centred");
+        let (width, depth) = (x1 - x0, z1 - z0);
+        let ratio = width.max(depth) / width.min(depth);
+        assert!(ratio < 1.6, "{width} x {depth} is too stretched");
+        let used: f32 = sizes.iter().map(|(w, d)| 4.0 * w * d).sum();
+        assert!(used / (width * depth) > 0.5, "only {} of the block is used", used / (width * depth));
+    }
+
+    #[test]
+    fn packing_is_deterministic_and_handles_small_inputs() {
+        let sizes = city();
+        assert_eq!(pack_rects(&sizes, 2.6), pack_rects(&sizes, 2.6));
+        assert!(pack_rects(&[], 1.0).is_empty());
+        assert_eq!(pack_rects(&[(3.0, 2.0)], 1.0), vec![(0.0, 0.0)]);
+    }
 }

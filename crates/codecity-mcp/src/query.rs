@@ -837,7 +837,7 @@ pub fn recent_changes(
     let output = std::process::Command::new("git")
         .args(["-C"])
         .arg(root)
-        .args(["log", "--name-only", "--pretty=format:", &since])
+        .args(["-c", "core.quotepath=off", "log", "--name-only", "--pretty=format:", &since])
         .output()
         .map_err(|e| RecentChangesError::GitFailed(format!("spawn git failed: {e}")))?;
     if !output.status.success() {

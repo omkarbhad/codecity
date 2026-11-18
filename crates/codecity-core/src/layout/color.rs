@@ -6,9 +6,12 @@
 
 use super::LayoutMode;
 
+/// District colours (Tailwind 400 range): twelve separate hues, warm and cool
+/// alternating so neighbouring districts never share a colour family. The frontend
+/// remaps snapshots made with the old neon palette (src/lib/district-colors.ts).
 const DISTRICT_COLORS: [&str; 12] = [
-    "#00e5ff", "#00e676", "#448aff", "#ffea00", "#b388ff", "#ff9100", "#ff4081", "#1de9b6",
-    "#aeea00", "#ff1744", "#8c9eff", "#ffc400",
+    "#38bdf8", "#fb923c", "#34d399", "#f472b6", "#facc15", "#818cf8", "#f87171", "#2dd4bf",
+    "#a3e635", "#c084fc", "#f59e0b", "#94a3b8",
 ];
 
 const EXTENSION_COLORS: &[(&str, &str)] = &[
@@ -49,18 +52,21 @@ pub(super) fn district_color(index: usize, name: &str, mode: LayoutMode) -> Stri
     DISTRICT_COLORS[index % DISTRICT_COLORS.len()].to_string()
 }
 
+/// A sub-folder's colour: the district's own hue, a little lighter or darker.
+/// The hue moves by at most 12 degrees either way, so a sub-folder never looks
+/// like it belongs to the neighbouring district (palette hues are 30 degrees apart).
 pub(super) fn subdistrict_color(index: usize, total: usize, base_color: &str) -> String {
+    const LIGHTNESS_STEPS: [f32; 5] = [0.04, -0.06, 0.0, -0.11, 0.08];
     let (h, s, l) = hex_to_hsl(base_color);
     let hue_shift = if total > 1 {
-        index as f32 / (total - 1) as f32 * 0.15 - 0.075
+        (index as f32 / (total - 1) as f32 - 0.5) * 0.066
     } else {
         0.0
     };
-    let lightness_shift = if index % 2 == 0 { 0.05 } else { -0.05 };
     hsl_to_hex(
         (h + hue_shift).rem_euclid(1.0),
         s.clamp(0.3, 1.0),
-        (l + lightness_shift).clamp(0.25, 0.8),
+        (l + LIGHTNESS_STEPS[index % LIGHTNESS_STEPS.len()]).clamp(0.25, 0.8),
     )
 }
 
