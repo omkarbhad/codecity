@@ -182,7 +182,7 @@ Workspace-shared package metadata:
 
 - `version`: `0.1.2`
 - `edition`: `2021`
-- `license`: `MIT`
+- `license`: `PolyForm-Noncommercial-1.0.0`
 
 Workspace-shared dependency versions (pinned in `[workspace.dependencies]`)
 include `serde 1`, `serde_json 1`, `tokio 1`, `tree-sitter 0.26`, `clap 4`,

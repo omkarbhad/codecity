@@ -52,5 +52,5 @@ What CodeCity does today, grouped the way the app is laid out. Items marked
 ## Built to stay on your machine
 
 - **Runs locally.** Analysis happens on your computer. No account is needed for local folders or public repositories.
-- **Open source.** MIT licensed.
+- **Source available.** Free for personal, research, educational and nonprofit use under the PolyForm Noncommercial License. Commercial use is not allowed.
 - **macOS and Windows.** A desktop app with verified updates. A Linux build is coming soon; until then it builds from source.

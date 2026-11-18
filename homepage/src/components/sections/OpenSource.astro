@@ -3,7 +3,7 @@ import Icon from "../ui/Icon.astro"
 import { SITE } from "../../lib/site"
 
 const facts = [
-  { icon: "scales", title: "MIT licensed", body: "Read the source, fork it, and use it at work without asking." },
+  { icon: "scales", title: "Free for noncommercial use", body: "Use it for personal projects, study, research, education and nonprofit work. Commercial use is not allowed." },
   { icon: "lock-simple", title: "Runs on your machine", body: "Repositories are downloaded and analyzed on your computer. The app has no analytics." },
   { icon: "code", title: "40+ languages", body: "Real grammars for TypeScript, Python, Rust, Go, Java, C, C++ and many more." },
   { icon: "seal-check", title: "Verified updates", body: "New versions come from GitHub Releases and are checked against a signing key before they install." },
@@ -12,9 +12,9 @@ const facts = [
 <section id="open-source" class="section section--band" aria-labelledby="open-title">
   <div class="container">
     <div class="section-head">
-      <p class="eyebrow caption-3">Open source</p>
+      <p class="eyebrow caption-3">Source available</p>
       <h2 id="open-title" class="heading-2">Built in the open</h2>
-      <p class="body-3 muted">Every line of CodeCity is public. You can read how it parses your code before you run it.</p>
+      <p class="body-3 muted">Every line of CodeCity is public. You can read how it parses your code before you run it, and you can use it freely as long as nobody earns money from it.</p>
     </div>
     <ul class="facts">
       {facts.map((f) => (

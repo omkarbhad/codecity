@@ -45,7 +45,7 @@ pnpm desktop              # Tauri desktop shell (Rust + WebView)
 
 The Rust workspace is rooted at `Cargo.toml` and contains the crates
 `codecity-core`, `codecity-cli`, `codecity-mcp`, and the Tauri shell at
-`src-tauri/`. Rust edition is `2021`, license is `MIT`.
+`src-tauri/`. Rust edition is `2021`, license is `PolyForm-Noncommercial-1.0.0`.
 
 ## Branch & PR Workflow
 
@@ -153,7 +153,7 @@ adding support for a new language or external tool, do all of the following:
 
 ## Third-Party Licenses
 
-CodeCity itself is MIT-licensed (`LICENSE` at the repo root). The bundled
+CodeCity itself is licensed under the PolyForm Noncommercial License 1.0.0 (`LICENSE` at the repo root); contributions are accepted under the same terms. The bundled
 [opengrep](https://github.com/opengrep/opengrep) sidecar is distributed
 under **LGPL-2.1**; its license text is shipped at
 `licenses/LICENSE.opengrep` and bundled into Tauri builds via
