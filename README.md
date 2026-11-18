@@ -154,6 +154,18 @@ then follow the macOS steps from step 2 with your package manager in place of Ho
 No environment variables are required. `.env.example` lists two optional development switches
 (`CODECITY_TIMING`, `CODECITY_MCP_NO_CACHE`).
 
+## Verify a download
+
+Every release file is attested by GitHub, a signed record that it was built from this repository by the
+release workflow. With the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh attestation verify CodeCity_0.1.1_aarch64.dmg --repo MagnovaAI/codecity
+```
+
+This checks that a file is genuine and unaltered. It does not remove the macOS or Windows warning about an
+unsigned app; that needs a paid certificate.
+
 ## Command line
 
 Build the CLI once, then point it at a project:
