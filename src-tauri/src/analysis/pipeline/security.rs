@@ -12,6 +12,9 @@ use super::super::db::{Database, NewFinding};
 use super::cancellation::is_cancelled;
 use super::security_types::{OpengrepRun, RawFinding};
 
+/// Upper bound on one opengrep run, so a stuck scan cannot stay "running" forever.
+const SCAN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+
 /// Normalize an opengrep severity string into one of `ERROR | WARNING | INFO`.
 /// Unknown / missing severities default to `INFO` so we never drop a finding.
 fn normalize_severity(raw: Option<&str>) -> &'static str {
@@ -51,7 +54,11 @@ pub async fn run_security_scan(
         project_root.display()
     );
 
-    let output = tokio::process::Command::new(opengrep_bin)
+    // Shown as live in the UI while opengrep runs.
+    let _ = db.update_security_scan_status(scan_id, "RUNNING", None, None);
+
+    // kill_on_drop: if the timeout fires, dropping the future kills opengrep.
+    let child = tokio::process::Command::new(opengrep_bin)
         .args([
             "scan",
             "--config",
@@ -59,8 +66,17 @@ pub async fn run_security_scan(
             "--json",
             project_root.to_str().unwrap_or("."),
         ])
-        .output()
-        .await;
+        .kill_on_drop(true)
+        .output();
+    let output = match tokio::time::timeout(SCAN_TIMEOUT, child).await {
+        Ok(result) => result,
+        Err(_) => {
+            let msg = format!("Security scan timed out after {} minutes", SCAN_TIMEOUT.as_secs() / 60);
+            log::error!("{}", msg);
+            let _ = db.update_security_scan_status(scan_id, "FAILED", None, Some(&msg));
+            return;
+        }
+    };
 
     let output = match output {
         Ok(o) => o,
@@ -71,6 +87,11 @@ pub async fn run_security_scan(
             return;
         }
     };
+
+    if is_cancelled(scan_id) {
+        let _ = db.update_security_scan_status(scan_id, "CANCELLED", None, None);
+        return;
+    }
 
     // opengrep exits non-zero when findings are present — that is expected.
     // Only treat it as an error when stdout is empty (no JSON produced).

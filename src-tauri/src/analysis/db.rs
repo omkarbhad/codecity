@@ -84,6 +84,13 @@ pub struct Database {
     conn: Mutex<Connection>,
 }
 
+/// Older versions stored the token here, in plain text.
+const LEGACY_TOKEN_KEY: &str = "github_token";
+
+fn github_keychain_entry() -> Option<keyring::Entry> {
+    keyring::Entry::new("com.codecity.desktop", "github").ok()
+}
+
 impl Database {
     pub fn new() -> Result<Self, String> {
         let db_path = Self::db_path()?;
@@ -93,6 +100,26 @@ impl Database {
         };
         db.migrate().map_err(|e| e.to_string())?;
         Ok(db)
+    }
+
+    /// Jobs still marked as running when the app starts were interrupted (a crash
+    /// or quit mid-analysis); mark them failed so they can be retried.
+    pub fn reap_interrupted_jobs(&self) -> Result<usize, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let projects = conn
+            .execute(
+                "UPDATE projects SET status = 'FAILED', error = 'Interrupted: CodeCity was closed during analysis. Try again.' \
+                 WHERE status IN ('PENDING', 'PROCESSING')",
+                [],
+            )
+            .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE security_scans SET status = 'FAILED', error = 'Interrupted: CodeCity was closed during the scan.' \
+             WHERE status IN ('PENDING', 'RUNNING')",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(projects)
     }
 
     fn db_path() -> Result<PathBuf, String> {
@@ -522,6 +549,36 @@ impl Database {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(e.to_string()),
         }
+    }
+
+    /// The GitHub token lives in the OS keychain, never in the database file or the
+    /// frontend. A token left in `settings` by an older version is moved on first read.
+    pub fn github_token(&self) -> Option<String> {
+        if let Some(token) = github_keychain_entry().and_then(|entry| entry.get_password().ok()) {
+            return Some(token);
+        }
+        let legacy = self.get_setting(LEGACY_TOKEN_KEY).ok().flatten()?;
+        if self.set_github_token(&legacy).is_ok() {
+            let _ = self.delete_setting(LEGACY_TOKEN_KEY);
+        }
+        Some(legacy)
+    }
+
+    pub fn set_github_token(&self, token: &str) -> Result<(), String> {
+        github_keychain_entry()
+            .ok_or_else(|| "Keychain is unavailable".to_string())?
+            .set_password(token)
+            .map_err(|e| format!("Could not save the GitHub token to the keychain: {e}"))
+    }
+
+    pub fn clear_github_token(&self) -> Result<(), String> {
+        if let Some(entry) = github_keychain_entry() {
+            match entry.delete_credential() {
+                Ok(()) | Err(keyring::Error::NoEntry) => {}
+                Err(e) => return Err(format!("Could not remove the GitHub token: {e}")),
+            }
+        }
+        self.delete_setting(LEGACY_TOKEN_KEY)
     }
 
     pub fn get_setting(&self, key: &str) -> Result<Option<String>, String> {

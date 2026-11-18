@@ -8,6 +8,7 @@ use codecity_core::{
 };
 
 pub mod analysis;
+mod files;
 
 pub struct AppState {
     db: analysis::Database,
@@ -86,6 +87,29 @@ struct SourceFileParams {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct FileWriteParams {
+    repo_url: String,
+    file_path: String,
+    #[serde(default)]
+    content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FileRenameParams {
+    repo_url: String,
+    from_path: String,
+    to_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RepoUrlParams {
+    repo_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CommitsParams {
     repo_url: String,
     page: usize,
@@ -119,19 +143,6 @@ fn default_page() -> usize {
 #[serde(rename_all = "camelCase")]
 struct DeviceCodeParams {
     device_code: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct TokenParams {
-    token: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SessionParams {
-    token: String,
-    login: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -195,7 +206,7 @@ async fn dispatch_rpc(
             let params: AnalyzeParams = parse_params(params)?;
             let token = params
                 .github_token
-                .or_else(|| state.db.get_setting("github_token").ok().flatten());
+                .or_else(|| state.db.github_token());
             to_value(
                 analysis::analyze(
                     &state.db,
@@ -210,7 +221,7 @@ async fn dispatch_rpc(
             let params: AnalyzeParams = parse_params(params)?;
             let token = params
                 .github_token
-                .or_else(|| state.db.get_setting("github_token").ok().flatten());
+                .or_else(|| state.db.github_token());
             to_value(analysis::enqueue_analyze(
                 &state.db,
                 &params.input,
@@ -220,7 +231,7 @@ async fn dispatch_rpc(
         }
         "analysis.refresh" => {
             let params: RefreshAnalysisParams = parse_params(params)?;
-            let token = state.db.get_setting("github_token").ok().flatten();
+            let token = state.db.github_token();
             to_value(analysis::enqueue_refresh(
                 &state.db,
                 &params.project_id,
@@ -256,6 +267,41 @@ async fn dispatch_rpc(
             let content =
                 get_source_file_impl(&state.db, &params.repo_url, &params.file_path).await?;
             Ok(json!(content))
+        }
+        "files.write" => {
+            let params: FileWriteParams = parse_params(params)?;
+            let content = params
+                .content
+                .ok_or_else(|| invalid_params("Missing file content".to_string()))?;
+            let root = files::local_project_root(&state.db, &params.repo_url).map_err(invalid_params)?;
+            files::write(&root, &params.file_path, &content).map_err(invalid_params)?;
+            Ok(Value::Null)
+        }
+        "files.create" => {
+            let params: FileWriteParams = parse_params(params)?;
+            let root = files::local_project_root(&state.db, &params.repo_url).map_err(invalid_params)?;
+            files::create(&root, &params.file_path, params.content.as_deref().unwrap_or(""))
+                .map_err(invalid_params)?;
+            Ok(Value::Null)
+        }
+        "files.delete" => {
+            let params: SourceFileParams = parse_params(params)?;
+            let root = files::local_project_root(&state.db, &params.repo_url).map_err(invalid_params)?;
+            files::delete(&root, &params.file_path).map_err(invalid_params)?;
+            Ok(Value::Null)
+        }
+        "files.rename" => {
+            let params: FileRenameParams = parse_params(params)?;
+            let root = files::local_project_root(&state.db, &params.repo_url).map_err(invalid_params)?;
+            files::rename(&root, &params.from_path, &params.to_path).map_err(invalid_params)?;
+            Ok(Value::Null)
+        }
+        "files.capabilities" => {
+            let params: RepoUrlParams = parse_params(params)?;
+            Ok(match files::local_project_root(&state.db, &params.repo_url) {
+                Ok(_) => json!({ "editable": true, "reason": null }),
+                Err(reason) => json!({ "editable": false, "reason": reason }),
+            })
         }
         "projects.get" => {
             let params: IdParams = parse_params(params)?;
@@ -312,21 +358,42 @@ async fn dispatch_rpc(
                 .map_err(internal_error)?,
         ),
         "github.loginPoll" => {
+            // On success the token is stored here and never returned to the frontend.
             let params: DeviceCodeParams = parse_params(params)?;
-            to_value(
-                analysis::poll_for_token(&params.device_code)
+            let response = analysis::poll_for_token(&params.device_code)
+                .await
+                .map_err(internal_error)?;
+            match response.access_token {
+                Some(token) => {
+                    let user = analysis::get_github_user(&token)
+                        .await
+                        .map_err(internal_error)?;
+                    state.db.set_github_token(&token).map_err(internal_error)?;
+                    state
+                        .db
+                        .set_setting("github_user_login", &user.login)
+                        .map_err(internal_error)?;
+                    Ok(json!({ "connected": true, "login": user.login }))
+                }
+                None => Ok(json!({
+                    "connected": false,
+                    "error": response.error,
+                    "error_description": response.error_description,
+                })),
+            }
+        }
+        "github.getUser" => match state.db.github_token() {
+            Some(token) => to_value(
+                analysis::get_github_user(&token)
                     .await
                     .map_err(internal_error)?,
-            )
-        }
-        "github.getUser" => {
-            let params: TokenParams = parse_params(params)?;
-            to_value(
-                analysis::get_github_user(&params.token)
-                    .await
-                    .map_err(internal_error)?,
-            )
-        }
+            ),
+            None => Ok(Value::Null),
+        },
+        "github.status" => Ok(json!({
+            "connected": state.db.github_token().is_some(),
+            "login": state.db.get_setting("github_user_login").ok().flatten(),
+        })),
         "github.importCliSession" => {
             let token = analysis::get_github_cli_token()
                 .await
@@ -334,23 +401,18 @@ async fn dispatch_rpc(
             let user = analysis::get_github_user(&token)
                 .await
                 .map_err(internal_error)?;
-            state
-                .db
-                .set_setting("github_token", &token)
-                .map_err(internal_error)?;
+            state.db.set_github_token(&token).map_err(internal_error)?;
             state
                 .db
                 .set_setting("github_user_login", &user.login)
                 .map_err(internal_error)?;
             to_value(user)
         }
-        "github.getToken" => to_value(state.db.get_setting("github_token").ok().flatten()),
         "github.listRepos" => {
             let params: RepoListParams = parse_params(params)?;
             let token = state
                 .db
-                .get_setting("github_token")
-                .map_err(internal_error)?
+                .github_token()
                 .ok_or_else(|| invalid_params("GitHub is not connected".to_string()))?;
             let repos = analysis::fetch_repositories(&params.visibility, params.page, &token)
                 .await
@@ -363,31 +425,8 @@ async fn dispatch_rpc(
                 .unwrap_or_default();
             to_value(repos)
         }
-        "github.setToken" => {
-            let params: TokenParams = parse_params(params)?;
-            state
-                .db
-                .set_setting("github_token", &params.token)
-                .map_err(internal_error)?;
-            Ok(Value::Null)
-        }
-        "github.setSession" => {
-            let params: SessionParams = parse_params(params)?;
-            state
-                .db
-                .set_setting("github_token", &params.token)
-                .map_err(internal_error)?;
-            state
-                .db
-                .set_setting("github_user_login", &params.login)
-                .map_err(internal_error)?;
-            Ok(Value::Null)
-        }
         "github.logout" => {
-            state
-                .db
-                .delete_setting("github_token")
-                .map_err(internal_error)?;
+            state.db.clear_github_token().map_err(internal_error)?;
             state
                 .db
                 .delete_setting("github_user_login")
@@ -450,12 +489,7 @@ fn expand_local_path(input: &str) -> String {
 
 fn cached_repo_dir(repo_url: &str) -> Option<PathBuf> {
     let (owner, repo) = analysis::parse_github_url(repo_url).ok()?;
-    Some(
-        dirs::data_dir()?
-            .join("codecity")
-            .join("repos")
-            .join(format!("{owner}-{repo}")),
-    )
+    analysis::pipeline::repo_cache_dir(&owner, &repo).ok()
 }
 
 fn local_git_dir(repo_url: &str) -> Option<PathBuf> {
@@ -475,6 +509,8 @@ async fn get_local_commits(
     let skip = page.saturating_sub(1) * 30;
     let output = tokio::process::Command::new("git")
         .args([
+            "-c",
+            "core.quotepath=off",
             "log",
             "--date=iso-strict",
             "--pretty=format:%H%x1f%an%x1f%aI%x1f%s",
@@ -529,8 +565,11 @@ async fn get_local_commits(
 }
 
 async fn get_local_commit_files(repo_dir: PathBuf, sha: &str) -> Result<Vec<String>, JsonRpcError> {
+    if !is_commit_sha(sha) {
+        return Err(invalid_params(format!("Invalid commit id: {sha}")));
+    }
     let output = tokio::process::Command::new("git")
-        .args(["show", "--pretty=format:", "--name-only", sha])
+        .args(["-c", "core.quotepath=off", "show", "--pretty=format:", "--name-only", "--end-of-options", sha])
         .current_dir(&repo_dir)
         .output()
         .await
@@ -562,7 +601,7 @@ async fn get_commits_impl(
 
     let (owner, repo) =
         analysis::parse_github_url(repo_url).map_err(|error| invalid_params(error.to_string()))?;
-    let token = db.get_setting("github_token").ok().flatten();
+    let token = db.github_token();
     analysis::fetch_commits(&owner, &repo, page, token.as_deref())
         .await
         .map_err(|error| internal_error(error.to_string()))
@@ -573,16 +612,40 @@ async fn get_commit_files_impl(
     repo_url: &str,
     sha: &str,
 ) -> Result<Vec<String>, JsonRpcError> {
+    if !is_commit_sha(sha) {
+        return Err(invalid_params(format!("Invalid commit id: {sha}")));
+    }
     if let Some(repo_dir) = local_git_dir(repo_url) {
         return get_local_commit_files(repo_dir, sha).await;
     }
 
     let (owner, repo) =
         analysis::parse_github_url(repo_url).map_err(|error| invalid_params(error.to_string()))?;
-    let token = db.get_setting("github_token").ok().flatten();
+    let token = db.github_token();
     analysis::fetch_commit_files(&owner, &repo, sha, token.as_deref())
         .await
         .map_err(|error| internal_error(error.to_string()))
+}
+
+/// `root.join(relative)`, resolved through symlinks, refusing anything that ends up
+/// outside `root` (a `docs/x.md -> ~/.ssh/id_rsa` link, for example).
+fn contained_path(root: &std::path::Path, relative: &str) -> Result<PathBuf, JsonRpcError> {
+    let root = root
+        .canonicalize()
+        .map_err(|error| internal_error(format!("Failed to open {}: {error}", root.display())))?;
+    let full = root
+        .join(relative)
+        .canonicalize()
+        .map_err(|error| internal_error(format!("Failed to read {relative}: {error}")))?;
+    if !full.starts_with(&root) {
+        return Err(invalid_params(format!("Source path escapes the project: {relative}")));
+    }
+    Ok(full)
+}
+
+/// A git object id: hex only, so it can never be read as a `git` option.
+fn is_commit_sha(sha: &str) -> bool {
+    (4..=64).contains(&sha.len()) && sha.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 async fn get_source_file_impl(
@@ -605,7 +668,17 @@ async fn get_source_file_impl(
 
     let local_path = std::path::PathBuf::from(&expanded);
     if local_path.is_dir() {
-        let full_path = local_path.join(file_path);
+        // Only folders the user has analysed may be read, so the viewer can't be
+        // pointed at arbitrary directories (~/.ssh and the like).
+        let known = db
+            .get_projects_by_user("local")
+            .unwrap_or_default()
+            .iter()
+            .any(|project| project.repo_url == repo_url);
+        if !known {
+            return Err(invalid_params(format!("Not an analysed project: {repo_url}")));
+        }
+        let full_path = contained_path(&local_path, file_path)?;
         return std::fs::read_to_string(&full_path).map_err(|error| {
             internal_error(format!("Failed to read {}: {error}", full_path.display()))
         });
@@ -614,14 +687,10 @@ async fn get_source_file_impl(
     let (owner, repo) =
         analysis::parse_github_url(repo_url).map_err(|error| invalid_params(error.to_string()))?;
 
-    if let Some(data_dir) = dirs::data_dir() {
-        let cached_repo = data_dir
-            .join("codecity")
-            .join("repos")
-            .join(format!("{owner}-{repo}"));
+    if let Ok(cached_repo) = analysis::pipeline::repo_cache_dir(&owner, &repo) {
 
         if cached_repo.is_dir() {
-            let cached_file = cached_repo.join(file_path);
+            let cached_file = contained_path(&cached_repo, file_path)?;
 
             if cached_file.is_file() {
                 return std::fs::read_to_string(&cached_file).map_err(|error| {
@@ -636,7 +705,7 @@ async fn get_source_file_impl(
         }
     }
 
-    let token = db.get_setting("github_token").ok().flatten();
+    let token = db.github_token();
     analysis::fetch_file_content(&owner, &repo, file_path, token.as_deref())
         .await
         .map_err(|error| internal_error(error.to_string()))
@@ -685,6 +754,11 @@ fn rpc_error(id: Value, code: i64, message: String) -> JsonRpcResponse {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db = analysis::Database::new().expect("Failed to initialize database");
+    match db.reap_interrupted_jobs() {
+        Ok(0) => {}
+        Ok(n) => log::warn!("Marked {n} interrupted analyses as failed"),
+        Err(error) => log::warn!("Could not reap interrupted jobs: {error}"),
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

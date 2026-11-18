@@ -37,22 +37,39 @@ pub struct AnalyzeResult {
     pub error: Option<String>,
 }
 
-fn cached_repo_dir(repo_url: &str) -> Option<PathBuf> {
-    let (owner, repo) = github::parse_github_url(repo_url).ok()?;
-    Some(repos_dir().ok()?.join(format!("{}-{}", owner, repo)))
+/// Where a GitHub repo is cached: `repos/<owner>/<repo>`. Nested rather than
+/// `owner-repo`, which let `a-b/c` and `a/b-c` collide. Names are limited to
+/// GitHub's character set so they can't climb out of the cache (`..`).
+pub fn repo_cache_dir(owner: &str, repo: &str) -> Result<PathBuf, String> {
+    let valid = |name: &str| {
+        !name.is_empty()
+            && name != "."
+            && name != ".."
+            && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    };
+    if !valid(owner) || !valid(repo) {
+        return Err(format!("Not a valid GitHub repository: {owner}/{repo}"));
+    }
+    let dir = repos_dir()?.join(owner);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join(repo))
+}
+
+/// One HTTP client policy: connect within 15s, finish within `total`, so a
+/// stalled request can't leave an analysis stuck.
+pub fn http_client(total: std::time::Duration) -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(total)
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
 }
 
 pub fn cancel_analysis(db: &Database, project_id: &str) -> Result<(), String> {
     mark_cancelled(project_id);
-
-    if let Some(project) = db.get_project(project_id)? {
-        if let Some(repo_dir) = cached_repo_dir(&project.repo_url) {
-            if repo_dir.exists() {
-                let _ = std::fs::remove_dir_all(repo_dir);
-            }
-        }
-    }
-
+    // The repo cache (`repos/<owner>/<repo>`) is shared with other projects of
+    // the same repo and the code viewer, so it is left alone. The archive
+    // staging dir cleans itself up on failure (see `extract_zip_archive`).
     db.delete_project(project_id)
 }
 
@@ -187,6 +204,10 @@ fn collect_source_tree_entries(base_dir: &Path) -> Vec<SourceTreeEntry> {
     entries
 }
 
+/// Files bigger than this are kept in the city but not read (model weights,
+/// databases, generated bundles), so one huge file can't exhaust memory.
+const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
+
 /// Read files from a local directory and return (relative_path, content) pairs
 fn read_local_files(base_dir: &Path) -> Vec<(String, String)> {
     let files = collect_source_files(base_dir);
@@ -194,6 +215,11 @@ fn read_local_files(base_dir: &Path) -> Vec<(String, String)> {
 
     for path in files {
         let relative = relative_path(base_dir, &path);
+
+        if std::fs::metadata(&path).map(|m| m.len() > MAX_FILE_BYTES).unwrap_or(false) {
+            result.push((relative, UNDISPLAYABLE_FILE_CONTENT.to_string()));
+            continue;
+        }
 
         match std::fs::read(&path) {
             Ok(bytes) => {
@@ -266,15 +292,31 @@ fn extract_zip_archive(bytes: &[u8], destination: &Path) -> Result<(), String> {
     let mut archive = zip::ZipArchive::new(cursor)
         .map_err(|e| format!("Failed to read downloaded archive: {}", e))?;
 
-    if destination.exists() {
-        std::fs::remove_dir_all(destination).map_err(|e| {
-            format!(
-                "Failed to clear cached repo {}: {}",
-                destination.display(),
-                e
-            )
-        })?;
+    // Extract next to the destination, then swap it in, so readers never see a
+    // half-written repo and a failed extraction leaves the old cache intact.
+    let staging = destination.with_extension(format!(
+        "extract-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    let result = extract_into(&mut archive, &staging).and_then(|()| {
+        if destination.exists() {
+            std::fs::remove_dir_all(destination).map_err(|e| {
+                format!("Failed to clear cached repo {}: {}", destination.display(), e)
+            })?;
+        }
+        std::fs::rename(&staging, destination)
+            .map_err(|e| format!("Failed to move extracted repo into place: {}", e))
+    });
+    if result.is_err() {
+        let _ = std::fs::remove_dir_all(&staging);
     }
+    result
+}
+
+fn extract_into(archive: &mut zip::ZipArchive<Cursor<&[u8]>>, destination: &Path) -> Result<(), String> {
     std::fs::create_dir_all(destination).map_err(|e| {
         format!(
             "Failed to create repo cache {}: {}",
@@ -320,8 +362,7 @@ async fn download_repo_archive(
 ) -> Result<PathBuf, String> {
     let (owner, repo) = github::parse_github_url(repo_url).map_err(|e| e.to_string())?;
 
-    let repos = repos_dir()?;
-    let archive_dir = repos.join(format!("{}-{}", owner, repo));
+    let archive_dir = repo_cache_dir(&owner, &repo)?;
     let archive_url = format!(
         "https://api.github.com/repos/{}/{}/zipball/HEAD",
         owner, repo
@@ -329,7 +370,7 @@ async fn download_repo_archive(
 
     log::info!("Downloading repo archive: {}", repo_url);
 
-    let client = reqwest::Client::new();
+    let client = http_client(std::time::Duration::from_secs(600));
     let mut request = client
         .get(&archive_url)
         .header("User-Agent", "codecity")
@@ -380,8 +421,13 @@ async fn download_repo_archive(
 async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBuf, String> {
     let (owner, repo) = github::parse_github_url(repo_url).map_err(|e| e.to_string())?;
 
-    let repos = repos_dir()?;
-    let clone_dir = repos.join(format!("{}-{}", owner, repo));
+    let clone_dir = repo_cache_dir(&owner, &repo)?;
+
+    // A cached folder without .git is a downloaded archive, not a clone: clone fresh.
+    if clone_dir.exists() && !clone_dir.join(".git").exists() {
+        std::fs::remove_dir_all(&clone_dir)
+            .map_err(|e| format!("Failed to clear {}: {}", clone_dir.display(), e))?;
+    }
 
     // If already cloned, pull latest
     if clone_dir.exists() {
@@ -434,6 +480,15 @@ async fn clone_repo(repo_url: &str, github_token: Option<&str>) -> Result<PathBu
         } else {
             return Err(format_git_clone_error(&owner, &repo, &stderr));
         }
+    }
+
+    // The clone URL carried the token; don't leave it in .git/config.
+    if github_token.is_some() {
+        let _ = tokio::process::Command::new("git")
+            .args(["remote", "set-url", "origin", &format!("https://github.com/{}/{}.git", owner, repo)])
+            .current_dir(&clone_dir)
+            .output()
+            .await;
     }
 
     Ok(clone_dir)
