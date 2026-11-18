@@ -185,7 +185,7 @@ export function AppSidebar({
           <div className={group}>
             <div className="flex size-10 items-center justify-center"><ThemeToggle /></div>
             {activeUser?.name ? (
-              <button type="button" onClick={handleLogout} title={`${activeUser.name} — sign out of GitHub`} aria-label="Sign out of GitHub" className={railButton(false)}>
+              <button type="button" onClick={handleLogout} title={`Sign out ${activeUser.name} from GitHub`} aria-label="Sign out of GitHub" className={railButton(false)}>
                 {activeUser.image ? <img src={activeUser.image} alt="" className="size-6 rounded-full" /> : <AppIcon icon={UserIcon} className="size-[18px]" />}
               </button>
             ) : (
@@ -375,7 +375,6 @@ export function AppSidebar({
               {isSigningIn ? <AppIcon icon={LoaderCircleIcon} className="size-3.5 animate-spin" /> : <AppIcon icon={GithubIcon} className="size-3.5" />}
               {isSigningIn ? "Waiting for GitHub…" : "Connect GitHub"}
             </button>
-            <p className="px-1 text-[12px] leading-4 text-[var(--muted)]">Lists your repositories and lets you build private ones.</p>
           </div>
         )}
       </SidebarFooter>

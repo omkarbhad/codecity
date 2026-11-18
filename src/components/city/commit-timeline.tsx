@@ -223,7 +223,6 @@ export function CommitTimeline({ repoUrl }: CommitTimelineProps) {
                   <p className="truncate text-[12px] leading-snug text-(--cream)">{commit.message || "Untitled commit"}</p>
                   <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-(--muted)">
                     <span className="truncate">{commit.author}</span>
-                    <span className="text-(--dim)">·</span>
                     <span>{timeAgo(commit.date)}</span>
                     <span className="border border-(--border-pixel) bg-(--bg-deep) px-1 py-px text-[11px] text-primary rounded-md">{commit.sha.slice(0, 7)}</span>
                   </div>

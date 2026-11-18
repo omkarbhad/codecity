@@ -98,7 +98,7 @@ function formatNumber(n: number): string {
 
 function timeAgo(dateStr: string): string {
   const t = new Date(dateStr).getTime()
-  if (!Number.isFinite(t)) return "—"
+  if (!Number.isFinite(t)) return ""
   const diff = Date.now() - t
   if (diff < 0) return "just now"
   const mins = Math.floor(diff / 60000)
@@ -258,7 +258,7 @@ function ProjectCard({
   const currentMessage = isActive && progress
     ? progress.message
     : isQueued
-      ? "Queued — waiting for active job to finish"
+      ? "Queued, waiting for the active job to finish"
       : null
 
   if (view === "list") {
@@ -272,8 +272,8 @@ function ProjectCard({
         <span className={`text-[12px] ${isFailed ? "text-(--sev-high)" : isActive ? "text-primary" : "text-(--muted)"}`}>
           {isActive ? `${currentProgress}%` : statusWord ?? "Ready"}
         </span>
-        <span className="text-[12px] tabular-nums text-(--cream-dark)">{isCompleted ? formatNumber(project.fileCount ?? 0) : "—"}</span>
-        <span className="text-[12px] tabular-nums text-(--cream-dark)">{isCompleted ? formatNumber(project.lineCount ?? 0) : "—"}</span>
+        <span className="text-[12px] tabular-nums text-(--cream-dark)">{isCompleted ? formatNumber(project.fileCount ?? 0) : ""}</span>
+        <span className="text-[12px] tabular-nums text-(--cream-dark)">{isCompleted ? formatNumber(project.lineCount ?? 0) : ""}</span>
         <span className="text-[12px] text-(--muted)">{timeAgo(project.createdAt)}</span>
         <div className="relative z-10 flex min-w-[76px] justify-end gap-1.5">
           {retryButton}
@@ -347,11 +347,22 @@ function ProjectCard({
           <span className="text-(--muted)">{owner}/</span>
           <span className="font-medium text-(--cream)">{repo}</span>
         </h3>
-        <p className="mt-1 truncate text-[12px] tabular-nums text-(--muted)">
-          {isCompleted && <>{formatNumber(project.fileCount ?? 0)} files · {formatNumber(project.lineCount ?? 0)} lines · </>}
-          {isActive && <>{currentMessage ?? "Building"}{(project.filesDiscovered ?? 0) > 0 && ` · ${formatNumber(project.filesParsed ?? 0)} of ${formatNumber(project.filesDiscovered ?? 0)} files`} · </>}
-          {!isCompleted && !isActive && statusWord && <span className={isFailed ? "text-(--sev-high)" : undefined}>{statusWord} · </span>}
-          {timeAgo(project.createdAt)}
+        {/* One line of facts, spaced apart rather than punctuated */}
+        <p className="mt-1 flex items-center gap-2.5 truncate text-[12px] tabular-nums text-(--muted)">
+          {isCompleted && (
+            <>
+              <span>{formatNumber(project.fileCount ?? 0)} files</span>
+              <span>{formatNumber(project.lineCount ?? 0)} lines</span>
+            </>
+          )}
+          {isActive && (
+            <>
+              <span className="truncate">{currentMessage ?? "Building"}</span>
+              {(project.filesDiscovered ?? 0) > 0 && <span className="shrink-0">{formatNumber(project.filesParsed ?? 0)} of {formatNumber(project.filesDiscovered ?? 0)} files</span>}
+            </>
+          )}
+          {!isCompleted && !isActive && statusWord && <span className={isFailed ? "text-(--sev-high)" : undefined}>{statusWord}</span>}
+          <span className="shrink-0">{timeAgo(project.createdAt)}</span>
         </p>
       </div>
     </div>
@@ -505,10 +516,10 @@ export function MyProjectsTab({ onCreateCity }: { onCreateCity?: () => void }) {
     <div className="space-y-5">
       {/* How many, how much code, then the view switch and the way to add one */}
       <div className="flex items-center gap-3">
-        <p className="min-w-0 flex-1 truncate text-[13px] text-(--muted)">
-          {projects.length === 1 ? "1 city" : `${projects.length} cities`}
-          {totalLines > 0 && ` · ${formatNumber(totalLines)} lines of code`}
-          {processingProjects.length > 0 && <span className="text-primary"> · {processingProjects.length} building</span>}
+        <p className="flex min-w-0 flex-1 items-center gap-3 truncate text-[13px] text-(--muted)">
+          <span>{projects.length === 1 ? "1 city" : `${projects.length} cities`}</span>
+          {totalLines > 0 && <span>{formatNumber(totalLines)} lines of code</span>}
+          {processingProjects.length > 0 && <span className="text-primary">{processingProjects.length} building</span>}
         </p>
         <div className="cc-seg" role="group" aria-label="Layout">
           <button type="button" onClick={() => setView("grid")} className="cc-seg-btn h-7 px-2.5" title="Grid view" aria-label="Grid view" aria-pressed={view === "grid"}>

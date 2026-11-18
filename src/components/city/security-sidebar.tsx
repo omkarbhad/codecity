@@ -35,7 +35,7 @@ function FindingRow({ finding }: { finding: SecurityFinding }) {
   const fileName = finding.file_path.split("/").pop() ?? finding.file_path
 
   function handleCopy() {
-    const text = `[${SEV_LABEL[finding.severity]}] ${finding.file_path}:${finding.start_line} — ${finding.message} (${finding.rule_id})${finding.snippet ? `\n\n${finding.snippet.trim()}` : ""}`
+    const text = `[${SEV_LABEL[finding.severity]}] ${finding.file_path}:${finding.start_line}: ${finding.message} (${finding.rule_id})${finding.snippet ? `\n\n${finding.snippet.trim()}` : ""}`
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
@@ -134,7 +134,7 @@ export function SecuritySidebar({ result, loading, error, onRetry, onClose }: Se
   function handleCopyAll() {
     if (findings.length === 0) return
     const lines = sortedFindings.map(
-      (f) => `[${SEV_LABEL[f.severity]}] ${f.file_path}:${f.start_line} — ${f.message} (${f.rule_id})`
+      (f) => `[${SEV_LABEL[f.severity]}] ${f.file_path}:${f.start_line}: ${f.message} (${f.rule_id})`
     )
     navigator.clipboard.writeText(lines.join("\n")).then(() => {
       setCopied(true)
@@ -241,7 +241,7 @@ export function SecuritySidebar({ result, loading, error, onRetry, onClose }: Se
               <AppIcon icon={CheckIcon} className="size-6" />
             </div>
             <p className="text-[12px] font-semibold text-(--lime)">No issues</p>
-            <p className="text-[11px] text-(--muted)">scan complete · 0 findings</p>
+            <p className="text-[11px] text-(--muted)">Scan complete, nothing found</p>
           </div>
         )}
 
@@ -260,7 +260,7 @@ export function SecuritySidebar({ result, loading, error, onRetry, onClose }: Se
           <span className="shrink-0 truncate text-(--muted)">
             {totalFindings > 0 ? (
               <>
-                <span className="text-(--sev-high)">{errors}</span> · <span className="text-(--sev-med)">{warnings}</span> · <span className="text-(--sev-low)">{infos}</span>
+                <span className="text-(--sev-high)">{errors}</span> <span className="ml-1.5 text-(--sev-med)">{warnings}</span> <span className="ml-1.5 text-(--sev-low)">{infos}</span>
                 <span className="ml-2">sort: sev desc</span>
               </>
             ) : (

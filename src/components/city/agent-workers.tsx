@@ -26,7 +26,11 @@ interface Site {
 /** Scaffolding stands this far off a building's walls. */
 const SCAFFOLD_GAP = 0.14
 /** Builders are drawn larger than life so they can be found from the overview. */
-const WORKER_SCALE = 1.5
+const WORKER_SCALE = 2
+/** Hammer blows per second, times pi. */
+const HAMMER_RATE = 5.5
+const TROUSERS = "#2b303b"
+const HARD_HAT = "#f4f1ea"
 const WALK_SPEED = 16
 
 /** The twelve edges of a box around a building, as line-segment vertices. */
@@ -76,8 +80,10 @@ function Scaffolds({ sites, color, pulse }: { sites: Site[]; color: string; puls
 function Worker({ color, name, fileName, site }: { color: string; name: string; fileName: string; site: Site }) {
   const group = useRef<THREE.Group>(null)
   const arm = useRef<THREE.Group>(null)
-  const legL = useRef<THREE.Mesh>(null)
-  const legR = useRef<THREE.Mesh>(null)
+  const legL = useRef<THREE.Group>(null)
+  const legR = useRef<THREE.Group>(null)
+  const ring = useRef<THREE.Mesh>(null)
+  const ringMaterial = useRef<THREE.MeshBasicMaterial>(null)
   // Where the builder is, and the jump it is making (null while it is working)
   const position = useRef<THREE.Vector3 | null>(null)
   const jump = useRef<{ from: THREE.Vector3; length: number } | null>(null)
@@ -124,49 +130,94 @@ function Worker({ color, name, fileName, site }: { color: string; name: string; 
     if (legL.current) legL.current.rotation.x = stride * 0.7
     if (legR.current) legR.current.rotation.x = -stride * 0.7
     // In the air the arm swings; on the roof it raises the hammer and brings it down
-    if (arm.current) arm.current.rotation.x = hop ? -stride * 0.5 : -0.5 - Math.abs(Math.sin(t * 5.5)) * 1.5
+    if (arm.current) arm.current.rotation.x = hop ? -stride * 0.5 : -0.5 - Math.abs(Math.sin(t * HAMMER_RATE)) * 1.5
+    // The ring starts at each blow (the hammer is down when the sine crosses zero) and fades as it spreads
+    if (ring.current && ringMaterial.current) {
+      const sinceBlow = ((t * HAMMER_RATE) / Math.PI) % 1
+      ring.current.visible = !hop
+      ring.current.scale.setScalar(1 + sinceBlow * 2.2)
+      ringMaterial.current.opacity = 0.75 * (1 - sinceBlow)
+    }
   })
 
   return (
     <group ref={group} scale={WORKER_SCALE}>
-      <mesh ref={legL} position={[-0.09, 0.2, 0]} castShadow>
-        <boxGeometry args={[0.12, 0.4, 0.13]} />
-        <meshStandardMaterial color="#2b303b" roughness={0.8} />
-      </mesh>
-      <mesh ref={legR} position={[0.09, 0.2, 0]} castShadow>
-        <boxGeometry args={[0.12, 0.4, 0.13]} />
-        <meshStandardMaterial color="#2b303b" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.62, 0]} castShadow>
-        <boxGeometry args={[0.38, 0.46, 0.24]} />
-        <meshStandardMaterial color={color} roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.99, 0]} castShadow>
-        <sphereGeometry args={[0.17, 16, 12]} />
-        <meshStandardMaterial color="#f0dcc4" roughness={0.7} />
-      </mesh>
-      {/* Hard hat */}
-      <mesh position={[0, 1.04, 0]}>
-        <sphereGeometry args={[0.19, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color={THEME.lime} roughness={0.5} />
-      </mesh>
-      {/* Arm and hammer, swinging from the shoulder */}
-      <group ref={arm} position={[0.25, 0.8, 0]}>
-        <mesh position={[0, -0.17, 0]}>
-          <boxGeometry args={[0.1, 0.36, 0.1]} />
-          <meshStandardMaterial color={color} roughness={0.6} />
+      {/* Legs swing from the hip */}
+      <group ref={legL} position={[-0.09, 0.4, 0]}>
+        <mesh position={[0, -0.2, 0]} castShadow>
+          <capsuleGeometry args={[0.065, 0.26, 4, 10]} />
+          <meshStandardMaterial color={TROUSERS} roughness={0.85} />
         </mesh>
-        <mesh position={[0, -0.38, 0.1]}>
-          <boxGeometry args={[0.07, 0.07, 0.34]} />
-          <meshStandardMaterial color="#8a6a48" roughness={0.8} />
-        </mesh>
-        <mesh position={[0, -0.38, 0.28]}>
-          <boxGeometry args={[0.13, 0.19, 0.11]} />
-          <meshStandardMaterial color="#c3cad4" roughness={0.35} metalness={0.7} />
+      </group>
+      <group ref={legR} position={[0.09, 0.4, 0]}>
+        <mesh position={[0, -0.2, 0]} castShadow>
+          <capsuleGeometry args={[0.065, 0.26, 4, 10]} />
+          <meshStandardMaterial color={TROUSERS} roughness={0.85} />
         </mesh>
       </group>
 
-      <Html position={[0, 2.1, 0]} zIndexRange={[14, 14]} style={{ pointerEvents: "none" }}>
+      {/* Overalls in the agent's colour, with a tool belt */}
+      <mesh position={[0, 0.66, 0]} castShadow>
+        <capsuleGeometry args={[0.2, 0.26, 6, 14]} />
+        <meshStandardMaterial color={color} roughness={0.55} />
+      </mesh>
+      <mesh position={[0, 0.47, 0]}>
+        <cylinderGeometry args={[0.212, 0.212, 0.07, 16]} />
+        <meshStandardMaterial color="#3a2f25" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.47, 0.2]}>
+        <boxGeometry args={[0.09, 0.08, 0.04]} />
+        <meshStandardMaterial color="#d9b24a" roughness={0.4} metalness={0.6} />
+      </mesh>
+
+      {/* Head, eyes, and a hard hat with a brim */}
+      <mesh position={[0, 1.09, 0]} castShadow>
+        <sphereGeometry args={[0.2, 20, 16]} />
+        <meshStandardMaterial color="#f2dcc2" roughness={0.75} />
+      </mesh>
+      {[-0.075, 0.075].map((x) => (
+        <mesh key={x} position={[x, 1.1, 0.175]}>
+          <sphereGeometry args={[0.03, 10, 8]} />
+          <meshStandardMaterial color="#1c1a17" roughness={0.3} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.15, 0]}>
+        <sphereGeometry args={[0.215, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color={HARD_HAT} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 1.155, 0.05]}>
+        <cylinderGeometry args={[0.27, 0.27, 0.025, 20]} />
+        <meshStandardMaterial color={HARD_HAT} roughness={0.4} />
+      </mesh>
+
+      {/* The other arm hangs at the side */}
+      <mesh position={[-0.26, 0.66, 0]} rotation={[0, 0, -0.18]}>
+        <capsuleGeometry args={[0.055, 0.24, 4, 10]} />
+        <meshStandardMaterial color={color} roughness={0.55} />
+      </mesh>
+      {/* Arm and hammer, swinging from the shoulder */}
+      <group ref={arm} position={[0.26, 0.84, 0]}>
+        <mesh position={[0, -0.17, 0]}>
+          <capsuleGeometry args={[0.055, 0.24, 4, 10]} />
+          <meshStandardMaterial color={color} roughness={0.55} />
+        </mesh>
+        <mesh position={[0, -0.36, 0.13]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.36, 8]} />
+          <meshStandardMaterial color="#8a6a48" roughness={0.8} />
+        </mesh>
+        <mesh position={[0, -0.36, 0.32]}>
+          <boxGeometry args={[0.12, 0.2, 0.11]} />
+          <meshStandardMaterial color="#c9d0d9" roughness={0.3} metalness={0.75} />
+        </mesh>
+      </group>
+
+      {/* Each hammer blow sends a ring across the roof */}
+      <mesh ref={ring} position={[0, 0.03, 0.42]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.2, 0.26, 28]} />
+        <meshBasicMaterial ref={ringMaterial} color={color} transparent opacity={0} depthWrite={false} toneMapped={false} />
+      </mesh>
+
+      <Html position={[0, 1.75, 0]} zIndexRange={[14, 14]} style={{ pointerEvents: "none" }}>
         <div
           className="flex w-max -translate-x-1/2 -translate-y-full items-center gap-1.5 whitespace-nowrap rounded-full py-1 pl-2 pr-2.5 text-[12px] font-medium leading-none text-[#14130f] shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
           style={{ backgroundColor: color }}

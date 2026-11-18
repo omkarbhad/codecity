@@ -82,7 +82,7 @@ function AnalyzeContent() {
         failures += 1
         if (failures >= MAX_POLL_FAILURES) {
           const detail = err instanceof Error && err.message ? ` (${err.message})` : ""
-          setError(`Lost contact with the analysis backend${detail}. It may still be running — check the dashboard.`)
+          setError(`Lost contact with the analysis backend${detail}. It may still be running. Check the dashboard.`)
           return
         }
       }

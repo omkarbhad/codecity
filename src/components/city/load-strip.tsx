@@ -43,7 +43,7 @@ export function LoadStrip({
           <span className="truncate text-[11px] text-(--cream-dark)">{label}</span>
         </div>
         <span className="shrink-0 text-[11px] tabular-nums text-(--cream)">
-          {detail ? <><span className="text-primary">{percentLabel}%</span><span className="text-(--dim)"> · </span>{detail}</> : <span className="text-primary">{percentLabel}%</span>}
+          {detail ? <><span className="mr-2 text-primary">{percentLabel}%</span>{detail}</> : <span className="text-primary">{percentLabel}%</span>}
         </span>
       </div>
       <div className="grid h-[8px] grid-flow-col gap-[2px]">
