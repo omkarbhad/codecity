@@ -139,47 +139,7 @@ export interface CommitSummary {
   files: string[]
 }
 
-export interface ParsedFileRecord {
-  path: string
-  lines: number
-  sizeBytes: number
-  extension: string
-  language: string
-  functions: unknown[]
-  types: unknown[]
-  classes: unknown[]
-  symbols: unknown[]
-  imports: string[]
-  externalImports: string[]
-  decorators: string[]
-  complexity: number
-  frontendFrameworks: string[]
-  isReactComponent: boolean
-  hasUnusedExports: boolean
-  fileType: string
-}
-
 // ── Analysis ──
-
-export async function analyze(
-  input: string,
-  options?: { githubToken?: string }
-): Promise<{ projectId: string; snapshot?: Record<string, unknown> }> {
-  const result = await rpc<AnalyzeResult>("analysis.analyze", {
-    input,
-    visibility: "PRIVATE",
-    githubToken: options?.githubToken ?? null,
-  })
-
-  if (!result.success) {
-    throw new Error(result.error ?? "Analysis failed")
-  }
-
-  return {
-    projectId: result.project_id!,
-    snapshot: result.snapshot ?? undefined,
-  }
-}
 
 export async function enqueueAnalysis(
   input: string,
@@ -313,20 +273,12 @@ export async function getProjectSnapshot(projectId: string): Promise<Record<stri
     .catch(emptyWhenBackendUnavailable(null))
 }
 
-export async function getProjectParsedFiles(projectId: string): Promise<ParsedFileRecord[] | null> {
-  return rpc<ParsedFileRecord[] | null>("projects.getParsedFiles", { projectId }).catch(emptyWhenBackendUnavailable(null))
-}
-
 export async function deleteProject(id: string): Promise<void> {
   await rpc<null>("projects.delete", { id })
 }
 
 export async function cancelProject(id: string): Promise<void> {
   await rpc<null>("projects.cancel", { id })
-}
-
-export async function getAllPublicProjects(): Promise<ProjectRecord[]> {
-  return rpc<ProjectRecord[]>("projects.listPublic").catch(emptyWhenBackendUnavailable([]))
 }
 
 // ── Git ──
@@ -393,10 +345,6 @@ export async function logoutGithub(): Promise<void> {
   await rpc<null>("github.logout")
 }
 
-export async function getCurrentUser(): Promise<string | null> {
-  return rpc<string | null>("user.current").catch(emptyWhenBackendUnavailable(null))
-}
-
 // ── Security ──
 
 export type Severity = "ERROR" | "WARNING" | "INFO"
@@ -443,6 +391,3 @@ export async function getSecurityScan(projectId: string): Promise<SecurityScanRe
   )
 }
 
-export async function cancelSecurityScan(scanId: string): Promise<void> {
-  await rpc<null>("security.cancel", { scanId })
-}

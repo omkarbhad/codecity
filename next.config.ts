@@ -10,11 +10,6 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: false,
   },
-  turbopack: {
-    rules: {
-      '*.svg': ['@svgr/webpack'],
-    },
-  },
 }
 
 export default nextConfig

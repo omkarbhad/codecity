@@ -39,6 +39,8 @@ pub fn compute_network_analysis(files: &mut [FileData]) -> NetworkAnalysis {
     // before deciding what to parallelize. Cheap when off (one env lookup
     // per `phase!()` call).
     let timing = std::env::var("CODECITY_TIMING").is_ok();
+    // The last `phase!()` resets the timer and nothing reads it after that
+    #[allow(unused_assignments)]
     let mut phase_start = std::time::Instant::now();
     macro_rules! phase {
         ($label:expr) => {

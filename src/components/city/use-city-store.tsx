@@ -28,10 +28,6 @@ interface CityState {
   searchQuery: string
   hiddenExtensions: Set<string>
   hiddenPaths: Set<string>
-  dimUnselected: boolean
-  sidePanelPinned: boolean
-  leftPanelCollapsed: boolean
-  showShortcutsOverlay: boolean
   showBuildingLabels: boolean
   /** Agent mode: show which coding agents are working in the project, and on what. */
   agentMode: boolean
@@ -51,10 +47,6 @@ interface CityState {
   hideAllExtensions: (allExts: string[]) => void
   togglePathVisibility: (path: string) => void
   showAllPaths: () => void
-  setDimUnselected: (dim: boolean) => void
-  togglePinSidePanel: () => void
-  toggleLeftPanel: () => void
-  toggleShortcutsOverlay: () => void
   toggleBuildingLabels: () => void
   setAgentMode: (on: boolean) => void
   openCodeViewer: (filePath: string, functionName?: string | null) => void
@@ -73,10 +65,6 @@ export const useCityStore = create<CityState>((set) => ({
   searchQuery: "",
   hiddenExtensions: new Set<string>(),
   hiddenPaths: new Set<string>(),
-  dimUnselected: true,
-  sidePanelPinned: false,
-  leftPanelCollapsed: false,
-  showShortcutsOverlay: false,
   showBuildingLabels: true,
   agentMode: false,
   highlightedFiles: new Set<string>(),
@@ -109,13 +97,6 @@ export const useCityStore = create<CityState>((set) => ({
       return { hiddenPaths: next }
     }),
   showAllPaths: () => set({ hiddenPaths: new Set<string>() }),
-  setDimUnselected: (dim) => set({ dimUnselected: dim }),
-  togglePinSidePanel: () =>
-    set((state) => ({ sidePanelPinned: !state.sidePanelPinned })),
-  toggleLeftPanel: () =>
-    set((state) => ({ leftPanelCollapsed: !state.leftPanelCollapsed })),
-  toggleShortcutsOverlay: () =>
-    set((state) => ({ showShortcutsOverlay: !state.showShortcutsOverlay })),
   toggleBuildingLabels: () =>
     set((state) => ({ showBuildingLabels: !state.showBuildingLabels })),
   setAgentMode: (on) => set({ agentMode: on }),

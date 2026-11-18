@@ -91,7 +91,6 @@ export function City2DCanvas({ snapshot }: Props) {
   const visualizationMode = useCityStore((s) => s.visualizationMode)
   const hiddenPaths = useCityStore((s) => s.hiddenPaths)
   const hiddenExtensions = useCityStore((s) => s.hiddenExtensions)
-  const dimUnselected = useCityStore((s) => s.dimUnselected)
   const selectedFile = useCityStore((s) => s.selectedFile)
   const selectFile = useCityStore((s) => s.selectFile)
   const hoverFile = useCityStore((s) => s.hoverFile)
@@ -327,7 +326,7 @@ export function City2DCanvas({ snapshot }: Props) {
 
   const wrapperClass = `absolute inset-0 bg-(--bg-deep) city2d ${
     selectedFile ? "city2d-has-selection" : ""
-  } ${dimUnselected ? "city2d-dim" : ""}`
+  } city2d-dim`
 
   // Edges only for the selected file: outgoing imports + incoming importedBy.
   // Skip when nothing is selected — keeps the canvas clean and avoids per-frame edge work.

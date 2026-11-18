@@ -59,7 +59,6 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@fontsource/instrument-sans": "^5.3.0",
     "@tailwindcss/postcss": "^4.2.1",
     "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^22.0.0",

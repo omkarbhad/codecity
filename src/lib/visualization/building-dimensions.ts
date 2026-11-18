@@ -1,7 +1,7 @@
 import type { FileData } from "@/lib/types/city"
 
-export const MIN_BUILDING_HEIGHT = 0.3
-export const MAX_BUILDING_HEIGHT = 30
+const MIN_BUILDING_HEIGHT = 0.3
+const MAX_BUILDING_HEIGHT = 30
 const HEIGHT_EXPONENT = 0.7
 const HEIGHT_DIVISOR = 11.6
 /** Above this height a tower keeps growing, but at 40% of the rate. */

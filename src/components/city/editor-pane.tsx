@@ -92,7 +92,7 @@ export function useEditorBridge(onFilesChanged?: () => void) {
 }
 
 /** Whether files in this project can be edited (local folders only). */
-export function useFileCapabilities() {
+function useFileCapabilities() {
   const repoUrl = useCityStore((s) => s.repoUrl)
   const { data } = useQuery({
     queryKey: ["file-capabilities", repoUrl],
