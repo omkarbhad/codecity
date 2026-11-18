@@ -55,7 +55,7 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "yml", "toml", "webmanifest", "ipynb", "py", "pyi", "pyx", "pxd", "pxi", "go", "rs", "java",
     "kt", "kts", "rb", "php", "swift", "c", "h", "cu", "cuh", "cpp", "cxx", "cc", "hpp", "hxx",
     "hh", "cs", "fs", "fsi", "fsx", "vb", "m", "mm", "zig", "zon", "lua", "dart", "scala",
-    "groovy", "r", "R", "jl", "hs", "lhs", "ex", "exs", "erl", "hrl", "beam", "ml", "mli", "clj",
+    "groovy", "r", "jl", "hs", "lhs", "ex", "exs", "erl", "hrl", "beam", "ml", "mli", "clj",
     "cljs", "cljc", "edn", "lisp", "lsp", "cl", "scm", "ss", "idr", "lidr", "agda", "lean",
     "purs", "nim", "cr", "v", "d", "sh", "bash", "zsh", "fish", "ksh", "awk", "ps1", "bat",
     "cmd", "asm", "s", "o", "obj", "a", "lib", "so", "dylib", "dll", "exe", "rlib", "class",
@@ -195,10 +195,12 @@ pub fn should_skip_file(path: &Path) -> bool {
         || lower.ends_with(".generated.js")
 }
 
-/// True if `ext` (lowercased, no leading dot) is a recognised analyzable
-/// extension.
+/// True if `ext` (no leading dot, any case: `TS` and `ts` both match) is a
+/// recognised analyzable extension.
 pub fn is_supported_extension(ext: &str) -> bool {
-    SUPPORTED_EXTENSIONS.contains(&ext)
+    SUPPORTED_EXTENSIONS
+        .iter()
+        .any(|supported| supported.eq_ignore_ascii_case(ext))
 }
 
 /// True if `file_name` is a recognised extension-less file (Dockerfile,
@@ -406,6 +408,13 @@ mod tests {
     #[test]
     fn supported_extensions_cover_common_languages() {
         for ext in ["rs", "ts", "tsx", "py", "go", "zig", "java", "rb"] {
+            assert!(is_supported_extension(ext), "missing {ext}");
+        }
+    }
+
+    #[test]
+    fn supported_extensions_ignore_case() {
+        for ext in ["TS", "Md", "RS", "R"] {
             assert!(is_supported_extension(ext), "missing {ext}");
         }
     }

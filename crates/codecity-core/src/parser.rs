@@ -194,12 +194,14 @@ impl FileType {
             _ => {}
         }
 
-        let ext = path.rsplit('.').next().unwrap_or("");
+        // Extension of the file name only: `Makefile` has none, nor does `src.v2/a`.
+        let name = path.rsplit('/').next().unwrap_or(path);
+        let ext = name.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
         Self::from_extension(ext)
     }
 
     pub fn from_extension(ext: &str) -> Self {
-        match ext {
+        match ext.to_ascii_lowercase().as_str() {
             "ts" | "tsx" | "mts" | "cts" => FileType::TypeScript,
             "js" | "jsx" | "mjs" | "cjs" | "es" | "es6" => FileType::JavaScript,
             "py" | "pyi" | "pyx" | "pxd" | "pxi" => FileType::Python,
@@ -229,7 +231,7 @@ impl FileType {
             "dart" => FileType::Dart,
             "ex" | "exs" => FileType::Elixir,
             "scala" => FileType::Scala,
-            "r" | "R" => FileType::R,
+            "r" => FileType::R,
             "jl" => FileType::Julia,
             "pl" | "pm" | "t" => FileType::Perl,
             "cs" => FileType::CSharp,
@@ -475,7 +477,9 @@ impl AnalysisParser {
     }
 
     pub fn parse_file(&mut self, path: &str, content: &str) -> ParsedFile {
-        let ext = path.rsplit('.').next().unwrap_or("");
+        // Extension of the file name only: `Makefile` has none, nor does `src.v2/a`.
+        let name = path.rsplit('/').next().unwrap_or(path);
+        let ext = name.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
         let file_type = FileType::from_path(path);
         let lines = content.lines().count();
         let size_bytes = content.len();
@@ -556,6 +560,7 @@ impl AnalysisParser {
             &mut decorators,
             &mut complexity,
             &mut is_react_component,
+            0,
         );
 
         // Per-language call extraction (Tier A). Walks function bodies for
@@ -600,14 +605,27 @@ impl AnalysisParser {
         decorators: &mut Vec<String>,
         complexity: &mut usize,
         is_react_component: &mut bool,
+        depth: usize,
     ) {
+        // Generated or minified files can nest thousands deep; stop before the
+        // recursion can overflow the thread's stack and abort the app.
+        if depth > MAX_AST_DEPTH {
+            return;
+        }
         let kind = node.kind();
 
         match kind {
             // Functions (all languages — grouped by shared node kind names)
             "function_declaration" | "function_expression" | "arrow_function" => {
-                // JS/TS/Swift/Kotlin/Zig share this node kind
-                if let Some(name) = self.get_function_name(node, content) {
+                // JS/TS/Swift/Kotlin/Zig share this node kind. Arrow functions and
+                // function expressions are named by what they're assigned to; their
+                // own identifier child is a parameter (`x => x * 2`), not a name.
+                let name = if kind == "function_declaration" {
+                    self.get_function_name(node, content)
+                } else {
+                    self.assigned_function_name(node, content)
+                };
+                if let Some(name) = name {
                     let exported = self.has_export_keyword(node);
                     self.push_function(node, name, exported, functions, symbols);
                 }
@@ -858,6 +876,7 @@ impl AnalysisParser {
                 decorators,
                 complexity,
                 is_react_component,
+                depth + 1,
             );
         }
     }
@@ -871,6 +890,26 @@ impl AnalysisParser {
             }
         }
         None
+    }
+
+    /// Name of an arrow function / function expression: its own name
+    /// (`function foo() {}`), else the variable, key, field or assignment target
+    /// it is bound to. None for anonymous callbacks.
+    fn assigned_function_name(&self, node: &Node, content: &str) -> Option<String> {
+        if let Some(own) = node.child_by_field_name("name") {
+            return Some(self.get_node_text(&own, content));
+        }
+        let parent = node.parent()?;
+        let target = match parent.kind() {
+            "variable_declarator" | "public_field_definition" | "field_definition" => parent.child_by_field_name("name"),
+            "pair" => parent.child_by_field_name("key"),
+            "assignment_expression" => parent.child_by_field_name("left"),
+            _ => None,
+        }?;
+        let text = self.get_node_text(&target, content);
+        // `obj.method = () => {}` → "method"
+        let name = text.rsplit('.').next().unwrap_or(&text).trim_matches(|c| c == '"' || c == '\'');
+        (!name.is_empty()).then(|| name.to_string())
     }
 
     fn get_class_name(&self, node: &Node, content: &str) -> Option<String> {
@@ -1497,6 +1536,62 @@ impl Default for AnalysisParser {
 mod parser_registry_tests {
     use super::*;
 
+    #[test]
+    fn file_type_ignores_extension_case() {
+        assert!(matches!(FileType::from_extension("TS"), FileType::TypeScript));
+        assert!(matches!(FileType::from_extension("MD"), FileType::Markdown));
+        assert!(matches!(FileType::from_extension("R"), FileType::R));
+    }
+
+    #[test]
+    fn strip_jsonc_keeps_non_ascii() {
+        let cleaned = strip_jsonc("{\n  // comment\n  \"paths\": { \"@é/*\": [\"src/日本/*\"], },\n}");
+        let value: serde_json::Value = serde_json::from_str(&cleaned).unwrap();
+        assert_eq!(value["paths"]["@é/*"][0], "src/日本/*");
+    }
+
+    #[test]
+    fn arrow_functions_are_named_by_their_binding() {
+        let mut p = AnalysisParser::new();
+        let parsed = p.parse_file(
+            "a.ts",
+            "const double = (x: number) => x * 2\nconst api = { load: async () => 1 }\n[1].map(y => y)\nexport function named() {}\n",
+        );
+        let names: Vec<&str> = parsed.functions.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"double"), "{names:?}");
+        assert!(names.contains(&"load"), "{names:?}");
+        assert!(names.contains(&"named"), "{names:?}");
+        assert!(!names.contains(&"x") && !names.contains(&"y"), "parameters are not functions: {names:?}");
+    }
+
+    #[test]
+    fn deeply_nested_source_does_not_overflow() {
+        let mut p = AnalysisParser::new();
+        let expr = format!("const v = {}1{}\n", "(".repeat(5000), ")".repeat(5000));
+        let _ = p.parse_file("deep.ts", &expr);
+    }
+
+    #[test]
+    fn tsconfig_aliases_stay_inside_their_package() {
+        let tsconfigs = vec![
+            ("apps/a/tsconfig.json".to_string(), r#"{"compilerOptions":{"paths":{"@/*":["./*"]}}}"#.to_string()),
+            ("apps/b/tsconfig.json".to_string(), r#"{"compilerOptions":{"paths":{"@/*":["./*"]}}}"#.to_string()),
+        ];
+        let aliases = TsConfigAliases::from_tsconfigs(&tsconfigs);
+        let paths: HashSet<String> = ["apps/a/lib/utils.ts", "apps/b/lib/utils.ts"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(aliases.resolve("apps/b/page.ts", "@/lib/utils", &paths).as_deref(), Some("apps/b/lib/utils.ts"));
+        assert_eq!(aliases.resolve("apps/a/page.ts", "@/lib/utils", &paths).as_deref(), Some("apps/a/lib/utils.ts"));
+    }
+
+    #[test]
+    fn esm_js_import_resolves_to_ts_source() {
+        let paths: HashSet<String> = ["src/a.ts", "src/b.tsx", "src/c.js"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(resolve_relative_import("src/main.ts", "./a.js", &paths).as_deref(), Some("src/a.ts"));
+        assert_eq!(resolve_relative_import("src/main.ts", "./b.jsx", &paths).as_deref(), Some("src/b.tsx"));
+        // A real .js file still wins.
+        assert_eq!(resolve_relative_import("src/main.ts", "./c.js", &paths).as_deref(), Some("src/c.js"));
+    }
+
     /// Every entry in the language table must produce a working parser.
     /// If a `tree-sitter-*` crate bumps its ABI and the integration breaks,
     /// this catches it at test time instead of silently turning files into
@@ -1710,7 +1805,7 @@ pub fn resolve_internal_imports_full(
                 internal.push(hit.clone());
                 continue;
             }
-            if let Some(resolved) = aliases.resolve(import, &paths) {
+            if let Some(resolved) = aliases.resolve(&file.path, import, &paths) {
                 internal.push(resolved);
                 continue;
             }
@@ -1747,7 +1842,13 @@ struct AliasRule {
     /// Resolved target prefixes (relative to project root, normalized with forward slashes)
     /// e.g. ["packages/server/src/", "packages/client/src/"]
     targets: Vec<String>,
+    /// Directory of the tsconfig that defined the rule ("" = project root). A rule
+    /// only applies to files under it, so packages in a monorepo keep their own aliases.
+    scope: String,
 }
+
+/// Deepest AST nesting the tree walkers will follow (see walk_tree).
+const MAX_AST_DEPTH: usize = 400;
 
 const RESOLVE_EXTENSIONS: &[&str] = &[
     "", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".d.ts", ".json", ".py", ".pyi", ".zig",
@@ -1812,14 +1913,17 @@ impl TsConfigAliases {
                     .iter()
                     .filter_map(|t| t.as_str())
                     .map(|raw| {
-                        let stripped = if let Some(s) = raw.strip_suffix("/*") {
-                            format!("{}/", s)
+                        let (stripped, dir_target) = if let Some(s) = raw.strip_suffix("/*") {
+                            (s.to_string(), true)
                         } else if let Some(s) = raw.strip_suffix('*') {
-                            s.to_string()
+                            (s.to_string(), false)
                         } else {
-                            raw.to_string()
+                            (raw.to_string(), false)
                         };
-                        normalize_relative(&join_rel(&anchor, &stripped))
+                        let target = normalize_relative(&join_rel(&anchor, &stripped));
+                        // normalize_relative drops the trailing slash; a `dir/*` target
+                        // needs it back so `@/lib/x` becomes `dir/lib/x`, not `dirlib/x`.
+                        if dir_target && !target.is_empty() { format!("{target}/") } else { target }
                     })
                     .collect();
 
@@ -1831,12 +1935,16 @@ impl TsConfigAliases {
                     pattern_prefix,
                     wildcard,
                     targets: resolved_targets,
+                    scope: normalize_relative(&tsconfig_dir).trim_end_matches('/').to_string(),
                 });
             }
         }
 
-        // Longest pattern first so "@trpc/server" beats "@trpc/" when both exist
-        rules.sort_by(|a, b| b.pattern_prefix.len().cmp(&a.pattern_prefix.len()));
+        // Nearest tsconfig first (deepest scope), then longest pattern so
+        // "@trpc/server" beats "@trpc/" when both exist.
+        rules.sort_by(|a, b| {
+            b.scope.len().cmp(&a.scope.len()).then(b.pattern_prefix.len().cmp(&a.pattern_prefix.len()))
+        });
 
         Self { rules }
     }
@@ -1845,8 +1953,14 @@ impl TsConfigAliases {
         self.rules.len()
     }
 
-    fn resolve(&self, import: &str, paths: &HashSet<String>) -> Option<String> {
+    fn resolve(&self, from_path: &str, import: &str, paths: &HashSet<String>) -> Option<String> {
         for rule in &self.rules {
+            let in_scope = rule.scope.is_empty()
+                || rule.scope == "."
+                || from_path.strip_prefix(rule.scope.as_str()).is_some_and(|rest| rest.starts_with('/'));
+            if !in_scope {
+                continue;
+            }
             let suffix = if rule.wildcard {
                 if !import.starts_with(&rule.pattern_prefix) {
                     continue;
@@ -1900,7 +2014,9 @@ fn try_resolve_with_extensions(candidate: &str, paths: &HashSet<String>) -> Opti
 /// Strip // line comments and /* block comments from JSONC. Naive but adequate
 /// for tsconfigs which never contain comment markers inside string literals in practice.
 fn strip_jsonc(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
+    // Work on bytes, but only ever split at ASCII delimiters, so the kept bytes
+    // are still valid UTF-8 (non-ASCII in tsconfig paths survives intact).
+    let mut out: Vec<u8> = Vec::with_capacity(input.len());
     let bytes = input.as_bytes();
     let mut i = 0;
     let mut in_string = false;
@@ -1908,7 +2024,7 @@ fn strip_jsonc(input: &str) -> String {
     while i < bytes.len() {
         let b = bytes[i];
         if in_string {
-            out.push(b as char);
+            out.push(b);
             if escape {
                 escape = false;
             } else if b == b'\\' {
@@ -1921,7 +2037,7 @@ fn strip_jsonc(input: &str) -> String {
         }
         if b == b'"' {
             in_string = true;
-            out.push('"');
+            out.push(b'"');
             i += 1;
             continue;
         }
@@ -1941,9 +2057,11 @@ fn strip_jsonc(input: &str) -> String {
                 continue;
             }
         }
-        out.push(b as char);
+        out.push(b);
         i += 1;
     }
+    let out = String::from_utf8(out)
+        .unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned());
     // Strip trailing commas before ] or }
     let mut cleaned = String::with_capacity(out.len());
     let chars: Vec<char> = out.chars().collect();
@@ -2010,6 +2128,18 @@ fn resolve_relative_import(
         let path = format!("{}{}", candidate, ext);
         if paths.contains(&path) {
             return Some(path);
+        }
+    }
+    // ESM TypeScript (moduleResolution "nodenext") imports the emitted name:
+    // `./foo.js` means `./foo.ts`, `./foo.jsx` means `./foo.tsx`, and so on.
+    for (js, ts_exts) in [(".js", [".ts", ".tsx"]), (".jsx", [".tsx", ".ts"]), (".mjs", [".mts", ".ts"]), (".cjs", [".cts", ".ts"])] {
+        if let Some(stem) = candidate.strip_suffix(js) {
+            for ts in ts_exts {
+                let path = format!("{stem}{ts}");
+                if paths.contains(&path) {
+                    return Some(path);
+                }
+            }
         }
     }
     for ext in extensions.iter().filter(|ext| !ext.is_empty()) {
@@ -2536,6 +2666,7 @@ fn first_child_of_kind<'a>(node: &Node<'a>, kind: &str) -> Option<Node<'a>> {
 // ────────────────────────────────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn walk_calls_generic(
     node: &Node,
     content: &str,
@@ -2546,6 +2677,24 @@ fn walk_calls_generic(
     callee_fn: fn(&Node, &str) -> Option<String>,
     func_name_fn: fn(&Node, &str) -> Option<String>,
 ) {
+    walk_calls_at(node, content, caller, out, function_decl_kinds, call_kinds, callee_fn, func_name_fn, 0);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn walk_calls_at(
+    node: &Node,
+    content: &str,
+    caller: &str,
+    out: &mut Vec<CallSite>,
+    function_decl_kinds: &[&str],
+    call_kinds: &[&str],
+    callee_fn: fn(&Node, &str) -> Option<String>,
+    func_name_fn: fn(&Node, &str) -> Option<String>,
+    depth: usize,
+) {
+    if depth > MAX_AST_DEPTH {
+        return;
+    }
     let kind = node.kind();
 
     // Entering a function / method body — switch the caller name for descendants.
@@ -2553,7 +2702,7 @@ fn walk_calls_generic(
         let new_caller = func_name_fn(node, content).unwrap_or_default();
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
-            walk_calls_generic(
+            walk_calls_at(
                 &child,
                 content,
                 &new_caller,
@@ -2562,6 +2711,7 @@ fn walk_calls_generic(
                 call_kinds,
                 callee_fn,
                 func_name_fn,
+                depth + 1,
             );
         }
         return;
@@ -2583,7 +2733,7 @@ fn walk_calls_generic(
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_calls_generic(
+        walk_calls_at(
             &child,
             content,
             caller,
@@ -2592,6 +2742,7 @@ fn walk_calls_generic(
             call_kinds,
             callee_fn,
             func_name_fn,
+            depth + 1,
         );
     }
 }
