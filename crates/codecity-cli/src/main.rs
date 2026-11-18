@@ -345,7 +345,7 @@ fn analyze_dir(
     eprintln!("built snapshot (layout + network + FCoSE) in {:.2}s", t.elapsed().as_secs_f64());
 
     eprintln!(
-        "snapshot: {} files · {} districts · {} communities · {} entry points",
+        "snapshot: {} files, {} districts, {} communities, {} entry points",
         snapshot.stats.total_files,
         snapshot.districts.len(),
         snapshot.network.communities.len(),
