@@ -38,6 +38,17 @@ Thumbs.db
 .docs/
 .playwright-mcp/
 .grepai/
+.planning/
+.agents/
+greptile/
+skills-lock.json
+homepage/.taste-skill/
+homepage/design/
+graphify-out/
+
+# Local preview data (see docs/DEVELOPMENT.md)
+public/dev-stub.js
+public/dev-snapshot.json
 
 # Rust / Tauri
 target/
