@@ -1,155 +1,257 @@
-<!-- generated-by: gsd-doc-writer -->
-# CodeCity
+<div align="center">
+  <img src="public/brand/app-icon.svg" width="96" height="96" alt="CodeCity logo" />
+  <h1>CodeCity</h1>
+  <p><strong>See any codebase as a city you can walk through.</strong></p>
+  <p>Files are buildings, folders are districts, imports are the roads between them.<br />A desktop app, a CLI and an MCP server on one Rust analysis engine.</p>
 
-Visualize any codebase as an explorable 3D city — a Tauri 2 desktop app with a Rust analysis engine, a CLI, and an MCP server for LLM agents.
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c8e64a.svg" alt="MIT license" /></a>
+    <img src="https://img.shields.io/badge/version-0.1.1-c8e64a.svg" alt="Version 0.1.1" />
+    <a href="https://github.com/MagnovaAI/codecity/actions/workflows/ci.yml"><img src="https://github.com/MagnovaAI/codecity/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg" alt="macOS, Windows and Linux" />
+  </p>
 
-![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.1.1-informational)
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="docs/GETTING-STARTED.md">Getting started</a> ·
+    <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+    <a href="CONTRIBUTING.md">Contributing</a>
+  </p>
+</div>
 
-## What's in this repo
+![A codebase shown as a 3D city in CodeCity](docs/assets/city-3d-dark.webp)
 
-CodeCity is a Cargo workspace plus a Next.js frontend. It ships four artifacts that all sit on top of the same analysis core:
+## What it does
 
-| Crate / package | Role |
-| --- | --- |
-| `crates/codecity-core` | Pure analysis engine — tree-sitter parsing, import resolution, network analysis, city layout. Zero I/O, zero app deps. |
-| `crates/codecity-cli` (`codecity-cli`) | Command-line wrapper around the core. `analyze`, `network`, `inspect`. |
-| `crates/codecity-mcp` (`codecity-mcp`) | MCP server exposing snapshot queries to LLM agents over stdio. |
-| `src-tauri` (`codecity`) | Tauri 2 desktop app. Owns DB, HTTP, RPC; thin wrapper over `codecity-core`. |
-| `src/` | Next.js 16 / React 19 frontend with `react-three-fiber` rendering the city. |
+- **Reads the city at a glance.** A building's height is its line count and its footprint grows with its functions. Districts are top-level folders, file types or clusters of files that import each other.
+- **Three views of the same code.** A 3D city, a flat 2D map and a network graph of imports, with entry points, hubs and communities.
+- **Colours that answer a question.** Switch between dependencies, complexity, unused exports, file size and type count.
+- **Goes into the file.** Pick a building to see its functions, types, imports and what imports it, then open the source in the built-in editor.
+- **Works on local folders and GitHub repositories.** Sign in with the GitHub device flow to analyze private repositories; the token stays in the OS keychain.
+- **Speaks to agents.** `codecity-mcp` serves the same snapshot to LLM agents over MCP, and `codecity-cli` writes it as JSON.
 
-Supported languages (parsed by `codecity-core` via tree-sitter): TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Bash, Zig, Lua, Haskell, Dart, Elixir, Scala, R, Julia, Perl, Erlang, Dockerfile, Nix, GLSL, Make, OCaml, WGSL, Groovy, GraphQL, Emacs Lisp, HCL, Protobuf, CSS, HTML, JSON, YAML, Markdown, TOML.
+| 2D map | Network | Light theme |
+| --- | --- | --- |
+| ![The 2D map view](docs/assets/view-2d.webp) | ![The network view](docs/assets/view-network.webp) | ![The 3D city in the light theme](docs/assets/city-3d-light.webp) |
 
-## Prerequisites
+## Quick start
 
-- **Node.js** with `pnpm@9.15.0` (pinned via `packageManager` in `package.json`)
-- **Rust** stable toolchain with `cargo` (workspace uses Rust 2021 edition)
-- **Tauri 2** system dependencies — see <https://v2.tauri.app/start/prerequisites/> <!-- VERIFY: Tauri 2 prerequisites URL -->
-
-## Installation
+You need Node.js 20.9 or newer, pnpm 9.15 and stable Rust. The desktop app also needs the
+[Tauri 2 system libraries](https://v2.tauri.app/start/prerequisites/); the CLI and MCP server need Rust alone.
 
 ```bash
 git clone https://github.com/MagnovaAI/codecity.git
 cd codecity
 pnpm install
-```
-
-## Quick start
-
-Run the desktop app in dev mode (Tauri spawns `pnpm dev` on port 3000 and opens the native shell):
-
-```bash
 pnpm desktop
 ```
 
-Web-only dev server (no Tauri shell, opens at <http://localhost:3000>):
+`pnpm desktop` opens the app. Choose a local folder or paste a Git URL, and the city is built from it.
 
-```bash
-pnpm dev
-```
+<details>
+<summary><strong>Setting up from scratch on macOS</strong></summary>
 
-Build the CLI and analyze a project:
+1. Install the Xcode command line tools (compiler and linker):
+
+   ```bash
+   xcode-select --install
+   ```
+
+2. Install Homebrew if you do not have it, then Node.js and Rust:
+
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   brew install node
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+   source "$HOME/.cargo/env"
+   ```
+
+3. Turn on pnpm through Corepack (it ships with Node.js):
+
+   ```bash
+   corepack enable
+   corepack prepare pnpm@9.15.0 --activate
+   ```
+
+4. Clone the repository and install packages:
+
+   ```bash
+   git clone https://github.com/MagnovaAI/codecity.git
+   cd codecity
+   pnpm install
+   ```
+
+5. Start the desktop app in development mode:
+
+   ```bash
+   pnpm desktop
+   ```
+
+</details>
+
+<details>
+<summary><strong>Setting up from scratch on Windows (PowerShell)</strong></summary>
+
+1. Install the **Microsoft C++ Build Tools** with the "Desktop development with C++" workload, and
+   the **WebView2 runtime** (already present on Windows 11). Both are listed on the
+   [Tauri prerequisites page](https://v2.tauri.app/start/prerequisites/). With winget:
+
+   ```powershell
+   winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+   winget install --id Microsoft.EdgeWebView2Runtime
+   ```
+
+2. Install Node.js, Rust and Git, then open a **new** PowerShell window so they are on your `PATH`:
+
+   ```powershell
+   winget install --id OpenJS.NodeJS.LTS
+   winget install --id Rustlang.Rustup
+   winget install --id Git.Git
+   ```
+
+3. Turn on pnpm through Corepack (run PowerShell as Administrator for this one step):
+
+   ```powershell
+   corepack enable
+   corepack prepare pnpm@9.15.0 --activate
+   ```
+
+4. Clone the repository and install packages:
+
+   ```powershell
+   git clone https://github.com/MagnovaAI/codecity.git
+   cd codecity
+   pnpm install
+   ```
+
+5. Start the desktop app in development mode:
+
+   ```powershell
+   pnpm desktop
+   ```
+
+The same `pnpm` and `cargo` commands work in Command Prompt (`cmd.exe`). Use `copy` instead of
+`cp` and backslashes in paths, for example `.\target\release\codecity-cli.exe`.
+
+</details>
+
+<details>
+<summary><strong>Setting up from scratch on Linux</strong></summary>
+
+Install the WebKitGTK and build packages from the
+[Tauri prerequisites page](https://v2.tauri.app/start/prerequisites/#linux) for your distribution,
+then follow the macOS steps from step 2 with your package manager in place of Homebrew.
+
+</details>
+
+No environment variables are required. `.env.example` lists two optional development switches
+(`CODECITY_TIMING`, `CODECITY_MCP_NO_CACHE`).
+
+## Command line
+
+Build the CLI once, then point it at a project:
 
 ```bash
 cargo build -p codecity-cli --release
 ./target/release/codecity-cli analyze /path/to/your/repo
 ```
 
-Run the MCP server against a repo (speaks MCP over stdio):
-
 ```bash
-cargo run -p codecity-mcp -- --repo /path/to/your/repo
-```
-
-## Usage examples
-
-### CLI — generate a snapshot
-
-```bash
+# The full snapshot as JSON
 codecity-cli analyze ./my-project --json -o snapshot.json
-```
 
-Common flags:
-
-- `--json` / `-o <file>` — emit the full `CitySnapshot` as JSON instead of a human summary.
-- `--timeout <secs>` — abort analysis if it takes longer (default `60`, `0` disables).
-- `--no-gitskip` — analyze files normally hidden by `.gitignore`.
-- `--exclude '<glob>'` — drop extra paths (repeatable, gitignore-style).
-
-Inspect a saved snapshot:
-
-```bash
+# One file from a saved snapshot
 codecity-cli inspect snapshot.json --node src/lib/foo.ts
-```
 
-Network-only views:
-
-```bash
+# Import network only
 codecity-cli network ./my-project --communities
 codecity-cli network ./my-project --entries
 codecity-cli network ./my-project --hubs
 ```
 
-### MCP server — feed a snapshot to an LLM agent
+| Flag | What it does |
+| --- | --- |
+| `--json`, `-o <file>` | Write the full `CitySnapshot` as JSON instead of a summary |
+| `--timeout <secs>` | Stop if the analysis takes longer (default `60`, `0` turns it off) |
+| `--no-gitskip` | Include files that `.gitignore` hides |
+| `--exclude '<glob>'` | Leave out extra paths (repeatable, gitignore-style) |
+
+On Windows the binary is `.\target\release\codecity-cli.exe`.
+
+## MCP server
+
+`codecity-mcp` gives an LLM agent the same snapshot over stdio:
 
 ```bash
-# Option A: analyze a repo on startup
+# Analyze a repository on startup
 codecity-mcp --repo /path/to/repo
 
-# Option B: load a pre-baked snapshot
+# Or load a snapshot written by the CLI
 codecity-mcp --snapshot snapshot.json --source-root /path/to/repo
 ```
 
-The server talks JSON-RPC over stdio (stdout is reserved for the wire; logs go to stderr).
+It speaks JSON-RPC on stdout and logs to stderr. From a checkout, run it with
+`cargo run -p codecity-mcp -- --repo /path/to/your/repo`.
 
-### Desktop app
+## Supported languages
 
-`pnpm desktop` launches a 1280×800 Tauri window pointing at the Next.js dashboard. Pick a local directory or paste a Git URL, then explore the resulting 3D city.
+Parsed with tree-sitter: TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Bash, Zig, Lua, Haskell, Dart, Elixir, Scala, R, Julia, Perl, Erlang, Dockerfile, Nix, GLSL, Make, OCaml, WGSL, Groovy, GraphQL, Emacs Lisp, HCL, Protobuf, CSS, HTML, JSON, YAML, Markdown, TOML.
 
-## Development
-
-| Script | What it does |
-| --- | --- |
-| `pnpm dev` | Next.js dev server on port 3000 |
-| `pnpm dev:fast` | Same, with a larger Node heap (`--max-old-space-size=4096`) |
-| `pnpm desktop` | `tauri dev` — runs the full desktop app |
-| `pnpm build` | Production Next.js build |
-| `pnpm build:desktop` | Debug Tauri build (no bundle) |
-| `pnpm bundle:desktop` | Full Tauri bundle for distribution |
-| `pnpm lint` / `pnpm type-check` | `tsc --noEmit` |
-| `cargo check` / `cargo build` | Build the Rust workspace |
-
-There is also a separate `homepage/` Next.js project (`pnpm dev:homepage`, port 3001) for the marketing site.
-
-## Project layout
+## Repository layout
 
 ```
 codecity/
-├─ src/                  Next.js 16 + React 19 frontend (app router)
-├─ src-tauri/            Tauri 2 desktop shell (Rust)
+├─ src/                  Desktop app frontend (Next.js 16, React 19)
+├─ src-tauri/            Desktop shell (Tauri 2, Rust): database, GitHub, file access
 ├─ crates/
-│  ├─ codecity-core/     Pure analysis engine (tree-sitter, layout, network)
-│  ├─ codecity-cli/      `codecity-cli` binary
-│  └─ codecity-mcp/      `codecity-mcp` binary (MCP over stdio)
-├─ homepage/             Standalone marketing site (Next.js)
-├─ licenses/             Third-party license notices (e.g., opengrep LGPL-2.1)
-└─ docs/                 Project documentation
+│  ├─ codecity-core/     Analysis engine: parsing, import resolution, layout, network
+│  ├─ codecity-cli/      The `codecity-cli` binary
+│  └─ codecity-mcp/      The `codecity-mcp` binary (MCP over stdio)
+├─ homepage/             Marketing site (Astro)
+├─ docs/                 Guides and architecture notes
+├─ public/               App icons, fonts and brand files
+├─ scripts/              Maintenance scripts
+└─ licenses/             Third-party licence notices
 ```
 
-## Tech stack
+All four programs sit on `codecity-core`, which does no I/O of its own.
 
-- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Zustand, TanStack Query, Radix UI
-- **3D rendering:** three.js, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`
-- **Desktop shell:** Tauri 2 (`tauri-plugin-shell`, `tauri-plugin-dialog`, `tauri-plugin-updater`, `tauri-plugin-process`)
-- **Persistence:** SQLite via `rusqlite` (bundled)
-- **Analysis:** tree-sitter (40+ language grammars), `rayon` for parallel parsing, `ignore`/`globset` for filesystem walking
-- **MCP:** `rmcp` 1.6 (official `modelcontextprotocol/rust-sdk`)
-- **Security scanning:** `opengrep` (bundled as an external Tauri sidecar, see `licenses/LICENSE.opengrep`)
+## Development
+
+| Command | What it does |
+| --- | --- |
+| `pnpm desktop` | The full desktop app in development mode |
+| `pnpm dev` | The frontend alone, at <http://localhost:3000> |
+| `pnpm type-check` | `tsc --noEmit` |
+| `pnpm build:desktop` | A debug desktop build, not bundled |
+| `pnpm bundle:desktop` | The desktop bundle for distribution |
+| `cargo test -p codecity-core` | The analysis engine's tests |
+| `pnpm dev:homepage` | The marketing site, on port 3001 |
+
+More in the docs:
+
+- [Getting started](docs/GETTING-STARTED.md): install, first run, common setup problems
+- [Development](docs/DEVELOPMENT.md): build commands, adding a language or an RPC command
+- [Architecture](docs/ARCHITECTURE.md): how the crates and the frontend fit together
+- [Configuration](docs/CONFIGURATION.md) and [testing](docs/TESTING.md)
+- [Roadmap](docs/ROADMAP.md)
+
+## Built with
+
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Zustand, TanStack Query, Radix UI, Phosphor icons
+- **3D:** three.js with `@react-three/fiber` and `@react-three/drei`
+- **Desktop shell:** Tauri 2
+- **Storage:** SQLite through `rusqlite`
+- **Analysis:** tree-sitter grammars, `rayon` for parallel parsing, `ignore` and `globset` for walking files
+- **MCP:** `rmcp`, the official Rust SDK
+- **Security scan:** `opengrep`, bundled as a sidecar (see `licenses/LICENSE.opengrep`)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[code of conduct](CODE_OF_CONDUCT.md) first. Report security problems privately, as described in
+[SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

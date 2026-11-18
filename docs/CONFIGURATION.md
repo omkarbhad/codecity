@@ -159,7 +159,7 @@ boundary. The license text is bundled via `bundle.resources` and lives at
 - `tailwind.css`: `src/ui/styles/globals.css`
 - `tailwind.baseColor`: `zinc`
 - `tailwind.cssVariables`: `true`
-- `iconLibrary`: `lucide`
+- `iconLibrary`: `phosphor`
 - Aliases: `components` → `@/components`, `hooks` → `@/hooks`,
   `lib` → `@/lib`, `utils` → `@codecity/ui/lib/utils`,
   `ui` → `@codecity/ui/components`.
