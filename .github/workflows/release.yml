@@ -19,35 +19,58 @@ jobs:
             platform: macos-latest
             args: --target aarch64-apple-darwin --bundles app,dmg
             rust-targets: aarch64-apple-darwin
+            triple: aarch64-apple-darwin
+            opengrep-asset: opengrep_osx_arm64
+            opengrep-sha256: b51b3d83f165a2e0934497b8f1b08abb1c3041ef20ef911c97e04cb39af1ad55
           - label: macOS Intel
             platform: macos-latest
             args: --target x86_64-apple-darwin --bundles app,dmg
             rust-targets: x86_64-apple-darwin
+            triple: x86_64-apple-darwin
+            opengrep-asset: opengrep_osx_x86
+            opengrep-sha256: 51d2f918d7aad0afc1426bb4fbf56e32fc70c3ffd5ddb78e32e7d61e51c029a2
           - label: Windows
             platform: windows-latest
-            args: --bundles nsis,msi
+            args: --bundles nsis
             rust-targets: ""
-          - label: Linux
-            platform: ubuntu-22.04
-            args: --bundles appimage,deb,rpm
-            rust-targets: ""
+            triple: x86_64-pc-windows-msvc
+            opengrep-asset: opengrep_windows_x86.zip
+            opengrep-sha256: 899a17e2b15863367cfd15032c93cdf482fd4e7ec8719c69de46f4f38b227864
 
     runs-on: ${{ matrix.platform }}
+
+    env:
+      OPENGREP_VERSION: v2.0.0
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      # The security scan runs opengrep as a sidecar, and Tauri refuses to build without
+      # the file for the target. Each download is pinned to a checksum.
+      - name: Fetch opengrep sidecar (macOS)
+        if: runner.os == 'macOS'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            rpm \
-            patchelf
+          set -euo pipefail
+          curl -fsSL -o "src-tauri/binaries/opengrep-${{ matrix.triple }}" \
+            "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/${{ matrix.opengrep-asset }}"
+          echo "${{ matrix.opengrep-sha256 }}  src-tauri/binaries/opengrep-${{ matrix.triple }}" | shasum -a 256 -c -
+          chmod +x "src-tauri/binaries/opengrep-${{ matrix.triple }}"
+
+      # The Windows build is a zip: opengrep.exe plus the DLLs it loads from its own folder.
+      # The exe becomes the sidecar; the DLLs ship beside it (see src-tauri/tauri.windows.conf.json).
+      - name: Fetch opengrep sidecar (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest -Uri "https://github.com/opengrep/opengrep/releases/download/$env:OPENGREP_VERSION/${{ matrix.opengrep-asset }}" -OutFile opengrep.zip
+          $hash = (Get-FileHash opengrep.zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "${{ matrix.opengrep-sha256 }}") { throw "opengrep checksum mismatch: $hash" }
+          Expand-Archive opengrep.zip -DestinationPath opengrep-unpacked
+          New-Item -ItemType Directory -Force src-tauri/binaries/windows-dlls | Out-Null
+          Move-Item opengrep-unpacked/opengrep.exe "src-tauri/binaries/opengrep-${{ matrix.triple }}.exe"
+          Move-Item opengrep-unpacked/*.dll src-tauri/binaries/windows-dlls/
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -86,9 +109,9 @@ jobs:
           tagName: v__VERSION__
           releaseName: CodeCity v__VERSION__
           releaseBody: |
-            CodeCity desktop release for Windows, macOS, and Linux.
+            CodeCity desktop release for macOS and Windows.
 
-            Download the installer for your platform from the assets below.
+            Download the .dmg for macOS (Apple silicon or Intel) or the setup .exe for Windows from the assets below.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
