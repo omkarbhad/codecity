@@ -52,7 +52,7 @@ runtime-only and have no `.env.example` entry.
 Top-level fields that govern how the desktop app is built and packaged:
 
 - `productName`: `CodeCity`
-- `version`: `0.1.1`
+- `version`: `0.1.2`
 - `identifier`: `com.codecity.desktop`
 - `build.beforeDevCommand`: `pnpm dev`
 - `build.devUrl`: `http://localhost:3000/dashboard`
@@ -180,7 +180,7 @@ builds the desktop app.
 
 Workspace-shared package metadata:
 
-- `version`: `0.1.1`
+- `version`: `0.1.2`
 - `edition`: `2021`
 - `license`: `MIT`
 
