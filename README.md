@@ -1,8 +1,8 @@
 <div align="center">
   <img src="public/brand/app-icon.svg" width="96" height="96" alt="CodeCity logo" />
   <h1>CodeCity</h1>
-  <p><strong>See any codebase as a city you can walk through.</strong></p>
-  <p>Files are buildings, folders are districts, imports are the roads between them.<br />A desktop app, a CLI and an MCP server on one Rust analysis engine.</p>
+  <p><strong>A visual tool for your codebase.</strong></p>
+  <p>See its shape as a 3D city, discover how its files connect, and read any file in the built-in viewer.<br />A desktop app, a CLI and an MCP server on one Rust analysis engine.</p>
 
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c8e64a.svg" alt="MIT license" /></a>
@@ -23,16 +23,23 @@
 
 ## What it does
 
-- **Reads the city at a glance.** A building's height is its line count and its footprint grows with its functions. Districts are top-level folders, file types or clusters of files that import each other.
-- **Three views of the same code.** A 3D city, a flat 2D map and a network graph of imports, with entry points, hubs and communities.
-- **Colours that answer a question.** Switch between dependencies, complexity, unused exports, file size and type count.
-- **Goes into the file.** Pick a building to see its functions, types, imports and what imports it, then open the source in the built-in editor.
-- **Works on local folders and GitHub repositories.** Sign in with the GitHub device flow to analyze private repositories; the token stays in the OS keychain.
-- **Speaks to agents.** `codecity-mcp` serves the same snapshot to LLM agents over MCP, and `codecity-cli` writes it as JSON.
+- **Shows the shape of the code.** Every file is a building: its height is its line count and its footprint grows with its functions. Folders are districts with streets between them. The same city is also a flat 2D map.
+- **Shows how files connect.** The network view draws every import and call, labels the best connected files, and lists entry points, hubs and clusters. Trace from an entry point to see everything it reaches.
+- **Opens the files.** Pick a building to see its functions, types, imports and what imports it, then read or edit the source in the built-in file viewer.
+- **Answers a question with colour.** Switch between dependencies, complexity, unused exports, file size and type count.
+- **Shows coding agents at work (beta).** Agent mode puts a builder on the file Claude Code or Codex is editing, and lists what each agent edited and which edits are not committed yet. It reads only local session logs and git.
+- **Scans for security findings (beta)** with opengrep.
+- **Works on local folders and GitHub repositories**, and serves the same snapshot to agents over MCP and to scripts as JSON.
 
-| 2D map | Network | Light theme |
+The full list is in [docs/FEATURES.md](docs/FEATURES.md).
+
+| File viewer | Network |
+| --- | --- |
+| ![The built-in file viewer beside the file tree and file panel](docs/assets/file-viewer.webp) | ![The network view with hubs labelled and listed](docs/assets/view-network.webp) |
+
+| Agent mode | 2D map | Light theme |
 | --- | --- | --- |
-| ![The 2D map view](docs/assets/view-2d.webp) | ![The network view](docs/assets/view-network.webp) | ![The 3D city in the light theme](docs/assets/city-3d-light.webp) |
+| ![Agent mode: a builder on the file Claude is editing](docs/assets/agent-mode.webp) | ![The 2D map view](docs/assets/view-2d.webp) | ![The 3D city in the light theme](docs/assets/city-3d-light.webp) |
 
 ## Quick start
 
@@ -234,7 +241,7 @@ More in the docs:
 - [Development](docs/DEVELOPMENT.md): build commands, adding a language or an RPC command
 - [Architecture](docs/ARCHITECTURE.md): how the crates and the frontend fit together
 - [Configuration](docs/CONFIGURATION.md) and [testing](docs/TESTING.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Features](docs/FEATURES.md) and [roadmap](docs/ROADMAP.md)
 
 ## Built with
 
