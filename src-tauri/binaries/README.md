@@ -4,6 +4,7 @@ The security-scan feature shells out to a bundled [opengrep](https://github.com/
 
 - `opengrep-aarch64-apple-darwin`
 - `opengrep-x86_64-apple-darwin`
+- `opengrep-universal-apple-darwin` (the two above joined with `lipo`, for the universal Mac build)
 - `opengrep-x86_64-pc-windows-msvc.exe`
 
 On Windows opengrep also needs its DLLs next to it. Put them in `binaries/windows-dlls/`; `tauri.windows.conf.json` ships them beside the program.
