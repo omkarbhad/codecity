@@ -1,0 +1,24 @@
+---
+import Icon from "./Icon.astro"
+import { SITE } from "../../lib/site"
+
+interface Props {
+  size?: "md" | "sm"
+}
+const { size = "md" } = Astro.props
+---
+<a class:list={["button", "button--primary", size === "sm" ? "button-sm" : "button-md"]} href={SITE.releases} rel="noopener">
+  <Icon name="download-simple" size={size === "sm" ? 16 : 20} />
+  <span data-download-label>{size === "sm" ? "Download" : "Download CodeCity"}</span>
+</a>
+
+<script>
+  // Name the visitor's platform on the large buttons; the link always opens the latest release.
+  const ua = navigator.userAgent
+  const os = /Mac/i.test(ua) && !/iPhone|iPad/i.test(ua) ? "macOS" : /Windows/i.test(ua) ? "Windows" : /Linux/i.test(ua) && !/Android/i.test(ua) ? "Linux" : null
+  if (os) {
+    document.querySelectorAll<HTMLElement>("[data-download-label]").forEach((el) => {
+      if (el.textContent !== "Download") el.textContent = `Download for ${os}`
+    })
+  }
+</script>

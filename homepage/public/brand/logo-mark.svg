@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>CodeCity</title>
+  <defs>
+    <linearGradient id="cc-tile" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c8e64a"/>
+      <stop offset="0.5" stop-color="#6fdc9a"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="232" fill="url(#cc-tile)"/>
+  <g transform="translate(84 91) scale(0.84)">
+    <g transform="translate(-5 0)">
+      <path fill="#121212" d="M402 252.376 562 344.752V744.752L402 652.376Z"/>
+      <path fill="#2e2e2e" d="M562 344.752 722 252.376V652.376L562 744.752Z"/>
+      <path fill="#ffffff" d="m562 160 160 92.376-160 92.376-160-92.376Z"/>
+      <path fill="#121212" d="m526 591.448 148 85.448V842l-148-85.104Z"/>
+      <path fill="#2e2e2e" d="m674 676.896 148-85.448v165.448L674 842Z"/>
+      <path fill="#ffffff" d="m674 506 148 85.448-148 85.448-148-85.448Z"/>
+      <path fill="#121212" d="m212 463.912 154 88.912v286L212 749.912Z"/>
+      <path fill="#2e2e2e" d="m366 552.824 154-88.912v286l-154 88.912Z"/>
+      <path fill="#ffffff" d="m366 375 154 88.912-154 88.912-154-88.912Z"/>
+    </g>
+  </g>
+</svg>

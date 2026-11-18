@@ -1,0 +1,60 @@
+---
+// Mandatory tagline reveal: words brighten one at a time as they cross a line in the viewport.
+const lines = ["Every folder is a district.", "Every file is a building.", "The skyline is your code."]
+---
+<section class="section tagline g-field" aria-label="CodeCity in one line">
+  <img
+    class="g-field-art"
+    src="/assets/art/field-ribbon-2400.webp"
+    srcset="/assets/art/field-ribbon-1200.webp 1200w, /assets/art/field-ribbon-2400.webp 2400w"
+    sizes="100vw"
+    width="2400"
+    height="1018"
+    alt=""
+    aria-hidden="true"
+    loading="lazy"
+    decoding="async"
+  />
+  <div class="container">
+    <p class="heading-2 tagline-text">
+      {lines.map((line) => (
+        <span class="tagline-line">
+          {line.split(" ").map((word) => <span class="tagline-word">{word} </span>)}
+        </span>
+      ))}
+    </p>
+  </div>
+</section>
+
+<style>
+  .tagline { padding-block: calc(var(--s-900) + var(--s-600)); }
+  /* The field shows at two thirds of its strength; the scrim centre keeps white words near 8:1 */
+  .tagline :global(.g-field-art) { opacity: 0.68; }
+  @media (max-width: 767px) {
+    .tagline :global(.g-field-art) { opacity: 0.5; object-position: 35% 50%; }
+  }
+  .tagline-text { max-width: 680px; margin-inline: auto; text-align: center; }
+  .tagline-line { display: block; }
+</style>
+
+<script>
+  const words = document.querySelectorAll<HTMLElement>(".tagline-word")
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  if (reduce || !("IntersectionObserver" in window)) {
+    words.forEach((w) => w.classList.add("is-on"))
+  } else {
+    // A word turns on once it rises above 55% of the viewport height
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-on")
+            observer.unobserve(entry.target)
+          }
+        }
+      },
+      { rootMargin: "0px 0px -45% 0px" }
+    )
+    words.forEach((w) => observer.observe(w))
+  }
+</script>

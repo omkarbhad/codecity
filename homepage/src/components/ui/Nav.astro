@@ -1,0 +1,173 @@
+---
+import Logo from "./Logo.astro"
+import Icon from "./Icon.astro"
+import DownloadButton from "./DownloadButton.astro"
+import { NAV_LINKS, SITE } from "../../lib/site"
+---
+<header class="nav-wrap">
+  <nav class="nav" aria-label="Main">
+    <a class="nav-brand" href="/" aria-label="CodeCity home"><Logo size={24} /></a>
+
+    <ul class="nav-links">
+      {NAV_LINKS.map((link) => (
+        <li><a class="nav-link title-4" href={link.href} data-section={link.id}>{link.label}</a></li>
+      ))}
+      <li>
+        <a class="nav-link title-4" href={SITE.repo} rel="noopener">
+          <Icon name="github-logo" size={16} /> GitHub
+        </a>
+      </li>
+    </ul>
+
+    <div class="nav-cta"><DownloadButton size="sm" /></div>
+
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+      <span class="nav-toggle-line"></span>
+      <span class="nav-toggle-line"></span>
+    </button>
+  </nav>
+
+  <div id="mobile-menu" class="mobile-menu" aria-hidden="true">
+    <ul>
+      {NAV_LINKS.map((link) => (
+        <li><a class="heading-5" href={link.href}>{link.label}</a></li>
+      ))}
+      <li><a class="heading-5" href={SITE.repo} rel="noopener">GitHub</a></li>
+      <li><a class="heading-5 lime" href={SITE.releases} rel="noopener">Download CodeCity</a></li>
+    </ul>
+  </div>
+</header>
+
+<style>
+  .nav-wrap {
+    position: fixed;
+    top: var(--s-200);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    padding-inline: var(--s-200);
+    pointer-events: none;
+  }
+  .nav {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--s-300);
+    padding: var(--s-75) var(--s-75) var(--s-75) var(--s-200);
+    background: rgba(20, 20, 20, 0.72);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--surface-4);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .nav-brand { display: inline-flex; text-decoration: none; }
+  .nav-links { display: flex; align-items: center; gap: var(--s-50); margin: 0; padding: 0; list-style: none; }
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-50);
+    padding: var(--s-75) var(--s-100);
+    color: var(--text-2);
+    text-decoration: none;
+    transition: color var(--t-fade) var(--ease);
+  }
+  .nav-link:hover { color: var(--text-1); }
+  .nav-link[aria-current="true"] { color: var(--lime); }
+
+  .nav-toggle {
+    display: none;
+    position: relative;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--surface-4);
+    border-radius: var(--r);
+    background: var(--surface-2);
+    cursor: pointer;
+  }
+  .nav-toggle-line {
+    position: absolute;
+    left: 12px;
+    width: 16px;
+    height: 2px;
+    background: var(--text-1);
+    transition: transform var(--t-move) var(--ease);
+  }
+  .nav-toggle-line:first-child { top: 15px; }
+  .nav-toggle-line:last-child { top: 23px; }
+  .nav-toggle[aria-expanded="true"] .nav-toggle-line:first-child { transform: translateY(4px) rotate(45deg); }
+  .nav-toggle[aria-expanded="true"] .nav-toggle-line:last-child { transform: translateY(-4px) rotate(-45deg); }
+
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    display: flex;
+    align-items: center;
+    padding: var(--s-900) var(--s-300) var(--s-600);
+    background: rgba(10, 10, 10, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: auto;
+    transition: opacity var(--t-fade) var(--ease), visibility 0s linear var(--t-fade);
+  }
+  .mobile-menu ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s-300); }
+  .mobile-menu a { color: var(--text-1); text-decoration: none; }
+  .mobile-menu li { opacity: 0; transform: translateY(var(--s-300)); transition: opacity var(--t-move) var(--ease), transform var(--t-move) var(--ease); }
+  .mobile-menu.is-open { opacity: 1; visibility: visible; transition: opacity var(--t-fade) var(--ease); }
+  .mobile-menu.is-open li { opacity: 1; transform: none; }
+  .mobile-menu.is-open li:nth-child(1) { transition-delay: 0ms; }
+  .mobile-menu.is-open li:nth-child(2) { transition-delay: 60ms; }
+  .mobile-menu.is-open li:nth-child(3) { transition-delay: 120ms; }
+  .mobile-menu.is-open li:nth-child(4) { transition-delay: 180ms; }
+  .mobile-menu.is-open li:nth-child(5) { transition-delay: 240ms; }
+  .mobile-menu.is-open li:nth-child(6) { transition-delay: 300ms; }
+
+  @media (max-width: 899px) {
+    .nav-links { display: none; }
+    .nav-toggle { display: inline-block; }
+    .nav { gap: var(--s-200); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-toggle-line, .mobile-menu li { transition: opacity var(--t-fade) var(--ease); }
+    .mobile-menu li { transform: none; }
+  }
+</style>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>(".nav-toggle")
+  const menu = document.getElementById("mobile-menu")
+  function setOpen(open: boolean) {
+    if (!toggle || !menu) return
+    toggle.setAttribute("aria-expanded", String(open))
+    toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu")
+    menu.classList.toggle("is-open", open)
+    menu.setAttribute("aria-hidden", String(!open))
+    document.body.style.overflow = open ? "hidden" : ""
+  }
+  toggle?.addEventListener("click", () => setOpen(toggle.getAttribute("aria-expanded") !== "true"))
+  menu?.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setOpen(false)))
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false) })
+
+  // Mark the nav link for the section in view
+  const links = document.querySelectorAll<HTMLAnchorElement>(".nav-link[data-section]")
+  const sections = [...links].map((l) => document.getElementById(l.dataset.section!)).filter(Boolean) as HTMLElement[]
+  if (sections.length) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          links.forEach((l) =>
+            l.dataset.section === entry.target.id ? l.setAttribute("aria-current", "true") : l.removeAttribute("aria-current")
+          )
+        }
+      },
+      { rootMargin: "-45% 0px -50% 0px" }
+    )
+    sections.forEach((s) => observer.observe(s))
+  }
+</script>

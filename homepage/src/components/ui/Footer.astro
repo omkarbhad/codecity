@@ -1,0 +1,72 @@
+---
+import Logo from "./Logo.astro"
+import { SITE } from "../../lib/site"
+
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { label: "Download", href: SITE.releases },
+      { label: "Features", href: "/#features" },
+      { label: "How it works", href: "/#how" },
+      { label: "FAQ", href: "/#faq" },
+    ],
+  },
+  {
+    title: "Project",
+    links: [
+      { label: "Source on GitHub", href: SITE.repo },
+      { label: "Releases", href: SITE.releases },
+      { label: "Contributing", href: SITE.contributing },
+      { label: "Report an issue", href: SITE.issues },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "MIT License", href: SITE.license },
+    ],
+  },
+]
+---
+<footer class="footer">
+  <div class="container footer-grid">
+    <div class="footer-brand">
+      <a href="/" class="footer-home" aria-label="CodeCity home"><Logo size={28} /></a>
+      <p class="body-6 muted">CodeCity turns a repository into a 3D city you can explore on your desktop.</p>
+    </div>
+    {columns.map((col) => (
+      <nav aria-label={col.title}>
+        <p class="caption-3 subtle footer-title">{col.title}</p>
+        <ul>
+          {col.links.map((link) => (
+            <li><a class="text-link body-6" href={link.href} rel={link.href.startsWith("http") ? "noopener" : undefined}>{link.label}</a></li>
+          ))}
+        </ul>
+      </nav>
+    ))}
+  </div>
+  <div class="container footer-bottom caption-5 subtle">
+    <p>© {SITE.year} {SITE.owner}. Released under the MIT License.</p>
+    <p class="mono">v{SITE.version}</p>
+  </div>
+</footer>
+
+<style>
+  .footer { border-top: 1px solid var(--surface-3); padding-block: var(--s-700) var(--s-400); }
+  .footer-grid { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: var(--s-500); }
+  .footer-brand { display: grid; gap: var(--s-200); max-width: 320px; align-content: start; }
+  .footer-home { text-decoration: none; }
+  .footer-title { margin-bottom: var(--s-200); text-transform: uppercase; letter-spacing: 0.06em; }
+  .footer ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s-100); }
+  .footer ul .text-link { color: var(--text-2); }
+  .footer ul .text-link:hover { color: var(--lime); }
+  .footer-bottom { display: flex; justify-content: space-between; gap: var(--s-200); margin-top: var(--s-700); padding-top: var(--s-300); border-top: 1px solid var(--surface-3); }
+  @media (max-width: 767px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .footer-brand { grid-column: 1 / -1; }
+    .footer-bottom { flex-direction: column; }
+  }
+</style>

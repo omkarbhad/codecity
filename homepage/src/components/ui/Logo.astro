@@ -1,0 +1,16 @@
+---
+// CodeCity mark + wordmark. The mark is the shared brand asset (lime tile, skyline under code brackets).
+interface Props {
+  size?: number
+}
+const { size = 28 } = Astro.props
+---
+<span class="logo">
+  <img src="/brand/logo-mark.svg" width={size} height={size} alt="" aria-hidden="true" />
+  <span class="title-3 logo-word">CodeCity</span>
+</span>
+
+<style>
+  .logo { display: inline-flex; align-items: center; gap: var(--s-75); }
+  .logo-word { color: var(--text-1); }
+</style>
