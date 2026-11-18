@@ -38,7 +38,7 @@ flate2 = "1"
 dirs = "6"
 once_cell.workspace = true
 regex.workspace = true
-zip = "4"
+zip = "9"
 thiserror.workspace = true
 keyring = { version = "3", features = ["apple-native"] }
 trash = "5"
