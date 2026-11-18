@@ -47,8 +47,7 @@ homepage/design/
 graphify-out/
 
 # Local preview data (see docs/DEVELOPMENT.md)
-public/dev-stub.js
-public/dev-snapshot.json
+public/dev-*
 
 # Rust / Tauri
 target/
