@@ -1,0 +1,68 @@
+---
+// Three parts of the app that deserve a closer look than a card: the file
+// viewer, the network insights, and agent mode.
+const spots = [
+  {
+    eyebrow: "File viewer",
+    title: "Read the file without leaving the city",
+    body: "Open any building in a tab beside the map. Code is highlighted for more than 40 languages, Markdown opens as a preview, and a function in the file panel takes you straight to its definition.",
+    points: ["Functions, types, imports and what uses the file, each a list you go into", "Edit, rename and create files in projects opened from a folder", "Several files open at once, in tabs"],
+    img: "file-viewer",
+    alt: "The file viewer showing a TypeScript file with syntax highlighting, the file tree on the left and the file panel on the right",
+  },
+  {
+    eyebrow: "Network",
+    title: "Discover how your files connect",
+    body: "The network view draws every import and call. The files most others depend on stand out, and one click on an entry point traces everything it reaches.",
+    points: ["Entry points: files nothing else imports", "Hubs: the files most others import", "Clusters: groups of files that import each other"],
+    img: "view-network",
+    alt: "The network view with the best connected files labelled and a list of hubs with how many files import each",
+  },
+  {
+    eyebrow: "Agent mode",
+    badge: "Beta",
+    title: "Watch Claude and Codex work on your code",
+    body: "Turn on agent mode and a small builder appears on the roof of the file a coding agent is editing, then jumps to the next one. Buildings it has edited get scaffolding.",
+    points: ["Which files each agent edited, and which edits are not committed yet", "Read from the session logs on your computer and from git", "Nothing leaves your machine"],
+    img: "agent-mode",
+    alt: "Agent mode: a builder in a hard hat on the roof of a tower labelled Claude, scaffolding around edited towers, and a list of the files Claude and Codex edited",
+  },
+]
+---
+<section id="spotlight" class="section" aria-label="A closer look">
+  <div class="container spots">
+    {spots.map((s, i) => (
+      <article class:list={["spot", { "spot--flip": i % 2 === 1 }]}>
+        <div class="spot-copy">
+          <p class="eyebrow caption-3">{s.eyebrow}{s.badge && <span class="spot-badge">{s.badge}</span>}</p>
+          <h2 class="heading-2">{s.title}</h2>
+          <p class="body-3 muted">{s.body}</p>
+          <ul class="spot-points body-6 muted">
+            {s.points.map((p) => <li>{p}</li>)}
+          </ul>
+        </div>
+        <figure class="spot-shot frame">
+          <img src={`/assets/screens/${s.img}.webp`} width="1200" height="750" loading="lazy" alt={s.alt} />
+        </figure>
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .spots { display: grid; gap: var(--s-900); }
+  .spot { display: grid; grid-template-columns: 5fr 7fr; align-items: center; gap: var(--s-700); }
+  .spot--flip .spot-copy { order: 2; }
+  .spot-copy { display: grid; gap: var(--s-200); }
+  .spot-copy .eyebrow { margin-bottom: 0; }
+  .spot-badge { margin-left: var(--s-100); padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--text-2, inherit); font-size: 11px; letter-spacing: 0; text-transform: none; }
+  .spot-points { display: grid; gap: var(--s-75); margin: 0; padding: 0; list-style: none; }
+  .spot-points li { position: relative; padding-left: 18px; }
+  .spot-points li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; background: var(--lime); }
+  .spot-shot { margin: 0; }
+  .spot-shot img { display: block; width: 100%; height: auto; }
+  @media (max-width: 899px) {
+    .spot { grid-template-columns: 1fr; gap: var(--s-400); }
+    .spot--flip .spot-copy { order: 0; }
+  }
+</style>
