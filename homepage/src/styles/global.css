@@ -33,12 +33,12 @@
 
   /* Gradients: one brand ramp, lime -> mint -> sky (analogous path between the
      primary and secondary hues; never through violet) */
-  --grad-brand: linear-gradient(120deg, #c8e64a 0%, #6fdc9a 52%, #38bdf8 100%);
+  --grad-brand: linear-gradient(120deg, #dcf56a 0%, #c8e64a 60%, #a9c832 100%);
   --grad-button: linear-gradient(180deg, #d9f070 0%, #c8e64a 55%, #b3d23a 100%);
   --grad-border: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.06));
-  --grad-border-hot: linear-gradient(160deg, rgba(200, 230, 74, 0.55), rgba(56, 189, 248, 0.35) 60%, rgba(255, 255, 255, 0.06));
+  --grad-border-hot: linear-gradient(160deg, rgba(200, 230, 74, 0.55), rgba(200, 230, 74, 0.16) 60%, rgba(255, 255, 255, 0.06));
   --glow-lime: rgba(200, 230, 74, 0.14);
-  --glow-sky: rgba(56, 189, 248, 0.12);
+  --glow-sky: rgba(200, 230, 74, 0.06);
 
   /* Radii (match the app) */
   --r-sm: 6px;
