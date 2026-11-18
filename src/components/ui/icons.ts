@@ -51,6 +51,7 @@ export {
   PencilSimple as PencilIcon,
   Plus as PlusIcon,
   Pulse as ActivityIcon,
+  Robot as RobotIcon,
   Question as CircleHelpIcon,
   ShieldCheck as ShieldCheckIcon,
   SidebarSimple as PanelLeftIcon,

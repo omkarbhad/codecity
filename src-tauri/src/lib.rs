@@ -8,6 +8,7 @@ use codecity_core::{
 };
 
 pub mod analysis;
+mod agents;
 mod files;
 
 pub struct AppState {
@@ -295,6 +296,15 @@ async fn dispatch_rpc(
             let root = files::local_project_root(&state.db, &params.repo_url).map_err(invalid_params)?;
             files::rename(&root, &params.from_path, &params.to_path).map_err(invalid_params)?;
             Ok(Value::Null)
+        }
+        "agents.activity" => {
+            let params: RepoUrlParams = parse_params(params)?;
+            let root = files::local_project_root(&state.db, &params.repo_url).map_err(invalid_params)?;
+            // Reads transcripts and runs git: keep it off the async runtime's threads
+            let activity = tokio::task::spawn_blocking(move || agents::activity(&root))
+                .await
+                .map_err(|error| internal_error(error.to_string()))?;
+            to_value(activity)
         }
         "files.capabilities" => {
             let params: RepoUrlParams = parse_params(params)?;

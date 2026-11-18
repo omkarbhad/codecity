@@ -17,6 +17,8 @@ import { NightSky, StreetLights } from "./city-atmosphere"
 import { SceneEnvironment } from "./scene-environment"
 import { useSceneLook } from "@/lib/theme"
 import { useCityStore } from "./use-city-store"
+import { AgentWorkers } from "./agent-workers"
+import { useAgentActivity } from "./use-agent-activity"
 import { getCityBounds } from "@/lib/visualization/city-bounds"
 
 interface CitySceneProps {
@@ -96,6 +98,9 @@ function CameraFarPlane({ far }: { far: number }) {
 /** Canvas-only scene — zustand store is global, no provider needed. */
 export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneProps) {
   const look = useSceneLook()
+  // Read here, outside the canvas: react-query's context does not reach inside it
+  const agentMode = useCityStore((s) => s.agentMode)
+  const agents = useAgentActivity()
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
@@ -196,6 +201,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
             <BuildingLabels snapshot={snapshot} cityBounds={cityBounds} />
             <SelectionMarker snapshot={snapshot} />
             <DependencyPipes snapshot={snapshot} />
+            {agentMode && <AgentWorkers snapshot={snapshot} sessions={agents.sessions} uncommitted={agents.uncommitted} />}
           </>
         )}
         <CameraController snapshot={snapshot} cityBounds={cityBounds} />
