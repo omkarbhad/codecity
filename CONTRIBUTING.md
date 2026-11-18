@@ -24,7 +24,7 @@ configured yet, so please include the following yourself:
 - **Expected vs. actual behavior** — what you thought would happen, and what
   did.
 - **Environment** — OS and version, app version (`package.json` and the
-  Cargo workspace are pinned to the same version, currently `0.1.1`), and
+  Cargo workspace are pinned to the same version, currently `0.1.2`), and
   whether you are running `pnpm dev` (web) or `pnpm desktop` (Tauri).
 - **Logs / screenshots** — relevant console output, Rust panics, or UI
   screenshots for visual bugs.

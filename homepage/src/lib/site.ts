@@ -7,7 +7,7 @@ export const SITE = {
   license: "https://github.com/omkarbhad/codecity/blob/main/LICENSE",
   contributing: "https://github.com/omkarbhad/codecity/blob/main/CONTRIBUTING.md",
   issues: "https://github.com/omkarbhad/codecity/issues",
-  version: "0.1.1",
+  version: "0.1.2",
   owner: "Omkar Bhad",
   year: 2026,
 } as const

@@ -6,7 +6,7 @@
 
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c8e64a.svg" alt="MIT license" /></a>
-    <img src="https://img.shields.io/badge/version-0.1.1-c8e64a.svg" alt="Version 0.1.1" />
+    <img src="https://img.shields.io/badge/version-0.1.2-c8e64a.svg" alt="Version 0.1.2" />
     <a href="https://github.com/omkarbhad/codecity/actions/workflows/ci.yml"><img src="https://github.com/omkarbhad/codecity/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg" alt="macOS and Windows, Linux coming soon" />
   </p>
@@ -160,7 +160,7 @@ Every release file is attested by GitHub, a signed record that it was built from
 release workflow. With the [GitHub CLI](https://cli.github.com/):
 
 ```bash
-gh attestation verify CodeCity_0.1.1_aarch64.dmg --repo omkarbhad/codecity
+gh attestation verify CodeCity_0.1.2_universal.dmg --repo omkarbhad/codecity
 ```
 
 This checks that a file is genuine and unaltered. It does not remove the macOS or Windows warning about an
