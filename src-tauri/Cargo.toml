@@ -40,3 +40,5 @@ once_cell.workspace = true
 regex.workspace = true
 zip = "2"
 thiserror.workspace = true
+keyring = { version = "3", features = ["apple-native"] }
+trash = "5"

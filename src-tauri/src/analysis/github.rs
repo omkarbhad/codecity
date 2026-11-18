@@ -76,6 +76,25 @@ pub fn parse_github_url(url: &str) -> Result<(String, String), GitHubError> {
     )))
 }
 
+/// Percent-encode each `/`-separated segment, so `#`, `?`, spaces and
+/// non-ASCII in a file name reach GitHub as part of the path.
+fn encode_path(path: &str) -> String {
+    path.split('/')
+        .map(|segment| {
+            segment
+                .bytes()
+                .map(|b| match b {
+                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                        (b as char).to_string()
+                    }
+                    _ => format!("%{b:02X}"),
+                })
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 pub async fn fetch_file_content(
     owner: &str,
     repo: &str,
@@ -84,10 +103,12 @@ pub async fn fetch_file_content(
 ) -> Result<String, GitHubError> {
     let url = format!(
         "https://raw.githubusercontent.com/{}/{}/HEAD/{}",
-        owner, repo, path
+        owner,
+        repo,
+        encode_path(path)
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::analysis::pipeline::http_client(std::time::Duration::from_secs(30));
     let mut builder = client.get(&url).header("User-Agent", "Codecity-Desktop");
 
     if let Some(token) = github_token {
@@ -208,7 +229,7 @@ pub async fn fetch_commits(
         owner, repo, page
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::analysis::pipeline::http_client(std::time::Duration::from_secs(30));
     let response = github_request(&client, url, github_token)
         .send()
         .await
@@ -256,7 +277,7 @@ pub async fn fetch_repositories(
         visibility, page
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::analysis::pipeline::http_client(std::time::Duration::from_secs(30));
     let response = github_request(&client, url, Some(github_token))
         .send()
         .await
@@ -287,7 +308,7 @@ pub async fn fetch_repositories(
 }
 
 pub async fn fetch_trending_repositories() -> Result<Vec<GitHubRepoSummary>, GitHubError> {
-    let client = reqwest::Client::new();
+    let client = crate::analysis::pipeline::http_client(std::time::Duration::from_secs(30));
     let response = client
         .get("https://github.com/trending")
         .header("Accept", "text/html")
@@ -356,7 +377,7 @@ pub async fn fetch_commit_files(
         owner, repo, sha
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::analysis::pipeline::http_client(std::time::Duration::from_secs(30));
     let response = github_request(&client, url, github_token)
         .send()
         .await
@@ -377,4 +398,15 @@ pub async fn fetch_commit_files(
         .into_iter()
         .map(|file| file.filename)
         .collect())
+}
+
+#[cfg(test)]
+mod encode_path_tests {
+    use super::encode_path;
+
+    #[test]
+    fn encodes_each_segment() {
+        assert_eq!(encode_path("src/a b#1?.ts"), "src/a%20b%231%3F.ts");
+        assert_eq!(encode_path("docs/é.md"), "docs/%C3%A9.md");
+    }
 }
