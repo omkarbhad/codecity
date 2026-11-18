@@ -35,15 +35,6 @@ export const DISTRICT_PALETTE = DISTRICT_COLORS
 /** UI font for canvas text (vis-network). Code alone uses JetBrains Mono. */
 export const UI_FONT = '"Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif'
 
-/** Instrument Sans as a file, for WebGL text (troika cannot use CSS fonts). */
-export const UI_FONT_URL = "/fonts/instrument-sans-600.woff"
-
-/** Hex colour plus a 0-1 alpha, as #rrggbbaa. */
-export function withAlpha(hex: string, alpha: number): string {
-  const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255).toString(16).padStart(2, "0")
-  return `${hex.slice(0, 7)}${a}`
-}
-
 /** Light-mode counterpart of THEME (matches globals.css [data-theme="light"]). */
 /** A full set of canvas colours (THEME is the dark one). */
 export type Palette = Record<keyof typeof THEME, string>
@@ -108,7 +99,7 @@ export const DUSK_SCENE: SceneLook = {
   streetLights: 0.45,
 }
 
-export const DAY_SCENE: SceneLook = {
+const DAY_SCENE: SceneLook = {
   sky: { zenith: "#7fb0e2", horizon: "#e2eaf3", glow: "#f4f7fb" },
   fog: "#e2eaf3",
   fogScale: 0.45,

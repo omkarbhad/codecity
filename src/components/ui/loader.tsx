@@ -58,11 +58,3 @@ export function PageLoader({ text = "Loading..." }: { text?: string }) {
     </div>
   )
 }
-
-export function InlineLoader({ text }: { text?: string }) {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <Loader size="sm" text={text} />
-    </div>
-  )
-}

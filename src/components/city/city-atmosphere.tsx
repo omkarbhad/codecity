@@ -5,10 +5,6 @@ import * as THREE from "three"
 import { DUSK_SCENE, useSceneLook } from "@/lib/theme"
 import type { DistrictData } from "@/lib/types/city"
 
-/** Night horizon color; the scene fog uses the same color so distant buildings fade into the sky. */
-/** Dusk horizon; the scene fog follows the active SceneLook. */
-export const NIGHT_HORIZON = DUSK_SCENE.sky.horizon
-
 /** Gradient night sky with a faint city glow on the horizon and sparse stars. */
 export function NightSky({ centerX, centerZ, radius }: { centerX: number; centerZ: number; radius: number }) {
   const look = useSceneLook()

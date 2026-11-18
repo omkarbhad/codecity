@@ -276,9 +276,3 @@ export interface LanguageStats {
   lines: number
   symbols: number
 }
-
-export const DISTRICT_COLORS = [
-  "#00e5ff", "#00e676", "#448aff", "#ffea00",
-  "#b388ff", "#ff9100", "#ff4081", "#1de9b6",
-  "#aeea00", "#ff1744", "#8c9eff", "#ffc400",
-] as const
