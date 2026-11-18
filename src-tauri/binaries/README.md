@@ -5,7 +5,8 @@ The security-scan feature shells out to a bundled [opengrep](https://github.com/
 - `opengrep-aarch64-apple-darwin`
 - `opengrep-x86_64-apple-darwin`
 - `opengrep-x86_64-pc-windows-msvc.exe`
-- `opengrep-x86_64-unknown-linux-gnu`
+
+On Windows opengrep also needs its DLLs next to it. Put them in `binaries/windows-dlls/`; `tauri.windows.conf.json` ships them beside the program.
 
 ## Local dev (macOS Apple Silicon)
 
@@ -19,7 +20,7 @@ chmod +x src-tauri/binaries/opengrep-aarch64-apple-darwin
 
 ## Release packaging
 
-CI fetches all four binaries from the opengrep GitHub Releases page and drops them here before `tauri build`. The files are not committed; only `.gitkeep` and this README live in git.
+The release workflow (`.github/workflows/release.yml`) downloads the pinned opengrep release for each target, checks its SHA-256, and drops it here before `tauri build`. To move to a newer opengrep, change `OPENGREP_VERSION` and the checksums in the workflow matrix. The files are not committed; only `.gitkeep` and this README live in git.
 
 ## License
 
