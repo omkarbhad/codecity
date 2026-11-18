@@ -25,7 +25,7 @@ default-members = ["src-tauri"]
 [workspace.package]
 version = "0.1.2"
 edition = "2021"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 
 # Shared dependency versions — pin once here, reference with `.workspace = true`
 # from each member. Avoids drift between core / cli / app.

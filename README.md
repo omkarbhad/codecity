@@ -5,7 +5,7 @@
   <p>See its shape as a 3D city, discover how its files connect, and read any file in the built-in viewer.<br />A desktop app, a CLI and an MCP server on one Rust analysis engine.</p>
 
   <p>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c8e64a.svg" alt="MIT license" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-c8e64a.svg" alt="PolyForm Noncommercial license" /></a>
     <img src="https://img.shields.io/badge/version-0.1.2-c8e64a.svg" alt="Version 0.1.2" />
     <a href="https://github.com/omkarbhad/codecity/actions/workflows/ci.yml"><img src="https://github.com/omkarbhad/codecity/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg" alt="macOS and Windows, Linux coming soon" />
@@ -273,4 +273,6 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) an
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[PolyForm Noncommercial License 1.0.0](LICENSE). The source is public and free to use for personal, research, educational and
+nonprofit purposes. Commercial use, including using it in a business or selling it or a service built on it, is not
+allowed. Versions up to and including 0.1.2 were published under the MIT License and stay under it.

@@ -2,7 +2,7 @@
 export const FAQ = [
   {
     q: "Is CodeCity free?",
-    a: "Yes. CodeCity is free and open source under the MIT License. You can read the code, build it yourself and use it at work.",
+    a: "Yes, for personal, study, research, educational and nonprofit use. The code is public under the PolyForm Noncommercial License 1.0.0, which does not allow commercial use, so you cannot use it in a business, sell it, or build a paid service on it.",
   },
   {
     q: "Does my code leave my computer?",
