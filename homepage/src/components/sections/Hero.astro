@@ -28,7 +28,7 @@ import ProofLine from "../ui/ProofLine.astro"
       <img
         src="/assets/screens/app-city.webp"
         width="2236"
-        height="1092"
+        height="1090"
         alt="The CodeCity app showing its own repository as a city: a list of sections on the left, view and colour controls on top, and districts of coloured towers sized by lines of code"
       />
     </figure>
@@ -43,20 +43,24 @@ import ProofLine from "../ui/ProofLine.astro"
     padding-top: calc(var(--s-900) + var(--s-700));
     padding-bottom: var(--s-900);
   }
+  /* The picture keeps its own shape (a wide, UI-free render of the real city), so the
+     towers are never cropped up to poster size behind the words. */
   .hero-backdrop {
     position: absolute;
     inset: 0 0 auto;
-    height: min(900px, 100%);
+    aspect-ratio: 2560 / 1086;
     z-index: -1;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 68%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 68%, transparent 100%);
   }
-  .hero-backdrop img { width: 100%; height: 100%; object-fit: cover; object-position: 70% 100%; opacity: 0.6; }
+  .hero-backdrop img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
   /* Fade the city into the page: dark behind the headline, dark again below the fold */
   .hero-backdrop::after {
     content: "";
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(55% 50% at 50% 34%, rgba(10, 10, 10, 0.92) 30%, transparent 80%),
+      radial-gradient(42% 46% at 50% 46%, rgba(10, 10, 10, 0.94) 35%, transparent 85%),
       linear-gradient(180deg, rgba(10, 10, 10, 0.6) 0%, transparent 40%, transparent 60%, var(--bg) 100%);
   }
   .hero-inner { display: grid; justify-items: center; text-align: center; gap: var(--s-300); }
@@ -76,14 +80,15 @@ import ProofLine from "../ui/ProofLine.astro"
     z-index: -1;
     background:
       radial-gradient(45% 55% at 30% 40%, rgba(200, 230, 74, 0.22), transparent 70%),
-      radial-gradient(40% 55% at 75% 45%, rgba(56, 189, 248, 0.2), transparent 70%);
+      radial-gradient(40% 55% at 75% 45%, rgba(200, 230, 74, 0.12), transparent 70%);
     filter: blur(40px);
     pointer-events: none;
   }
   .hero-shot img { border-radius: var(--r-lg); }
   .hero-shot img { width: 100%; }
   @media (max-width: 767px) {
-    .hero-backdrop img { opacity: 0.35; object-position: 85% 100%; }
+    .hero-backdrop { aspect-ratio: 4 / 3; }
+    .hero-backdrop img { opacity: 0.5; object-position: 50% 60%; }
     .hero { padding-top: calc(var(--s-800) + var(--s-400)); padding-bottom: var(--s-700); }
     .hero-title br { display: none; }
     .hero-shot { margin-top: var(--s-500); }
