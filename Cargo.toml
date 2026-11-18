@@ -90,7 +90,7 @@ clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"
 
 # MCP — official Rust SDK from modelcontextprotocol/rust-sdk
-rmcp = { version = "1.6", features = ["default", "transport-io"] }
+rmcp = { version = "3", features = ["default", "transport-io"] }
 schemars = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
 anyhow = "1"
