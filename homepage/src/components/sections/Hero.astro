@@ -1,5 +1,5 @@
 ---
-import DownloadButton from "../ui/DownloadButton.astro"
+import Downloads from "../ui/Downloads.astro"
 import ProofLine from "../ui/ProofLine.astro"
 ---
 <section class="hero" aria-labelledby="hero-title">
@@ -15,12 +15,12 @@ import ProofLine from "../ui/ProofLine.astro"
     />
   </div>
   <div class="container hero-inner">
-    <h1 id="hero-title" class="heading-1 hero-title">Understand a codebase<br /> <span class="grad-text">before you read a file</span></h1>
+    <h1 id="hero-title" class="heading-1 hero-title">See how your code fits together<br /> <span class="grad-text">before you read a line</span></h1>
     <p class="title-2 hero-sub">
-      CodeCity is a visual tool for your codebase. See its shape as a 3D city, discover how its files connect,
-      and read any file in the built-in viewer.
+      CodeCity maps a repository you already have: every file by size, every import between them, and the code
+      itself in a viewer beside the map. Free, open source, and it never leaves your computer.
     </p>
-    <div class="hero-cta"><DownloadButton /></div>
+    <div class="hero-cta"><Downloads /></div>
     <ProofLine />
   </div>
   <div class="container">

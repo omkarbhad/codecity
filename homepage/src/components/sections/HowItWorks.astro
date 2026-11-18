@@ -1,24 +1,24 @@
 ---
 const steps = [
   {
-    title: "Add a repository",
-    body: "Paste a GitHub URL or pick a folder on your computer. Connect GitHub to build private repositories.",
+    title: "Point it at a repository",
+    body: "Paste a GitHub URL or pick a folder on your computer. Sign in with GitHub to include private repositories.",
     img: "step-add",
     w: 884,
     h: 640,
     alt: "The New City dialog with a GitHub repository URL entered and a Start analysis button",
   },
   {
-    title: "Watch it build",
-    body: "CodeCity downloads the code, parses every file and lays out the city. It keeps going if you leave the page.",
+    title: "It reads every file once",
+    body: "CodeCity parses each file with a real grammar for its language, resolves the imports and calls between files, and lays the result out as a city. It keeps working if you leave the page.",
     img: "step-build",
     w: 542,
     h: 576,
     alt: "The Building city screen at 62 percent while files are being parsed, with the list of steps below",
   },
   {
-    title: "Explore the city",
-    body: "Fly through districts, switch color modes and open any building to see its functions, types and source.",
+    title: "Look first, read second",
+    body: "Fly through the districts, switch colour modes, and open any building to see its functions, its imports and the source itself.",
     img: "step-explore",
     w: 1200,
     h: 842,
@@ -30,7 +30,7 @@ const steps = [
   <div class="container">
     <div class="section-head">
       <p class="eyebrow caption-3">How it works</p>
-      <h2 id="how-title" class="heading-2">From repository to city in three steps</h2>
+      <h2 id="how-title" class="heading-2">CodeCity reads your code once, then you just look</h2>
     </div>
     <ol class="steps">
       {steps.map((step, i) => (
