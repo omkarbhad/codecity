@@ -54,6 +54,11 @@ interface Props {
   onStabilizationProgress?: (progress: NetworkStabilizationProgress | null) => void
 }
 
+/** How many of the best-connected files get a name tag large enough to read from the overview. */
+const LANDMARK_LABELS = 24
+/** Communities smaller than this are drawn in a neutral colour. */
+const MIN_COLOURED_COMMUNITY = 3
+
 export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) {
   // Colours for the current scheme; the accent marks selection and traces.
   const palette = usePalette()
@@ -137,7 +142,10 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
       sizeByCommunity.set(c.id, c.size)
     }
 
+    // Only real clusters get a colour; a "community" of one or two files is
+    // neutral, so the palette is not spent on dozens of stragglers.
     const colorForCommunity = (id: number): string => {
+      if ((sizeByCommunity.get(id) ?? 0) < MIN_COLOURED_COMMUNITY) return UNKNOWN_COLOR
       const rank = rankByCommunity.get(id) ?? 0
       return COMMUNITY_PALETTE[rank % COMMUNITY_PALETTE.length]
     }
@@ -154,10 +162,20 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
     const isNodeVisible = (n: { filePath: string }) => visiblePaths.has(n.filePath)
 
     // File nodes sized larger than symbol nodes — same convention as graphify.
+    // The more connected a file is, the bigger its dot, so hubs stand out at a glance.
     const sizeFor = (kind: string, degree: number): number => {
-      const base = kind === "file" ? 8 : 4
-      return Math.max(base, Math.min(16, base + Math.sqrt(degree) * 1.0))
+      if (kind !== "file") return Math.min(7, 3 + Math.sqrt(degree) * 0.6)
+      return Math.min(30, 8 + Math.sqrt(degree) * 2.4)
     }
+
+    // The best-connected files get a name tag that stays readable from the overview
+    // (drawn after the graph, at a constant size on screen; see the mount effect).
+    const fileDegrees = symbolNodes
+      .filter((n) => n.kind === "file")
+      .map((n) => (n.inDegree ?? 0) + (n.outDegree ?? 0))
+      .sort((a, b) => b - a)
+    const landmarkDegree = Math.max(3, fileDegrees[Math.min(fileDegrees.length - 1, LANDMARK_LABELS - 1)] ?? 3)
+    const landmarks: { id: string; label: string; size: number }[] = []
 
     // Function/type/class symbols stay anonymous in the rendered view (no
     // label text) to keep the canvas readable; file nodes get their basename.
@@ -213,6 +231,9 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
         baseColor: color,
         ...(hasBaked ? { x, y } : {}),
       })
+      if (sn.kind === "file" && total >= landmarkDegree) {
+        landmarks.push({ id: sn.id, label: shortLabel(sn.filePath), size: sizeFor(sn.kind, total) })
+      }
     }
     const visibleIds = new Set(nodes.map((n) => n.id))
 
@@ -290,9 +311,12 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
       nodeIdToPath.set(sn.id, sn.filePath)
     }
 
+    landmarks.sort((a, b) => b.size - a.size)
+
     return {
       nodes,
       edges,
+      landmarks,
       communityCount: communitySummaries.length,
       communitySummaries,
       entryPoints,
@@ -388,6 +412,37 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
       }
       setPhase("ready")
       setProgress(100)
+    })
+
+    // Name tags for the landmark files, at a constant size on screen. Once the
+    // view is zoomed in far enough for the built-in labels to read, those take over.
+    network.on("afterDrawing", (ctx: CanvasRenderingContext2D) => {
+      const scale = network.getScale()
+      if (scale > 0.85 || dataset.landmarks.length === 0) return
+      const positions = network.getPositions(dataset.landmarks.map((l) => l.id))
+      ctx.save()
+      ctx.font = `600 ${12 / scale}px ${UI_FONT}`
+      ctx.textAlign = "center"
+      ctx.textBaseline = "top"
+      ctx.lineJoin = "round"
+      ctx.lineWidth = 3.5 / scale
+      ctx.strokeStyle = palette.bgDeep
+      ctx.fillStyle = palette.cream
+      // Biggest hubs first; a tag that would cover one already drawn is left out
+      const placed: { x0: number; x1: number; y0: number; y1: number }[] = []
+      const lineHeight = 15 / scale
+      for (const landmark of dataset.landmarks) {
+        const at = positions[landmark.id]
+        if (!at) continue
+        const half = ctx.measureText(landmark.label).width / 2 + 4 / scale
+        const y = at.y + landmark.size + 3 / scale
+        const box = { x0: at.x - half, x1: at.x + half, y0: y, y1: y + lineHeight }
+        if (placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0)) continue
+        placed.push(box)
+        ctx.strokeText(landmark.label, at.x, y)
+        ctx.fillText(landmark.label, at.x, y)
+      }
+      ctx.restore()
     })
 
     network.on("click", (params: { nodes: string[] }) => {
