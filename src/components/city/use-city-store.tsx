@@ -33,6 +33,8 @@ interface CityState {
   leftPanelCollapsed: boolean
   showShortcutsOverlay: boolean
   showBuildingLabels: boolean
+  /** Agent mode: show which coding agents are working in the project, and on what. */
+  agentMode: boolean
   highlightedFiles: Set<string>
   repoUrl: string
   codeViewer: CodeViewerState | null
@@ -54,6 +56,7 @@ interface CityState {
   toggleLeftPanel: () => void
   toggleShortcutsOverlay: () => void
   toggleBuildingLabels: () => void
+  setAgentMode: (on: boolean) => void
   openCodeViewer: (filePath: string, functionName?: string | null) => void
   closeCodeViewer: () => void
   resetProjectState: () => void
@@ -75,6 +78,7 @@ export const useCityStore = create<CityState>((set) => ({
   leftPanelCollapsed: false,
   showShortcutsOverlay: false,
   showBuildingLabels: true,
+  agentMode: false,
   highlightedFiles: new Set<string>(),
   repoUrl: "",
   codeViewer: null,
@@ -114,6 +118,7 @@ export const useCityStore = create<CityState>((set) => ({
     set((state) => ({ showShortcutsOverlay: !state.showShortcutsOverlay })),
   toggleBuildingLabels: () =>
     set((state) => ({ showBuildingLabels: !state.showBuildingLabels })),
+  setAgentMode: (on) => set({ agentMode: on }),
   openCodeViewer: (filePath, functionName = null) =>
     set({ codeViewer: { filePath, functionName: functionName ?? null } }),
   closeCodeViewer: () => set({ codeViewer: null }),

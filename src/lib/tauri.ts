@@ -239,6 +239,41 @@ export interface FileCapabilities {
   reason: string | null
 }
 
+// ── Agent mode ──
+
+/** A file a coding agent touched in one of its sessions. */
+export interface AgentFile {
+  /** Project-relative path. */
+  path: string
+  /** True once the agent has edited the file; false while it has only read it. */
+  edited: boolean
+  edits: number
+  /** ISO time of the latest touch. */
+  at: string
+}
+
+export interface AgentSession {
+  agent: "claude" | "codex"
+  id: string
+  /** The session's log changed in the last two minutes. */
+  active: boolean
+  idleSeconds: number
+  currentFile: string | null
+  /** Newest first. */
+  files: AgentFile[]
+}
+
+export interface AgentActivity {
+  sessions: AgentSession[]
+  /** Project-relative paths with uncommitted changes. */
+  uncommitted: string[]
+}
+
+/** What coding agents have been doing in a local project (read from their session logs and git). */
+export async function getAgentActivity(repoUrl: string): Promise<AgentActivity> {
+  return rpc<AgentActivity>("agents.activity", { repoUrl })
+}
+
 export async function fileCapabilities(repoUrl: string): Promise<FileCapabilities> {
   return rpc<FileCapabilities>("files.capabilities", { repoUrl }).catch(
     emptyWhenBackendUnavailable({ editable: false, reason: "Editing needs the desktop app." })

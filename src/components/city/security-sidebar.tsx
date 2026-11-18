@@ -153,7 +153,8 @@ export function SecuritySidebar({ result, loading, error, onRetry, onClose }: Se
         <div className="flex w-full items-center gap-3">
           <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[12px] font-semibold text-(--cream)">
             <AppIcon icon={ShieldCheckIcon} className="size-3.5 shrink-0 text-primary" />
-            Security
+            Security scan
+            <span className="rounded-full bg-(--bg-raised) px-1.5 py-px text-[10.5px] font-medium text-(--cream-dark)" title="Still being worked on: findings can be incomplete">Beta</span>
           </span>
 
           {/* Status + actions */}

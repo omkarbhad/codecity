@@ -4,7 +4,7 @@ import { useRef, useEffect, useMemo, useState, useCallback, type ReactNode } fro
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { DropdownMenu } from "radix-ui"
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CheckIcon, ArrowUpRightIcon, XIcon, NetworkIcon, BoxIcon, FileCodeIcon, ListFilterIcon, FolderIcon, FolderTreeIcon, GitCommitHorizontalIcon, LayersIcon, LayoutGridIcon, WaypointsIcon, SearchIcon, ShieldCheckIcon, SettingsIcon, PanelLeftIcon, PaletteIcon, CircleHelpIcon, TriangleAlertIcon } from "@/components/ui/icons"
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CheckIcon, ArrowUpRightIcon, XIcon, NetworkIcon, BoxIcon, FileCodeIcon, ListFilterIcon, FolderIcon, FolderTreeIcon, GitCommitHorizontalIcon, LayersIcon, LayoutGridIcon, WaypointsIcon, SearchIcon, ShieldCheckIcon, SettingsIcon, PanelLeftIcon, PaletteIcon, CircleHelpIcon, TriangleAlertIcon, RobotIcon } from "@/components/ui/icons"
 import type { AppIconType } from "@/components/ui/icons"
 import { cn } from "@codecity/ui/lib/utils"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
@@ -23,6 +23,8 @@ import { HelpDialog } from "./help-dialog"
 import { SettingsPanel } from "./settings-panel"
 import { CityTooltip } from "./city-tooltip"
 import { CommitTimeline } from "./commit-timeline"
+import { AgentsPanel } from "./agents-panel"
+import { useAgentActivity } from "./use-agent-activity"
 import { EditorPane, EditorTabStrip, FileDialogs, NewFileButton, useEditorBridge } from "./editor-pane"
 import { LogoMark } from "@/components/logo"
 import { FrameNav, shellIconButton, ThemeToggle, TRAFFIC_LIGHTS_HEIGHT, useReserveTrafficLights } from "@/components/window-frame"
@@ -104,7 +106,7 @@ function ResizeHandle({
 
 // "home" is the sidebar's list of sections; the rest are the sections you go into.
 // Search lives inside Explorer; Commits shows only for GitHub projects.
-type PrimaryView = "home" | "explorer" | "filters" | "legend" | "commits" | "settings"
+type PrimaryView = "home" | "explorer" | "filters" | "legend" | "commits" | "agents" | "settings"
 
 const MODES: { key: VisualizationMode; label: string; hint: string; shortcut: string }[] = [
   { key: "dependencies", label: "Dependencies", hint: "District colours, busier files stronger", shortcut: "1" },
@@ -168,6 +170,7 @@ const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: "legend", icon: LayersIcon, label: "Districts" },
   { id: "filters", icon: ListFilterIcon, label: "File types" },
   { id: "commits", icon: GitCommitHorizontalIcon, label: "Commits" },
+  { id: "agents", icon: RobotIcon, label: "Agents" },
 ]
 
 /** The sections this project can show: Commits needs a GitHub repository. */
@@ -304,7 +307,7 @@ function SidebarHome({ chrome, items, onSelect }: { chrome: ShellChrome; items: 
             icon={ShieldCheckIcon}
             label="Security scan"
             onClick={chrome.onSecurityClick}
-            meta={chrome.securityRunning ? "Running" : undefined}
+            meta={chrome.securityRunning ? "Running" : "Beta"}
             trailing={chrome.securityRunning ? <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary motion-safe:animate-pulse" /> : undefined}
           />
         )}
@@ -447,6 +450,13 @@ function PrimaryPanelContent({
         <>
           <PanelHeader onBack={onBack} title="Settings" />
           <SettingsPanel />
+        </>
+      )
+    case "agents":
+      return (
+        <>
+          <PanelHeader onBack={onBack} title="Agents" subtitle="Beta" />
+          <AgentsPanel snapshot={snapshot} />
         </>
       )
     case "commits":
@@ -648,6 +658,9 @@ function CanvasToolbar() {
   const setLayoutMode = useCityStore((s) => s.setLayoutMode)
   const viewDimension = useCityStore((s) => s.viewDimension)
   const setViewDimension = useCityStore((s) => s.setViewDimension)
+  const agentMode = useCityStore((s) => s.agentMode)
+  const setAgentMode = useCityStore((s) => s.setAgentMode)
+  const workingAgents = useAgentActivity().sessions.filter((session) => session.active).length
   const flat = { background: "transparent", padding: 0 }
 
   // One small floating pill: the view switch, then two menus that each show
@@ -666,6 +679,19 @@ function CanvasToolbar() {
         <span className="h-4 w-px shrink-0 bg-(--border-light)" aria-hidden="true" />
         <ToolbarMenu label="Group files by" icon={FolderIcon} value={layoutMode} options={LAYOUTS} onChange={setLayoutMode} />
         <ToolbarMenu label="Colour buildings by" icon={PaletteIcon} value={visualizationMode} options={MODES} onChange={setMode} />
+        <span className="h-4 w-px shrink-0 bg-(--border-light)" aria-hidden="true" />
+        <button
+          type="button"
+          onClick={() => setAgentMode(!agentMode)}
+          aria-pressed={agentMode}
+          title={agentMode ? "Agent mode is on: showing what Claude and Codex are working on" : "Agent mode: show what Claude and Codex are working on"}
+          aria-label="Agent mode"
+          className="cc-seg-btn relative gap-1.5 px-2.5"
+        >
+          <AppIcon icon={RobotIcon} active={agentMode} />
+          <span className="hidden @[760px]:inline">Agents</span>
+          {workingAgents > 0 && <span aria-hidden="true" className="absolute right-1 top-1 size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />}
+        </button>
       </div>
     </div>
   )
@@ -782,6 +808,8 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
   }, [handleViewChange, openSearch])
 
   const showSecurityPanel = securityOpen && canScan
+  const agentMode = useCityStore((s) => s.agentMode)
+  const workingAgents = useAgentActivity().sessions.filter((session) => session.active).length
   const fileTypeCount = useMemo(() => new Set(explorerSnapshot.files.map((f) => getExtension(f.path))).size, [explorerSnapshot.files])
   const activities = activitiesFor(repoUrl).map((item) => ({
     ...item,
@@ -789,6 +817,7 @@ export function ProjectShell({ snapshot, explorerSnapshot = snapshot, projectNam
       item.id === "explorer" ? explorerSnapshot.files.length.toLocaleString()
       : item.id === "legend" ? String(snapshot.districts.length)
       : item.id === "filters" ? String(fileTypeCount)
+      : item.id === "agents" ? (workingAgents > 0 ? `${workingAgents} working` : agentMode ? "On" : "Beta")
       : undefined,
   }))
   const chrome: ShellChrome = {
