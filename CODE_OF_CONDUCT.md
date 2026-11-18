@@ -7,5 +7,5 @@ Harassment or personal attacks are not accepted in issues, pull requests or any
 other project space.
 
 Report unacceptable behaviour privately through
-[GitHub security advisories](https://github.com/MagnovaAI/codecity/security/advisories/new)
+[GitHub security advisories](https://github.com/omkarbhad/codecity/security/advisories/new)
 or to the maintainer listed on the repository. Reports are kept confidential.

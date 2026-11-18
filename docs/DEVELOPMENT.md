@@ -14,7 +14,7 @@ install bootstraps everything; pnpm pulls JS deps, and `cargo` pulls Rust deps t
 build.
 
 ```bash
-git clone https://github.com/MagnovaAI/codecity.git
+git clone https://github.com/omkarbhad/codecity.git
 cd codecity
 pnpm install
 ```

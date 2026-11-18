@@ -34,7 +34,7 @@ export const FAQ = [
   },
   {
     q: "How can I check a download is genuine?",
-    a: "Every release file is attested by GitHub, a signed record that it was built from the CodeCity repository by its release workflow. Run gh attestation verify with the file name and the repository MagnovaAI/codecity to check it.",
+    a: "Every release file is attested by GitHub, a signed record that it was built from the CodeCity repository by its release workflow. Run gh attestation verify with the file name and the repository omkarbhad/codecity to check it.",
   },
   {
     q: "How do updates work?",

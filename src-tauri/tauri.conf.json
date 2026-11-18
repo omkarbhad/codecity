@@ -69,7 +69,7 @@
     },
     "updater": {
       "endpoints": [
-        "https://github.com/MagnovaAI/codecity/releases/latest/download/latest.json"
+        "https://github.com/omkarbhad/codecity/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ0MkU5NUY4OUNFRTg3MkIKUldRcmgrNmMrSlV1MUlxODFTRlIwTzgzdkhWRXFNLzE0elV5SUhBdE16RnFhU3BMVkFWdU9vcmMK"
     }

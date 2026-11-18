@@ -16,7 +16,7 @@ in a contribution being closed without further review.
 ## Reporting Issues
 
 Issues are tracked on GitHub at
-<https://github.com/MagnovaAI/codecity/issues>. No issue templates are
+<https://github.com/omkarbhad/codecity/issues>. No issue templates are
 configured yet, so please include the following yourself:
 
 - **Summary** — one sentence describing the bug or feature request.

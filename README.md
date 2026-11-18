@@ -7,7 +7,7 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c8e64a.svg" alt="MIT license" /></a>
     <img src="https://img.shields.io/badge/version-0.1.1-c8e64a.svg" alt="Version 0.1.1" />
-    <a href="https://github.com/MagnovaAI/codecity/actions/workflows/ci.yml"><img src="https://github.com/MagnovaAI/codecity/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+    <a href="https://github.com/omkarbhad/codecity/actions/workflows/ci.yml"><img src="https://github.com/omkarbhad/codecity/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg" alt="macOS and Windows, Linux coming soon" />
   </p>
 
@@ -47,7 +47,7 @@ You need Node.js 20.9 or newer, pnpm 9.15 and stable Rust. The desktop app also 
 [Tauri 2 system libraries](https://v2.tauri.app/start/prerequisites/); the CLI and MCP server need Rust alone.
 
 ```bash
-git clone https://github.com/MagnovaAI/codecity.git
+git clone https://github.com/omkarbhad/codecity.git
 cd codecity
 pnpm install
 pnpm desktop
@@ -83,7 +83,7 @@ pnpm desktop
 4. Clone the repository and install packages:
 
    ```bash
-   git clone https://github.com/MagnovaAI/codecity.git
+   git clone https://github.com/omkarbhad/codecity.git
    cd codecity
    pnpm install
    ```
@@ -126,7 +126,7 @@ pnpm desktop
 4. Clone the repository and install packages:
 
    ```powershell
-   git clone https://github.com/MagnovaAI/codecity.git
+   git clone https://github.com/omkarbhad/codecity.git
    cd codecity
    pnpm install
    ```
@@ -160,7 +160,7 @@ Every release file is attested by GitHub, a signed record that it was built from
 release workflow. With the [GitHub CLI](https://cli.github.com/):
 
 ```bash
-gh attestation verify CodeCity_0.1.1_aarch64.dmg --repo MagnovaAI/codecity
+gh attestation verify CodeCity_0.1.1_aarch64.dmg --repo omkarbhad/codecity
 ```
 
 This checks that a file is genuine and unaltered. It does not remove the macOS or Windows warning about an
