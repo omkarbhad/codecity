@@ -18,20 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: macOS Apple Silicon
+          # One universal dmg runs on Apple silicon and Intel, so people get one Mac download
+          - label: macOS
             platform: macos-latest
-            args: --target aarch64-apple-darwin --bundles app,dmg
-            rust-targets: aarch64-apple-darwin
-            triple: aarch64-apple-darwin
-            opengrep-asset: opengrep_osx_arm64
-            opengrep-sha256: b51b3d83f165a2e0934497b8f1b08abb1c3041ef20ef911c97e04cb39af1ad55
-          - label: macOS Intel
-            platform: macos-latest
-            args: --target x86_64-apple-darwin --bundles app,dmg
-            rust-targets: x86_64-apple-darwin
-            triple: x86_64-apple-darwin
-            opengrep-asset: opengrep_osx_x86
-            opengrep-sha256: 51d2f918d7aad0afc1426bb4fbf56e32fc70c3ffd5ddb78e32e7d61e51c029a2
+            args: --target universal-apple-darwin --bundles app,dmg
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           - label: Windows
             platform: windows-latest
             args: --bundles nsis
@@ -51,14 +42,19 @@ jobs:
 
       # The security scan runs opengrep as a sidecar, and Tauri refuses to build without
       # the file for the target. Each download is pinned to a checksum.
+      # A universal build needs the sidecar for each chip and for the combined binary.
       - name: Fetch opengrep sidecar (macOS)
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
-          curl -fsSL -o "src-tauri/binaries/opengrep-${{ matrix.triple }}" \
-            "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/${{ matrix.opengrep-asset }}"
-          echo "${{ matrix.opengrep-sha256 }}  src-tauri/binaries/opengrep-${{ matrix.triple }}" | shasum -a 256 -c -
-          chmod +x "src-tauri/binaries/opengrep-${{ matrix.triple }}"
+          base="https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}"
+          bin=src-tauri/binaries
+          curl -fsSL -o "$bin/opengrep-aarch64-apple-darwin" "$base/opengrep_osx_arm64"
+          curl -fsSL -o "$bin/opengrep-x86_64-apple-darwin" "$base/opengrep_osx_x86"
+          echo "b51b3d83f165a2e0934497b8f1b08abb1c3041ef20ef911c97e04cb39af1ad55  $bin/opengrep-aarch64-apple-darwin" | shasum -a 256 -c -
+          echo "51d2f918d7aad0afc1426bb4fbf56e32fc70c3ffd5ddb78e32e7d61e51c029a2  $bin/opengrep-x86_64-apple-darwin" | shasum -a 256 -c -
+          lipo -create "$bin/opengrep-aarch64-apple-darwin" "$bin/opengrep-x86_64-apple-darwin" -output "$bin/opengrep-universal-apple-darwin"
+          chmod +x "$bin"/opengrep-*
 
       # The Windows build is a zip: opengrep.exe plus the DLLs it loads from its own folder.
       # The exe becomes the sidecar; the DLLs ship beside it (see src-tauri/tauri.windows.conf.json).
@@ -115,7 +111,7 @@ jobs:
           releaseBody: |
             CodeCity desktop release for macOS and Windows.
 
-            Download the .dmg for macOS (Apple silicon or Intel) or the setup .exe for Windows from the assets below.
+            Download the .dmg for macOS (one file for Apple silicon and Intel) or the setup .exe for Windows. The other small files are what the app uses to update itself.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
