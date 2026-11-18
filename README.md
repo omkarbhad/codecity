@@ -12,9 +12,9 @@
   </p>
 
   <p>
-    <a href="#quick-start">Quick start</a> ·
-    <a href="docs/GETTING-STARTED.md">Getting started</a> ·
-    <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+    <a href="#quick-start">Quick start</a>&nbsp;&nbsp;&nbsp;
+    <a href="docs/GETTING-STARTED.md">Getting started</a>&nbsp;&nbsp;&nbsp;
+    <a href="docs/ARCHITECTURE.md">Architecture</a>&nbsp;&nbsp;&nbsp;
     <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </div>
