@@ -1,0 +1,41 @@
+---
+import Icon from "../ui/Icon.astro"
+import { SITE } from "../../lib/site"
+
+const facts = [
+  { icon: "scales", title: "MIT licensed", body: "Read the source, fork it, and use it at work without asking." },
+  { icon: "lock-simple", title: "Runs on your machine", body: "Repositories are downloaded and analyzed on your computer. The app has no analytics." },
+  { icon: "code", title: "40+ languages", body: "Real grammars for TypeScript, Python, Rust, Go, Java, C, C++ and many more." },
+  { icon: "seal-check", title: "Verified updates", body: "New versions come from GitHub Releases and are checked against a signing key before they install." },
+] as const
+---
+<section id="open-source" class="section section--band" aria-labelledby="open-title">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow caption-3">Open source</p>
+      <h2 id="open-title" class="heading-2">Built in the open</h2>
+      <p class="body-3 muted">Every line of CodeCity is public. You can read how it parses your code before you run it.</p>
+    </div>
+    <ul class="facts">
+      {facts.map((f) => (
+        <li class="card fact">
+          <span class="fact-icon"><Icon name={f.icon} size={24} /></span>
+          <h3 class="title-2">{f.title}</h3>
+          <p class="body-6 muted">{f.body}</p>
+        </li>
+      ))}
+    </ul>
+    <p class="open-link">
+      <a class="button button--secondary button-md" href={SITE.repo} rel="noopener"><Icon name="github-logo" /> View the source on GitHub</a>
+    </p>
+  </div>
+</section>
+
+<style>
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-300); margin: 0; padding: 0; list-style: none; }
+  .fact { display: grid; align-content: start; gap: var(--s-75); }
+  .fact-icon { display: inline-flex; width: var(--s-600); height: var(--s-600); align-items: center; justify-content: center; margin-bottom: var(--s-100); background: var(--surface-3); color: var(--lime); }
+  .open-link { margin-top: var(--s-500); }
+  @media (max-width: 899px) { .facts { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 599px) { .facts { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,48 @@
+---
+const views = [
+  {
+    title: "3D city",
+    body: "Height is lines of code, width is functions, and color is the folder or the mode you pick. Shown here in complexity mode.",
+    img: "view-3d",
+    alt: "The 3D city colored by complexity, with simple files green and complex towers red",
+  },
+  {
+    title: "2D map",
+    body: "The same layout seen from straight above, for reading folder structure at a glance.",
+    img: "view-2d",
+    alt: "The 2D map of the city with colored squares for files grouped into folder blocks",
+  },
+  {
+    title: "Network graph",
+    body: "Files as nodes and imports as edges, with entry points, hubs and clusters listed beside the graph.",
+    img: "view-network",
+    alt: "The network view showing files as connected nodes, with a panel listing entry points and the most imported files",
+  },
+]
+---
+<section id="views" class="section section--band" aria-labelledby="views-title">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow caption-3">Views</p>
+      <h2 id="views-title" class="heading-2">Three ways to read the same snapshot</h2>
+      <p class="body-3 muted">Switch views without reloading. Your selection follows you from one to the next.</p>
+    </div>
+    <ul class="views">
+      {views.map((v) => (
+        <li class="card view">
+          <div class="view-shot"><img src={`/assets/screens/${v.img}.webp`} width="1200" height="750" loading="lazy" alt={v.alt} /></div>
+          <h3 class="title-1">{v.title}</h3>
+          <p class="body-6 muted">{v.body}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .views { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-300); margin: 0; padding: 0; list-style: none; }
+  .view { display: grid; align-content: start; gap: var(--s-75); }
+  .view-shot { aspect-ratio: 16 / 10; overflow: hidden; margin-bottom: var(--s-200); border: 1px solid var(--surface-3); border-radius: var(--r); background: var(--bg); }
+  .view-shot img { width: 100%; height: 100%; object-fit: cover; }
+  @media (max-width: 899px) { .views { grid-template-columns: 1fr; } }
+</style>

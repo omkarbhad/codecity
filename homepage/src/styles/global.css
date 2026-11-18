@@ -1,299 +1,330 @@
-/* ============================================================
-   CodeCity Design System — Colors & Typography
-   ============================================================
-   The CodeCity pixel theme: a retro arcade aesthetic for a
-   modern dev tool. Sharp corners, hard offset shadows,
-   Silkscreen pixel font, warm cream + electric lime palette.
+/* CodeCity homepage design system, shared with the desktop app.
+   One typeface (Instrument Sans, with DM Mono only for code and data), named
+   text styles, spacing tokens, neutral grounds and soft 6/10/16 radii.
 
-   Source of truth — load this file before anything else.
-   ============================================================ */
-
-/* Webfonts — Inter for UI, JetBrains Mono for code */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+   Colour: a near-triadic scheme on a neutral charcoal ground.
+     primary   lime #c8e64a  (hue 72)   actions, focus, the brand
+     secondary sky  #38bdf8  (hue 198)  links in data, secondary highlights
+     accent    pink #f472b6  (hue 329)  rare emphasis only
+   Contrast on --bg (#0a0a0a): text-1 17.8, text-2 7.9, text-3 5.7, lime 14.0,
+   sky 9.2, pink 7.5; dark text on lime 13.3. All pass WCAG AA (most AAA). */
 
 :root {
-  /* ── Type families ─────────────────────────────────────── */
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif; /* headings, UI labels */
-  --font-mono:    "JetBrains Mono", ui-monospace, monospace;     /* code, data, paths */
-  --font-sans:    "Inter", ui-sans-serif, system-ui, sans-serif; /* body */
+  /* Surfaces: the app's neutral greys */
+  --bg: #0a0a0a;
+  --surface-1: #141414;
+  --surface-2: #1e1e1e;
+  --surface-3: #262626;
+  --surface-4: #303030;
+  --surface-band: #121212;
 
-  /* ── Backgrounds ───────────────────────────────────────── */
-  --bg:           #0d0d0f;   /* page */
-  --bg-raised:    #161618;   /* one step up */
-  --bg-card:      #1c1c20;   /* card surface */
-  --bg-deep:      #06060b;   /* below page — terminals, viewers */
+  /* Text */
+  --text-1: #f3f3f3;
+  --text-2: #a3a3a3;
+  --text-3: #8a8a8a;
 
-  /* ── Borders ───────────────────────────────────────────── */
-  --border:        #2a2a30;
-  --border-light:  #3a3a44;
-  --border-strong: #0d0d0f;  /* the heavy 2px button border */
+  /* Brand */
+  --lime: #c8e64a;
+  --lime-soft: rgba(200, 230, 74, 0.12);
+  --on-lime: #121212;
+  --sky: #38bdf8;
+  --pink: #f472b6;
+  --amber: #fbbf24;
 
-  /* ── Text ramp (warm cream → dim) ──────────────────────── */
-  --cream:        #e8dcc8;   /* fg-1 · headlines, primary UI */
-  --cream-dark:   #c8b89c;   /* fg-2 · secondary body */
-  --warm:         #d4cfc4;   /* fg-3 · body default */
-  --muted:        #8c8c9c;   /* fg-4 · labels, metadata */
-  --dim:          #5c5c6c;   /* fg-5 · hints, dim mono */
-  --very-dim:     #3a3a44;   /* fg-6 · dividers, disabled */
+  /* Gradients: one brand ramp, lime -> mint -> sky (analogous path between the
+     primary and secondary hues; never through violet) */
+  --grad-brand: linear-gradient(120deg, #c8e64a 0%, #6fdc9a 52%, #38bdf8 100%);
+  --grad-button: linear-gradient(180deg, #d9f070 0%, #c8e64a 55%, #b3d23a 100%);
+  --grad-border: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.06));
+  --grad-border-hot: linear-gradient(160deg, rgba(200, 230, 74, 0.55), rgba(56, 189, 248, 0.35) 60%, rgba(255, 255, 255, 0.06));
+  --glow-lime: rgba(200, 230, 74, 0.14);
+  --glow-sky: rgba(56, 189, 248, 0.12);
 
-  /* Convenience aliases mirroring zinc-style ramp */
-  --fg-1: var(--cream);
-  --fg-2: var(--warm);
-  --fg-3: var(--cream-dark);
-  --fg-4: var(--muted);
-  --fg-5: var(--dim);
-  --fg-6: var(--very-dim);
+  /* Radii (match the app) */
+  --r-sm: 6px;
+  --r: 10px;
+  --r-lg: 16px;
+  --r-pill: 999px;
 
-  /* ── Brand / accent — the electric lime ────────────────── */
-  --lime:         #c8e64a;
-  --lime-dark:    #8aaa1a;
-  --lime-shadow:  #5a7a00;   /* pixel-shadow color for lime buttons */
+  /* Spacing tokens */
+  --s-25: 2px;
+  --s-50: 4px;
+  --s-75: 8px;
+  --s-100: 12px;
+  --s-200: 16px;
+  --s-300: 24px;
+  --s-400: 32px;
+  --s-500: 40px;
+  --s-600: 48px;
+  --s-700: 64px;
+  --s-800: 80px;
+  --s-900: 96px;
 
-  /* Accent (themeable — defaults to lime) */
-  --accent:        var(--lime);
-  --accent-shadow: var(--lime-shadow);
-  --primary:       var(--accent);
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-move: 400ms;
+  --t-fade: 200ms;
 
-  /* Alternate accent palette (Tweaks panel) */
-  --pal-lime:     #c8e64a; --pal-lime-shadow:    #5a7a00;
-  --pal-amber:    #ff8a3d; --pal-amber-shadow:   #7a3a00;
-  --pal-sky:      #3dd4ff; --pal-sky-shadow:     #005a7a;
-  --pal-magenta:  #ff3d8a; --pal-magenta-shadow: #7a005a;
-
-  /* ── Severity (Opengrep findings, status pills) ────────── */
-  --sev-high:     #ff3d8a;  --sev-high-shadow:    #7a005a;
-  --sev-med:      #ff8a3d;  --sev-med-shadow:     #7a3a00;
-  --sev-low:      #3dd4ff;  --sev-low-shadow:     #005a7a;
-  --sev-ok:       #c8e64a;  --sev-ok-shadow:      #5a7a00;
-
-  /* ── Language / district palette ───────────────────────── */
-  --lang-ts:      #3dd4ff;
-  --lang-js:      #ffea00;
-  --lang-py:      #00e676;
-  --lang-rs:      #ff8a3d;
-  --lang-go:      #00e5ff;
-  --lang-java:    #b388ff;
-  --lang-kt:      #ff3d8a;
-  --lang-swift:   #ff3d3d;
-  --lang-c:       #1de9b6;
-  --lang-rb:      #ff1744;
-  --lang-php:     #8c9eff;
-  --lang-elixir:  #aeea00;
-
-  /* ── Shadows — hard pixel offsets, NO blur ─────────────── */
-  --shadow-sm:    2px 2px 0 0 rgba(0,0,0,0.6);
-  --shadow:       4px 4px 0 0 rgba(0,0,0,0.6);
-  --shadow-lg:    6px 6px 0 0 rgba(0,0,0,0.6);
-  --shadow-accent: 4px 4px 0 0 var(--accent-shadow);
-
-  /* ── Borders + radius ─────────────────────────────────── */
-  --br: 2px solid var(--border);
-  --br-light: 2px solid var(--border-light);
-  --br-strong: 2px solid var(--border-strong);
-  --radius: 0;            /* always sharp */
-  --radius-card: 0;
-  --radius-pixel-only: 0;
-
-  /* ── Spacing (4px base grid) ──────────────────────────── */
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3:  12px;
-  --space-4:  16px;
-  --space-5:  20px;
-  --space-6:  24px;
-  --space-8:  32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
-  --space-20: 80px;
-  --space-24: 96px;
-
-  /* ── Type scale (Silkscreen is chunky — keep sizes tight) */
-  --fs-9:   9px;     /* HUD micro labels */
-  --fs-10:  10px;    /* eyebrows, kbd, status pills */
-  --fs-11:  11px;    /* nav, captions, metadata */
-  --fs-12:  12px;    /* body small, list items */
-  --fs-13:  13px;    /* body default */
-  --fs-14:  14px;    /* body large, button (big) */
-  --fs-16:  16px;
-  --fs-18:  18px;    /* h5 */
-  --fs-20:  20px;    /* h4 */
-  --fs-24:  24px;    /* h3 small */
-  --fs-28:  28px;    /* h3 */
-  --fs-32:  32px;    /* h2 small */
-  --fs-38:  38px;    /* h2 */
-  --fs-48:  48px;    /* section h2 */
-  --fs-64:  64px;
-  --fs-72:  72px;    /* hero */
-  --fs-84:  84px;
-
-  --tracking-tight:  0em;
-  --tracking-normal: 0.02em;
-  --tracking-wide:   0.08em;
-  --tracking-extra:  0.15em;
-  --tracking-mono:   0.01em;
+  --font: "Instrument Sans Variable", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  --container: 1200px;
 }
 
-/* ============================================================
-   Base — apply to <html> and <body>
-   ============================================================ */
-html, body {
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
   background: var(--bg);
-  color: var(--warm);
-  font-family: var(--font-sans);
-  font-size: var(--fs-14);
-  line-height: 1.55;
-  margin: 0;
+  color: var(--text-1);
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
-}
-* { box-sizing: border-box; }
-
-/* ============================================================
-   Element styles
-   ============================================================ */
-h1, h2, h3, h4, h5, h6, .display {
-  font-family: var(--font-display);
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  color: var(--cream);
-}
-h1, .h1 { letter-spacing: -0.035em; font-weight: 800; }
-h2, .h2 { letter-spacing: -0.03em;  font-weight: 700; }
-
-h1, .h1 { font-size: var(--fs-72); }
-h2, .h2 { font-size: var(--fs-48); }
-h3, .h3 { font-size: var(--fs-28); }
-h4, .h4 { font-size: var(--fs-20); }
-h5, .h5 { font-size: var(--fs-18); }
-h6, .h6 { font-size: var(--fs-14); letter-spacing: var(--tracking-wide); }
-
-p, .body {
-  font-family: var(--font-sans);
-  font-size: var(--fs-14);
-  color: var(--cream-dark);
-  line-height: 1.6;
-  margin: 0 0 var(--space-3);
-}
-.body-lg { font-size: var(--fs-14); }
-.body-sm { font-size: var(--fs-12); }
-
-code, kbd, samp, .mono {
-  font-family: var(--font-mono);
-  font-size: 0.92em;
-  letter-spacing: var(--tracking-mono);
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--s-900);
 }
 
-.eyebrow, .overline {
-  font-family: var(--font-mono);
-  font-size: var(--fs-11);
-  font-weight: 500;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--accent);
-}
-.caption {
-  font-size: var(--fs-10);
-  color: var(--muted);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-}
-
-/* The signature CodeCity gradient — used sparingly on hero lines */
-.cc-pixel-shadow-text {
-  color: var(--accent);
-  text-shadow: 4px 4px 0 var(--accent-shadow);
-}
-
-::selection { background: rgba(200,230,74,0.35); color: var(--cream); }
-
+body { margin: 0; }
+img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
-button { font-family: inherit; }
+::selection { background: rgba(200, 230, 74, 0.35); }
 
-/* ============================================================
-   Common building blocks
-   ============================================================ */
+/* ── Text styles (Tailwind scale) ───────────────────────────── */
+.heading-1 { font-size: 60px; line-height: 60px; font-weight: 600; }
+.heading-2 { font-size: 48px; line-height: 48px; font-weight: 600; }
+.heading-3 { font-size: 36px; line-height: 40px; font-weight: 600; }
+.heading-4 { font-size: 30px; line-height: 36px; font-weight: 600; }
+.heading-5 { font-size: 24px; line-height: 32px; font-weight: 600; }
+.heading-6 { font-size: 20px; line-height: 28px; font-weight: 600; }
+.title-1 { font-size: 20px; line-height: 28px; font-weight: 500; }
+.title-2 { font-size: 18px; line-height: 28px; font-weight: 500; }
+.title-3 { font-size: 16px; line-height: 24px; font-weight: 500; }
+.title-4 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.title-5 { font-size: 12px; line-height: 16px; font-weight: 500; }
+.body-1 { font-size: 16px; line-height: 24px; font-weight: 600; }
+.body-2 { font-size: 16px; line-height: 24px; font-weight: 500; }
+.body-3 { font-size: 16px; line-height: 24px; font-weight: 400; }
+.body-4 { font-size: 14px; line-height: 20px; font-weight: 600; }
+.body-5 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.body-6 { font-size: 14px; line-height: 20px; font-weight: 400; }
+.button-lg { font-size: 18px; line-height: 28px; font-weight: 600; }
+.button-md { font-size: 16px; line-height: 24px; font-weight: 600; }
+.button-sm { font-size: 14px; line-height: 20px; font-weight: 600; }
+.button-xsm { font-size: 12px; line-height: 16px; font-weight: 600; }
+.caption-1 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.caption-2 { font-size: 14px; line-height: 20px; font-weight: 400; }
+.caption-3 { font-size: 12px; line-height: 16px; font-weight: 600; }
+.caption-4 { font-size: 12px; line-height: 16px; font-weight: 500; }
+.caption-5 { font-size: 12px; line-height: 16px; font-weight: 400; }
 
-/* Pixel shadow utilities — hard offsets, NO blur ever */
-.pixel-shadow-sm { box-shadow: var(--shadow-sm); }
-.pixel-shadow    { box-shadow: var(--shadow); }
-.pixel-shadow-lg { box-shadow: var(--shadow-lg); }
-.pixel-shadow-lime,
-.pixel-shadow-accent { box-shadow: var(--shadow-accent); }
+h1, h2, h3, h4, h5, h6 { margin: 0; text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--text-2); }
+.subtle { color: var(--text-3); }
+.lime { color: var(--lime); }
 
-/* Press behavior — slide on hover, sink on active */
-.btn-press {
-  transition: transform 80ms steps(2), box-shadow 80ms steps(2);
+/* Smaller screens step the large headings down the same scale */
+@media (max-width: 767px) {
+  .heading-1 { font-size: 36px; line-height: 40px; }
+  .heading-2 { font-size: 30px; line-height: 36px; }
+  .heading-3 { font-size: 24px; line-height: 32px; }
 }
-.btn-press:hover { transform: translate(2px, 2px); }
-.btn-press:hover.pixel-shadow      { box-shadow: var(--shadow-sm); }
-.btn-press:hover.pixel-shadow-lime,
-.btn-press:hover.pixel-shadow-accent { box-shadow: 2px 2px 0 0 var(--accent-shadow); }
-.btn-press:active { transform: translate(4px, 4px); box-shadow: none !important; }
 
-/* Card */
-.cc-card {
-  background: var(--bg-card);
-  border: var(--br-light);
-  padding: var(--space-6);
-  border-radius: var(--radius-card);
+/* ── Layout ─────────────────────────────────────────────────── */
+.container { width: 100%; max-width: var(--container); margin-inline: auto; padding-inline: var(--s-300); }
+.section { padding-block: var(--s-900); }
+.section--band {
+  background:
+    radial-gradient(55% 60% at 8% 0%, var(--glow-lime), transparent 70%),
+    radial-gradient(50% 55% at 95% 100%, var(--glow-sky), transparent 70%),
+    var(--surface-band);
+  border-block: 1px solid var(--surface-2);
 }
 
-/* Terminal-style frame (used for viewers, findings, hero) */
-.cc-frame {
-  background: var(--bg-deep);
-  border: var(--br-light);
+/* Gradient text for one key phrase per heading at most */
+.grad-text {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@media (max-width: 767px) { .section { padding-block: var(--s-700); } }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-75);
+  color: var(--lime);
+  margin-bottom: var(--s-200);
+}
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--grad-brand); box-shadow: 0 0 10px var(--glow-lime); }
+
+.section-head { max-width: 680px; margin-bottom: var(--s-600); }
+.section-head p { margin-top: var(--s-200); }
+
+/* ── Skip link ──────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: var(--s-200);
+  top: -100px;
+  z-index: 100;
+  padding: var(--s-75) var(--s-100);
+  background: var(--lime);
+  color: var(--on-lime);
+  text-decoration: none;
+}
+.skip-link:focus { top: var(--s-200); }
+
+/* ── Focus ──────────────────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-75);
+  padding: var(--s-75) var(--s-200);
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--t-move) var(--ease), background-color var(--t-fade) var(--ease),
+    border-color var(--t-fade) var(--ease), box-shadow var(--t-move) var(--ease);
+}
+.button svg { width: 20px; height: 20px; flex-shrink: 0; }
+.button--primary {
+  background: var(--grad-button);
+  color: var(--on-lime);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 24px -8px rgba(200, 230, 74, 0.55);
+}
+.button--primary:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 12px 32px -8px rgba(200, 230, 74, 0.7); }
+.button--primary:active { transform: translateY(1px) scale(0.98); }
+.button--secondary { background: var(--surface-2); color: var(--text-1); border-color: var(--surface-4); }
+.button--secondary:hover { background: var(--surface-3); }
+.button--secondary:active { transform: translateY(1px); }
+
+.text-link {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-50);
+  color: var(--text-1);
+  text-decoration: none;
+  transition: color var(--t-fade) var(--ease);
+}
+.text-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: var(--lime);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--t-move) var(--ease);
+}
+.text-link:hover { color: var(--lime); }
+.text-link:hover::after { transform: scaleX(1); }
+.text-link svg { width: 16px; height: 16px; }
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.card {
+  background: linear-gradient(180deg, var(--surface-1), #111111) padding-box, var(--grad-border) border-box;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  padding: var(--s-300);
+  transition: transform var(--t-move) var(--ease), box-shadow var(--t-move) var(--ease);
+}
+.card:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(180deg, var(--surface-1), #111111) padding-box, var(--grad-border-hot) border-box;
+  box-shadow: 0 18px 40px -24px rgba(200, 230, 74, 0.35);
+}
+
+.frame {
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  background: linear-gradient(var(--surface-1), var(--surface-1)) padding-box, var(--grad-border-hot) border-box;
   overflow: hidden;
-}
-.cc-frame-header {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-card);
-  border-bottom: var(--br);
-  font-family: var(--font-mono);
-  font-size: var(--fs-11);
-  color: var(--cream-dark);
-}
-.cc-frame-footer {
-  padding: var(--space-2) var(--space-4);
-  background: var(--bg-card);
-  border-top: var(--br);
-  font-family: var(--font-mono);
-  font-size: var(--fs-10);
-  color: var(--muted);
+  box-shadow: 0 40px 120px -40px rgba(200, 230, 74, 0.18), 0 24px 60px -24px rgba(0, 0, 0, 0.8);
 }
 
-/* Scanline overlay — subtle CRT effect */
-.scanlines { position: relative; }
-.scanlines::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg,
-    transparent 0, transparent 2px,
-    rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 3px);
-  mix-blend-mode: overlay;
+/* ── Tagline reveal ─────────────────────────────────────────── */
+.tagline-word { color: rgba(245, 245, 245, 0.3); transition: color var(--t-move) var(--ease); }
+.tagline-word.is-on { color: var(--text-1); }
+html:not(.js) .tagline-word { color: var(--text-1); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .tagline-word { color: var(--text-1); transition: none; }
+  .button, .card, .text-link, .text-link::after { transition-property: background-color, border-color, color; }
+  .text-link:hover::after { transform: none; }
+  .button--primary:hover, .button--primary:active, .card:hover { transform: none; }
 }
 
-/* The signature CodeCity "live" pulse — pixelated steps, not smooth */
-@keyframes blink-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-.blink-dot { animation: blink-dot 1s steps(1) infinite; }
-
-@keyframes pixel-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--accent); }
-  50%      { box-shadow: 0 0 0 4px transparent; }
+/* ── Gradient grounds ───────────────────────────────────────────
+   Built from the taste skill's CSS-ground catalogue (backgrounds.md) in the
+   brand ramp. Pairing follows its rules: no two grounds that avoid each other,
+   one loud ground (the field), the rest soft overlays that fade out at the
+   section's top and bottom so any neighbour works. Text stays on calm, dark
+   parts so body copy keeps 7:1.
+     hero      photo layer (the Krea city)          see Hero.astro
+     features  .g-mist   soft wash of lime and mint
+     tagline   .g-field  grainy gradient field (Krea), the one loud ground
+     final     .g-arcs   rings rising from below, x.ai's close              */
+.g-mist, .g-field, .g-arcs { position: relative; isolation: isolate; overflow: clip; }
+.g-mist::before, .g-arcs::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 120px, #000 calc(100% - 120px), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 120px, #000 calc(100% - 120px), transparent);
 }
-.pixel-pulse { animation: pixel-pulse 1.6s steps(8) infinite; }
 
-/* Pixel-grid background — drop on a body or hero */
-.cc-pixel-grid {
-  background-image: radial-gradient(circle, rgba(58,58,68,0.4) 1px, transparent 1px);
-  background-size: 24px 24px;
+/* mist: four eased radial washes in two neighbouring hues */
+.g-mist::before {
+  background:
+    radial-gradient(54% 70% at 4% 6%, rgba(200, 230, 74, 0.13), transparent),
+    radial-gradient(46% 62% at 98% 16%, rgba(111, 220, 154, 0.11), transparent),
+    radial-gradient(64% 64% at 66% 116%, rgba(56, 189, 248, 0.10), transparent),
+    radial-gradient(34% 46% at 22% 104%, rgba(200, 230, 74, 0.07), transparent);
 }
 
-/* Divider — dashed for the retro feel */
-.cc-divider-bar {
-  width: 24px; height: 4px;
-  background: var(--accent);
-  display: inline-block;
+/* field: the generated gradient, cropped oversize, under a scrim that keeps the words calm */
+.g-field { background: var(--bg); }
+.g-field-art {
+  position: absolute;
+  inset: -5%;
+  z-index: -2;
+  width: 110%;
+  max-width: none;
+  height: 110%;
+  object-fit: cover;
+  pointer-events: none;
 }
-.cc-dashed { border-top: 1px dashed var(--border-light); }
+.g-field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 46% at 50% 50%, rgba(10, 10, 10, 0.5), transparent 90%),
+    linear-gradient(to bottom, var(--bg), transparent 18%, transparent 82%, var(--bg));
+}
+
+/* arcs: rings rising from below with a lime and sky light at their source */
+.g-arcs::before {
+  background:
+    radial-gradient(56% 56% at 50% 100%, rgba(200, 230, 74, 0.2), transparent),
+    radial-gradient(30% 40% at 76% 100%, rgba(56, 189, 248, 0.2), transparent),
+    radial-gradient(26% 36% at 24% 100%, rgba(111, 220, 154, 0.14), transparent),
+    repeating-radial-gradient(circle at 50% 140%, transparent 0 79px, rgba(243, 243, 243, 0.07) 79px 80px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 120px, #000 calc(100% - 120px), transparent), radial-gradient(ellipse 84% 94% at 50% 100%, #000 30%, transparent 82%);
+          mask-image: linear-gradient(to bottom, transparent, #000 120px, #000 calc(100% - 120px), transparent), radial-gradient(ellipse 84% 94% at 50% 100%, #000 30%, transparent 82%);
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
+}

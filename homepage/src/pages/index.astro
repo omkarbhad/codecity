@@ -1,8 +1,51 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import Root from '../components/Root.jsx';
----
+import BaseLayout from "../layouts/BaseLayout.astro"
+import Hero from "../components/sections/Hero.astro"
+import Problem from "../components/sections/Problem.astro"
+import Benefits from "../components/sections/Benefits.astro"
+import Tagline from "../components/sections/Tagline.astro"
+import HowItWorks from "../components/sections/HowItWorks.astro"
+import Views from "../components/sections/Views.astro"
+import Developers from "../components/sections/Developers.astro"
+import OpenSource from "../components/sections/OpenSource.astro"
+import Faq from "../components/sections/Faq.astro"
+import FinalCta from "../components/sections/FinalCta.astro"
+import { FAQ } from "../lib/faq"
+import { SITE } from "../lib/site"
 
-<BaseLayout>
-  <Root client:load />
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "CodeCity",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "macOS, Windows, Linux",
+    softwareVersion: SITE.version,
+    license: "https://opensource.org/licenses/MIT",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    url: SITE.url,
+    downloadUrl: SITE.releases,
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  },
+]
+---
+<BaseLayout schema={schema}>
+  <Hero />
+  <Problem />
+  <Benefits />
+  <Tagline />
+  <HowItWorks />
+  <Views />
+  <Developers />
+  <OpenSource />
+  <Faq />
+  <FinalCta />
 </BaseLayout>

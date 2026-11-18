@@ -1,0 +1,91 @@
+---
+import DownloadButton from "../ui/DownloadButton.astro"
+import ProofLine from "../ui/ProofLine.astro"
+---
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-backdrop" aria-hidden="true">
+    <img
+      src="/assets/art/hero-city-2560.webp"
+      srcset="/assets/art/hero-city-1280.webp 1280w, /assets/art/hero-city-2560.webp 2560w"
+      sizes="100vw"
+      width="2560"
+      height="1086"
+      alt=""
+      fetchpriority="high"
+    />
+  </div>
+  <div class="container hero-inner">
+    <h1 id="hero-title" class="heading-1 hero-title">Understand a codebase<br /> <span class="grad-text">before you read a file</span></h1>
+    <p class="title-2 hero-sub">
+      CodeCity turns a repository into a 3D city on your desktop. Folders become districts, files become buildings,
+      and the tallest towers are your largest files.
+    </p>
+    <div class="hero-cta"><DownloadButton /></div>
+    <ProofLine />
+  </div>
+  <div class="container">
+    <figure class="hero-shot frame">
+      <img
+        src="/assets/screens/app-city.webp"
+        width="2236"
+        height="1092"
+        alt="The CodeCity app showing its own repository as a night city: a file explorer on the left, color mode controls on top, and districts of lit towers sized by lines of code"
+      />
+    </figure>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding-top: calc(var(--s-900) + var(--s-700));
+    padding-bottom: var(--s-900);
+  }
+  .hero-backdrop {
+    position: absolute;
+    inset: 0 0 auto;
+    height: min(900px, 100%);
+    z-index: -1;
+  }
+  .hero-backdrop img { width: 100%; height: 100%; object-fit: cover; object-position: 70% 100%; opacity: 0.6; }
+  /* Fade the city into the page: dark behind the headline, dark again below the fold */
+  .hero-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(55% 50% at 50% 34%, rgba(10, 10, 10, 0.92) 30%, transparent 80%),
+      linear-gradient(180deg, rgba(10, 10, 10, 0.6) 0%, transparent 40%, transparent 60%, var(--bg) 100%);
+  }
+  .hero-inner { display: grid; justify-items: center; text-align: center; gap: var(--s-300); }
+  .hero-title {
+    max-width: 680px;
+    letter-spacing: -0.03em;
+    color: var(--text-1);
+  }
+  .hero-sub { max-width: 640px; color: var(--text-2); }
+  .hero-cta { margin-top: var(--s-200); }
+  .hero-shot { position: relative; margin: var(--s-700) 0 0; overflow: visible; }
+  /* Brand glow behind the app frame */
+  .hero-shot::before {
+    content: "";
+    position: absolute;
+    inset: -12% -6% 20%;
+    z-index: -1;
+    background:
+      radial-gradient(45% 55% at 30% 40%, rgba(200, 230, 74, 0.22), transparent 70%),
+      radial-gradient(40% 55% at 75% 45%, rgba(56, 189, 248, 0.2), transparent 70%);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+  .hero-shot img { border-radius: var(--r-lg); }
+  .hero-shot img { width: 100%; }
+  @media (max-width: 767px) {
+    .hero-backdrop img { opacity: 0.35; object-position: 85% 100%; }
+    .hero { padding-top: calc(var(--s-800) + var(--s-400)); padding-bottom: var(--s-700); }
+    .hero-title br { display: none; }
+    .hero-shot { margin-top: var(--s-500); }
+  }
+</style>

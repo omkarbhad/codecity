@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+import Icon from "../components/ui/Icon.astro"
+---
+<BaseLayout title="Page not found: CodeCity" description="This page is not on the map." path="/404" noindex>
+  <section class="section container lost">
+    <img src="/assets/art/art-unused.webp" width="768" height="768" alt="Illustration of a dark, empty city block" class="lost-art" />
+    <p class="caption-3 lime mono">404</p>
+    <h1 class="heading-2">This street is not on the map</h1>
+    <p class="body-3 muted">The page you were looking for moved or never existed.</p>
+    <a class="button button--primary button-md" href="/"><Icon name="buildings" /> Back to the city</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .lost { display: grid; justify-items: center; text-align: center; gap: var(--s-300); padding-top: calc(var(--s-900) + var(--s-500)); }
+  .lost-art { width: 240px; image-rendering: pixelated; }
+</style>

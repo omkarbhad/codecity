@@ -1,0 +1,36 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+import Icon from "../components/ui/Icon.astro"
+import { SITE } from "../lib/site"
+---
+<BaseLayout title="Privacy: CodeCity" description="How the CodeCity desktop app and this website handle your data." path="/privacy">
+  <article class="section container doc">
+    <a class="text-link body-5" href="/"><Icon name="arrow-right" size={16} class="flip" /> Back to home</a>
+    <h1 class="heading-2">Privacy</h1>
+    <p class="body-3 muted">Last updated November 6, 2026.</p>
+
+    <h2 class="heading-5">The desktop app</h2>
+    <ul class="body-3 muted">
+      <li>The app has no analytics and sends no usage data.</li>
+      <li>When you analyze a GitHub repository, the app downloads it to your computer and analyzes it there. Folders you pick from your disk never leave it.</li>
+      <li>If you connect GitHub, you sign in through GitHub. The access token is stored in the app on your computer and is used to list your repositories and download private ones.</li>
+      <li>The app checks GitHub Releases for new versions.</li>
+    </ul>
+
+    <h2 class="heading-5">This website</h2>
+    <ul class="body-3 muted">
+      <li>This site sets no cookies and runs no analytics. Fonts and images are served from this site.</li>
+      <li>Download links go to GitHub, which has its own privacy policy.</li>
+    </ul>
+
+    <h2 class="heading-5">Questions</h2>
+    <p class="body-3 muted">Open an issue on <a class="text-link" href={SITE.issues} rel="noopener">GitHub</a>.</p>
+  </article>
+</BaseLayout>
+
+<style>
+  .doc { max-width: 760px; display: grid; gap: var(--s-300); padding-top: calc(var(--s-900) + var(--s-700)); }
+  .doc h2 { margin-top: var(--s-300); }
+  .doc ul { margin: 0; padding-left: var(--s-300); display: grid; gap: var(--s-100); }
+  .doc :global(.flip) { transform: scaleX(-1); }
+</style>

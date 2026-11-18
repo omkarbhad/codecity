@@ -1,0 +1,28 @@
+<section class="section" aria-labelledby="problem-title">
+  <div class="container split">
+    <div class="split-copy">
+      <p class="eyebrow caption-3">The problem</p>
+      <h2 id="problem-title" class="heading-2">A file tree hides the shape of your code</h2>
+      <p class="body-3 muted">
+        Folders and file names tell you where code lives. They don't tell you which files everything depends on,
+        where complexity piles up, or what nothing uses anymore.
+      </p>
+      <p class="body-3 muted">
+        CodeCity lays out the whole repository at once, so those answers are visible before you open a single file.
+      </p>
+    </div>
+    <img class="split-art" src="/assets/art/art-tree-to-city.webp" width="768" height="768" loading="lazy"
+      alt="Illustration of a file tree of folders and files turning into a skyline of lit buildings" />
+  </div>
+</section>
+
+<style>
+  .split { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: var(--s-700); }
+  .split-copy { display: grid; gap: var(--s-200); max-width: 560px; }
+  .split-copy .eyebrow { margin-bottom: 0; }
+  .split-art { width: 100%; max-width: 520px; justify-self: center; image-rendering: pixelated; }
+  @media (max-width: 899px) {
+    .split { grid-template-columns: 1fr; gap: var(--s-500); }
+    .split-art { max-width: 400px; }
+  }
+</style>

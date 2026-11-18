@@ -1,0 +1,64 @@
+---
+const steps = [
+  {
+    title: "Add a repository",
+    body: "Paste a GitHub URL or pick a folder on your computer. Connect GitHub to build private repositories.",
+    img: "step-add",
+    w: 884,
+    h: 640,
+    alt: "The New City dialog with a GitHub repository URL entered and a Start analysis button",
+  },
+  {
+    title: "Watch it build",
+    body: "CodeCity downloads the code, parses every file and lays out the city. It keeps going if you leave the page.",
+    img: "step-build",
+    w: 542,
+    h: 576,
+    alt: "The Building city screen at 61 percent, with download and file scanning done and parsing in progress",
+  },
+  {
+    title: "Explore the city",
+    body: "Fly through districts, switch color modes and open any building to see its functions, types and source.",
+    img: "step-explore",
+    w: 1200,
+    h: 842,
+    alt: "A selected tower lit up in the city with its file details panel showing lines, functions, complexity and a list of functions",
+  },
+]
+---
+<section id="how" class="section" aria-labelledby="how-title">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow caption-3">How it works</p>
+      <h2 id="how-title" class="heading-2">From repository to city in three steps</h2>
+    </div>
+    <ol class="steps">
+      {steps.map((step, i) => (
+        <li class="card step">
+          <div class="step-shot">
+            <img src={`/assets/screens/${step.img}.webp`} width={step.w} height={step.h} loading="lazy" alt={step.alt} />
+          </div>
+          <p class="caption-3 lime mono">Step {i + 1}</p>
+          <h3 class="title-1">{step.title}</h3>
+          <p class="body-6 muted">{step.body}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-300); margin: 0; padding: 0; list-style: none; }
+  .step { display: grid; align-content: start; gap: var(--s-75); }
+  .step-shot {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    margin-bottom: var(--s-200);
+    overflow: hidden;
+    background: var(--bg);
+    border: 1px solid var(--surface-3); border-radius: var(--r);
+  }
+  .step-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+  @media (max-width: 899px) { .steps { grid-template-columns: 1fr; } }
+</style>

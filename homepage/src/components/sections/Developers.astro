@@ -1,0 +1,44 @@
+---
+import Icon from "../ui/Icon.astro"
+import { SITE } from "../../lib/site"
+
+const tools = ["overview", "entry_points", "hubs", "explain", "find_callers", "find_callees", "find_path", "community", "search_symbols", "recent_changes"]
+---
+<section id="developers" class="section" aria-labelledby="dev-title">
+  <div class="container dev">
+    <div class="dev-copy">
+      <p class="eyebrow caption-3">For terminals and agents</p>
+      <h2 id="dev-title" class="heading-2">Use the same engine from your terminal and your AI agent</h2>
+      <p class="body-3 muted">
+        The repository ships a command line tool that writes a JSON snapshot of any folder, and an MCP server that
+        answers questions about the code for your agent.
+      </p>
+      <ul class="tools" aria-label="MCP tools">
+        {tools.map((t) => <li class="caption-4 mono">{t}</li>)}
+      </ul>
+      <a class="text-link body-2" href={SITE.repo} rel="noopener">Read the setup on GitHub <Icon name="arrow-right" size={16} /></a>
+    </div>
+    <div class="terminal frame" role="img" aria-label="Terminal output of the CodeCity command line tool analyzing a repository: 176 files parsed into 28 districts, 156 communities and 9 entry points">
+      <div class="terminal-bar caption-5 subtle"><Icon name="terminal-window" size={16} /> codecity-cli</div>
+      <pre class="body-6 mono"><code><span class="lime">$</span> codecity-cli analyze .
+scanning .
+discovered 176 files
+parsed 176 files in 4.74s
+resolved imports in 0.01s
+built snapshot (layout + network + FCoSE) in 0.07s
+<span class="lime">snapshot: 176 files · 28 districts · 156 communities · 9 entry points</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<style>
+  .dev { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-700); align-items: center; }
+  .dev-copy { display: grid; gap: var(--s-300); align-content: start; }
+  .dev-copy .eyebrow { margin-bottom: 0; }
+  .tools { display: flex; flex-wrap: wrap; gap: var(--s-75); margin: 0; padding: 0; list-style: none; }
+  .tools li { padding: var(--s-50) var(--s-75); border: 1px solid var(--surface-4); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text-2); }
+  .terminal { overflow: hidden; }
+  .terminal-bar { display: flex; align-items: center; gap: var(--s-75); padding: var(--s-75) var(--s-200); border-bottom: 1px solid var(--surface-3); background: var(--surface-2); }
+  .terminal pre { margin: 0; padding: var(--s-300); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-2); background: var(--bg); }
+  @media (max-width: 899px) { .dev { grid-template-columns: 1fr; gap: var(--s-500); } }
+</style>

@@ -1,0 +1,66 @@
+---
+const benefits = [
+  {
+    art: "art-hubs",
+    title: "Find the load bearing files",
+    body: "The files that the most other files import stand out, so you know what to handle with care before you change it.",
+    alt: "Illustration of a tall tower wired by glowing cables to the smaller buildings around it",
+  },
+  {
+    art: "art-complexity",
+    title: "Spot complexity before it ships",
+    body: "Complexity mode shades every building from green to red, and the most complex files carry a red beacon on the roof.",
+    alt: "Illustration of towers lit green, amber and red, the tallest with red warning lights",
+  },
+  {
+    art: "art-unused",
+    title: "Clean up code nothing uses",
+    body: "Unused mode highlights files whose exports no other file imports, so you can find dead code without another tool.",
+    alt: "Illustration of a lit city block with two dark buildings outlined for cleanup",
+  },
+  {
+    art: "art-connections",
+    title: "See how modules connect",
+    body: "Select a building to light up its imports and the files that import it. Everything unrelated switches its lights off.",
+    alt: "Illustration of two city blocks joined by glowing bridges between rooftops",
+  },
+  {
+    art: "art-security",
+    title: "Review security findings",
+    body: "Run an Opengrep scan from the app and go through each finding with its rule, file and line.",
+    alt: "Illustration of a watchtower sweeping a searchlight over rooftops, one with a red alert light",
+  },
+]
+---
+<section id="features" class="section g-mist" aria-labelledby="features-title">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow caption-3">Features</p>
+      <h2 id="features-title" class="heading-2">Answers you would otherwise dig for</h2>
+      <p class="body-3 muted">Each mode turns a question about the codebase into something you can see from above.</p>
+    </div>
+    <ul class="benefits">
+      {benefits.map((b) => (
+        <li class="card benefit">
+          <img src={`/assets/art/${b.art}.webp`} width="768" height="768" loading="lazy" alt={b.alt} />
+          <h3 class="title-1">{b.title}</h3>
+          <p class="body-6 muted">{b.body}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .benefits { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--s-300); margin: 0; padding: 0; list-style: none; }
+  .benefit { grid-column: span 2; display: grid; align-content: start; gap: var(--s-100); }
+  .benefit:nth-child(4), .benefit:nth-child(5) { grid-column: span 3; }
+  .benefit img { width: 100%; max-width: 240px; aspect-ratio: 1; margin: 0 auto var(--s-200); image-rendering: pixelated; }
+  @media (max-width: 899px) {
+    .benefits { grid-template-columns: 1fr 1fr; }
+    .benefit, .benefit:nth-child(4), .benefit:nth-child(5) { grid-column: span 1; }
+  }
+  @media (max-width: 599px) {
+    .benefits { grid-template-columns: 1fr; }
+  }
+</style>

@@ -1,0 +1,42 @@
+---
+import Icon from "../ui/Icon.astro"
+import { FAQ } from "../../lib/faq"
+---
+<section id="faq" class="section" aria-labelledby="faq-title">
+  <div class="container faq">
+    <div class="section-head">
+      <p class="eyebrow caption-3">FAQ</p>
+      <h2 id="faq-title" class="heading-2">Questions before you download</h2>
+    </div>
+    <div class="faq-list">
+      {FAQ.map((item) => (
+        <details class="faq-item">
+          <summary class="title-2">
+            <span>{item.q}</span>
+            <span class="faq-icon"><Icon name="plus" size={20} /></span>
+          </summary>
+          <p class="body-3 muted">{item.a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq-list { max-width: 880px; }
+  .faq-list { border-top: 1px solid var(--surface-3); }
+  .faq-item { border-bottom: 1px solid var(--surface-3); }
+  .faq-item summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-300);
+    padding: var(--s-300) 0;
+    cursor: pointer;
+    list-style: none;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-icon { display: inline-flex; color: var(--lime); transition: transform var(--t-move) var(--ease); }
+  .faq-item[open] .faq-icon { transform: rotate(45deg); }
+  .faq-item p { padding-bottom: var(--s-300); max-width: 640px; }
+</style>
