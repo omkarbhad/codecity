@@ -8,6 +8,9 @@ import type { CitySnapshot } from "@/lib/types/city"
 import { getCityBounds, type CityBounds } from "@/lib/visualization/city-bounds"
 import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { DistrictGround } from "./district-ground"
+import { Lighting } from "./lighting"
+import { Ground } from "./ground"
+import { getCityBox, getOverview } from "./camera-controller"
 import { InstancedBuildings } from "./instanced-buildings"
 import { useSceneLook } from "@/lib/theme"
 
@@ -18,55 +21,29 @@ interface MiniCityPreviewProps {
   className?: string
 }
 
-/** Static fitted camera tuned for thumbnail-size canvases. */
-function MiniCameraFit({ cityBounds, maxLines }: { cityBounds: CityBounds; maxLines: number }) {
-  const { camera } = useThree()
-  const { center, radius, height } = useMemo(() => {
-    const spread = Math.max(cityBounds.spread, 8)
-    const estimatedHeight = Math.max(8, getBuildingHeight({ lines: maxLines }))
-    return {
-      center: [cityBounds.centerX, cityBounds.centerZ] as const,
-      radius: Math.max(15, spread * 0.78),
-      height: Math.max(13, spread * 0.42, estimatedHeight * 1.05),
-    }
-  }, [cityBounds, maxLines])
+/**
+ * The same overview the project page opens on (same angle, same fit), so the
+ * thumbnail is a small picture of the city you get when you open it.
+ */
+function MiniCameraFit({ snapshot, cityBounds }: { snapshot: CitySnapshot; cityBounds: CityBounds }) {
+  const { camera, size } = useThree()
+  const box = useMemo(() => {
+    const maxHeight = snapshot.files.reduce((max, file) => Math.max(max, getBuildingHeight(file)), 0)
+    return getCityBox(snapshot, cityBounds, maxHeight)
+  }, [snapshot, cityBounds])
 
   useEffect(() => {
-    camera.position.set(center[0] + radius * 0.72, height, center[1] + radius * 0.9)
-    camera.lookAt(center[0], Math.max(1.5, height * 0.2), center[1])
+    const view = getOverview(box, camera, size, { top: 6, bottom: 6 })
+    camera.position.copy(view.position)
+    camera.lookAt(view.target)
     camera.updateProjectionMatrix()
-  }, [camera, center, height, radius])
+  }, [camera, box, size])
 
   return null
 }
 
-function MiniPreviewLights() {
-  const look = useSceneLook()
-  return (
-    <>
-      <hemisphereLight color={look.hemi.sky} groundColor={look.hemi.ground} intensity={look.hemi.intensity} />
-      <ambientLight color={look.ambient.color} intensity={look.ambient.intensity} />
-      <directionalLight color={look.key.color} intensity={look.key.intensity} position={[45, 70, 52]} />
-      <directionalLight color={look.fill.color} intensity={look.fill.intensity} position={[-55, 35, -34]} />
-      <directionalLight color={look.warm.color} intensity={look.warm.intensity} position={[-20, 12, 60]} />
-    </>
-  )
-}
-
-function MiniPreviewGround({ cityBounds }: { cityBounds: CityBounds }) {
-  const look = useSceneLook()
-  const groundSize = Math.max(160, cityBounds.spread * 3.8)
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cityBounds.centerX, -0.015, cityBounds.centerZ]}>
-      <planeGeometry args={[groundSize, groundSize]} />
-      <meshStandardMaterial color={look.ground} roughness={0.92} />
-    </mesh>
-  )
-}
-
 function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
-  const maxLines = useMemo(() => Math.max(1, ...snapshot.files.map((file) => file.lines)), [snapshot.files])
 
   // Only keep a WebGL context while the card is on (or near) screen: browsers
   // cap live contexts (~16), and off-screen previews would burn GPU for nothing.
@@ -86,20 +63,22 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
         <Canvas
           gl={{
             antialias: false, // off for perf in thumbnail
-            toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.4,
+            // Same tone mapping as the city, so the colours match
+            toneMapping: THREE.NeutralToneMapping,
+            toneMappingExposure: 1.0,
             powerPreference: "low-power",
           }}
           shadows={false} // no shadows for thumbnails — big perf win
-          camera={{ position: [30, 20, 30], fov: 42, near: 0.5, far: 5000 }}
+          camera={{ position: [30, 20, 30], fov: 50, near: 0.5, far: 5000 }}
           style={{ width: "100%", height: "100%" }}
           dpr={[1, 1.5]} // capped for thumbnails; a prop, since fiber re-applies dpr over setPixelRatio
         >
           <SceneBackground />
           <Suspense fallback={null}>
-            <MiniCameraFit cityBounds={cityBounds} maxLines={maxLines} />
-            <MiniPreviewLights />
-            <MiniPreviewGround cityBounds={cityBounds} />
+            <MiniCameraFit snapshot={snapshot} cityBounds={cityBounds} />
+            {/* The city's own lights and ground (shadows stay off for thumbnails) */}
+            <Lighting snapshot={snapshot} cityBounds={cityBounds} />
+            <Ground snapshot={snapshot} cityBounds={cityBounds} farPlane={5000} />
             {snapshot.districts.map((d) => (
               <DistrictGround key={d.name} district={d} />
             ))}

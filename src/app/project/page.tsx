@@ -56,7 +56,7 @@ function ProjectContent() {
         }
         const projectData = await getProject(id)
         if (!projectData) {
-          setError("Project not found. It may have been deleted — try analyzing again.")
+          setError("Project not found. It may have been deleted. Try analyzing it again.")
           return
         }
         setProjectName(projectData.name)

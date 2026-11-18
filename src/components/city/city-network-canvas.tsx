@@ -8,7 +8,8 @@ import type { CitySnapshot } from "@/lib/types/city"
 import { isPathHidden, useCityStore } from "./use-city-store"
 import { getExtension } from "./extension-filter"
 import { DISTRICT_PALETTE, INCOMING_COLOR, UI_FONT, OUTGOING_COLOR, UNKNOWN_COLOR, usePalette } from "@/lib/theme"
-import { XIcon } from "@/components/ui/icons"
+import { XIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons"
+import { FileIcon } from "./file-icons"
 import { AppIcon } from "@/components/ui/app-icon"
 
 // Communities use the city's district palette, so a cluster reads the same
@@ -54,6 +55,18 @@ interface Props {
   onStabilizationProgress?: (progress: NetworkStabilizationProgress | null) => void
 }
 
+type PanelView = "entries" | "hubs" | "clusters"
+
+/** The lists inside the Insights panel. */
+const PANEL_VIEWS: Record<PanelView, { title: string; hint: string }> = {
+  entries: { title: "Entry points", hint: "Files that nothing else imports" },
+  hubs: { title: "Hubs", hint: "The files most others import" },
+  clusters: { title: "Clusters", hint: "Groups of files that import each other" },
+}
+
+const panelRow = "flex h-8 items-center gap-2 rounded-[8px] px-2.5 text-left text-[13px] text-(--cream-dark) transition-colors hover:text-(--cream)"
+const panelIconButton = "flex size-7 shrink-0 items-center justify-center rounded-[7px] text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream)"
+
 /** How many of the best-connected files get a name tag large enough to read from the overview. */
 const LANDMARK_LABELS = 24
 /** Communities smaller than this are drawn in a neutral colour. */
@@ -73,7 +86,7 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
   const [panelOpen, setPanelOpen] = useState(true)
   const panelOpenRef = useRef(panelOpen)
   panelOpenRef.current = panelOpen
-  const [panelTab, setPanelTab] = useState<"insights" | "communities">("insights")
+  const [panelView, setPanelView] = useState<PanelView | null>(null)
   const [traceFrom, setTraceFrom] = useState<string | null>(null)
   const [traceDepth, setTraceDepth] = useState<number>(Infinity)
 
@@ -184,6 +197,7 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
       return shortLabel(n.filePath)
     }
 
+    const nodeFileOf = new Map(symbolNodes.map((n) => [n.id, n.filePath]))
     const nodes: NodeRecord[] = []
     // vis-network throws on a repeated id, which would take down the whole view,
     // so a duplicate from the analyzer (two symbols with one name in a file) is skipped.
@@ -312,11 +326,13 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
     }
 
     landmarks.sort((a, b) => b.size - a.size)
+    const landmarkFileCount = new Set(nodes.map((n) => nodeFileOf.get(n.id) ?? n.id)).size
 
     return {
       nodes,
       edges,
       landmarks,
+      landmarkFileCount,
       communityCount: communitySummaries.length,
       communitySummaries,
       entryPoints,
@@ -624,6 +640,9 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
     edges.update(edgeUpdates)
   }, [selectedFile, traceFrom, traceSet, dataset.nodeIdToPath])
 
+  // Real clusters only: groups of one or two files are not worth a row
+  const clusters = useMemo(() => dataset.communitySummaries.filter((c) => c.size >= MIN_COLOURED_COMMUNITY), [dataset.communitySummaries])
+
   const focusCommunity = (memberPaths: string[]) => {
     const network = networkRef.current
     if (!network || memberPaths.length === 0) return
@@ -646,11 +665,9 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
       {phase === "ready" && dataset.communityCount > 0 && (
         <div className="pointer-events-none absolute bottom-4 left-4 rounded-full bg-[color-mix(in_srgb,var(--bg-deep)_80%,transparent)] px-3 py-1.5 ring-1 ring-white/[0.06]">
           <span className="flex items-center gap-3 text-[12px] text-(--cream-dark)">
-            <span>{dataset.nodes.length.toLocaleString()} nodes</span>
-            <span className="text-(--muted)">·</span>
-            <span>{dataset.edges.length.toLocaleString()} edges</span>
-            <span className="text-(--muted)">·</span>
-            <span>{dataset.communityCount} communities</span>
+            <span>{dataset.landmarkFileCount.toLocaleString()} files</span>
+            <span>{dataset.edges.length.toLocaleString()} links</span>
+            <span>{clusters.length} clusters</span>
           </span>
         </div>
       )}
@@ -674,7 +691,7 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
                   traceDepth === d ? "bg-(--sev-low) text-(--bg)" : "text-(--muted) hover:bg-(--bg-card) hover:text-(--cream)"
                 }`}
               >
-                {d === Infinity ? "∞" : d}
+                {d === Infinity ? "All" : d}
               </button>
             ))}
           </div>
@@ -691,160 +708,118 @@ export function CityNetworkCanvas({ snapshot, onStabilizationProgress }: Props) 
 
       {phase === "ready" && dataset.nodes.length > 0 && (
         <div
-          className={`absolute right-3 top-16 bottom-3 flex w-[300px] flex-col overflow-hidden rounded-[16px] border border-(--border-pixel) bg-(--bg) shadow-(--shadow-lg) transition-transform ${panelOpen ? "translate-x-0" : "translate-x-[316px]"}`}
+          className={`absolute right-3 top-16 flex max-h-[calc(100%-5rem)] w-[300px] flex-col overflow-hidden rounded-[16px] border border-(--border-pixel) bg-(--bg) shadow-(--shadow-lg) transition-transform ${panelOpen ? "translate-x-0" : "translate-x-[316px]"}`}
         >
-          <div className="flex items-center border-b border-(--border-pixel) px-1.5 py-1.5">
-            {([
-              { key: "insights" as const, label: "Insights" },
-              { key: "communities" as const, label: "Communities" },
-            ]).map((t) => (
+          {/* Header: the panel's name, or the way back from a list */}
+          <div className="flex h-10 shrink-0 items-center gap-1 pl-1.5 pr-1.5">
+            {panelView ? (
               <button
-                key={t.key}
-                onClick={() => setPanelTab(t.key)}
-                className={`flex-1 px-2 py-1 text-[12px] font-semibold transition-colors ${
-                  panelTab === t.key ? "bg-(--bg-card) text-(--cream)" : "text-(--muted) hover:bg-(--bg-raised) hover:text-(--cream-dark)"
-                }`}
+                type="button"
+                onClick={() => setPanelView(null)}
+                aria-label={`Back to insights from ${PANEL_VIEWS[panelView].title}`}
+                className="group flex h-7 min-w-0 items-center gap-1 rounded-[8px] pl-1 pr-2 text-[13.5px] font-medium text-(--cream) transition-colors hover:bg-(--bg-raised)"
               >
-                {t.label}
+                <AppIcon icon={ChevronLeftIcon} className="size-3.5 shrink-0 text-(--muted) transition-colors group-hover:text-(--cream)" />
+                <span className="truncate">{PANEL_VIEWS[panelView].title}</span>
               </button>
-            ))}
-            <button
-              onClick={() => setPanelOpen(false)}
-              className="ml-1 rounded-[6px] p-1 text-(--muted) hover:bg-(--bg-raised) hover:text-(--cream)"
-              aria-label="Hide panel"
-            >
+            ) : (
+              <span className="pl-2 text-[13.5px] font-medium text-(--cream)">Insights</span>
+            )}
+            <span className="flex-1" />
+            <button type="button" onClick={() => setPanelOpen(false)} aria-label="Hide insights" title="Hide" className={panelIconButton}>
               <AppIcon icon={XIcon} className="size-3.5" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-1.5 py-1.5">
-            {panelTab === "insights" && (
-              <>
-                <div className="px-2 pt-1 pb-1.5">
-                  <div className="text-[11px] font-semibold r text-(--muted)">Entry points</div>
-                  <div className="text-[11px] text-(--muted)">Files nothing imports — top of the call tree.</div>
-                </div>
-                {dataset.entryPoints.length === 0 ? (
-                  <div className="px-2 py-3 text-[12px] text-(--muted)">No clear entry points detected.</div>
-                ) : (
-                  dataset.entryPoints.map((e) => {
-                    const isActive = traceFrom === e.path
-                    return (
-                      <div
-                        key={e.path}
-                        className={`mb-0.5 flex items-center gap-1 px-1 py-1 transition-colors ${
-                          isActive ? "bg-[color-mix(in_srgb,var(--sev-low)_10%,transparent)] ring-1 ring-(--sev-low)" : "hover:bg-(--bg-raised)"
+          {!panelView ? (
+            // The three lists you can go into
+            <nav aria-label="Insights" className="px-2 pb-2">
+              {(Object.keys(PANEL_VIEWS) as PanelView[]).map((key) => {
+                const count = key === "entries" ? dataset.entryPoints.length : key === "hubs" ? dataset.hubs.length : clusters.length
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={count === 0}
+                    onClick={() => setPanelView(key)}
+                    className="group flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-left transition-colors enabled:hover:bg-(--bg-raised) disabled:opacity-50"
+                  >
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-[13.5px] text-(--cream)">{PANEL_VIEWS[key].title}</span>
+                      <span className="truncate text-[11.5px] text-(--muted)">{PANEL_VIEWS[key].hint}</span>
+                    </span>
+                    <span className="shrink-0 text-[12px] tabular-nums text-(--muted)">{count}</span>
+                    <AppIcon icon={ChevronRightIcon} className="size-3 shrink-0 text-(--dim) transition-colors group-hover:text-(--cream-dark)" />
+                  </button>
+                )
+              })}
+            </nav>
+          ) : (
+            <div key={panelView} className="cc-drill-in min-h-0 flex-1 overflow-y-auto px-2 pb-2 scroll-thin">
+              {panelView === "entries" &&
+                dataset.entryPoints.map((e) => {
+                  const isActive = traceFrom === e.path
+                  return (
+                    <div key={e.path} className={`flex items-center gap-1 rounded-[8px] pr-1 transition-colors ${isActive ? "bg-(--bg-on)" : "hover:bg-(--bg-raised)"}`}>
+                      <button type="button" onClick={() => focusFile(e.path)} title={e.path} className={`${panelRow} flex-1`}>
+                        <FileIcon name={e.path.split("/").pop() ?? e.path} className="!size-3.5 shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">{e.label}</span>
+                        <span className="shrink-0 text-[11.5px] tabular-nums text-(--muted)" title={`${e.reachable} files can be reached from here`}>{e.reachable}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTraceFrom(isActive ? null : e.path)
+                          if (!isActive) networkRef.current?.fit({ nodes: [e.path], animation: { duration: 500, easingFunction: "easeInOutQuad" } })
+                        }}
+                        aria-pressed={isActive}
+                        title="Highlight everything this file reaches"
+                        className={`h-6 shrink-0 rounded-full px-2 text-[11.5px] font-medium transition-colors ${
+                          isActive ? "bg-(--cream) text-(--bg-deep)" : "text-(--muted) hover:bg-(--bg-on) hover:text-(--cream)"
                         }`}
                       >
-                        <button
-                          onClick={() => focusFile(e.path)}
-                          className="group flex flex-1 items-center gap-2 truncate px-1.5 py-0.5 text-left"
-                          title={e.path}
-                        >
-                          <span className="size-1.5 shrink-0 bg-(--sev-low)" />
-                          <span className={`flex-1 truncate text-[12px] ${isActive ? "text-(--sev-low)" : "text-(--cream-dark) group-hover:text-(--cream)"}`}>
-                            {e.label}
-                          </span>
-                          <span className="text-[11px] tabular-nums text-(--muted)">{e.reachable} reach</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setTraceFrom(isActive ? null : e.path)
-                            if (!isActive) {
-                              const network = networkRef.current
-                              if (network) {
-                                network.fit({ nodes: [e.path], animation: { duration: 500, easingFunction: "easeInOutQuad" } })
-                              }
-                            }
-                          }}
-                          className={`px-1.5 py-0.5 text-[11px] transition-colors ${
-                            isActive ? "bg-(--sev-low) text-(--bg)" : "text-(--muted) hover:bg-[color-mix(in_srgb,var(--sev-low)_15%,transparent)] hover:text-(--sev-low)"
-                          }`}
-                          title="Trace downstream from this file"
-                        >
-                          {isActive ? "On" : "Trace"}
-                        </button>
-                      </div>
-                    )
-                  })
-                )}
+                        {isActive ? "Tracing" : "Trace"}
+                      </button>
+                    </div>
+                  )
+                })}
 
-                <div className="mt-3 px-2 pt-1 pb-1.5">
-                  <div className="text-[11px] font-semibold r text-(--muted)">Hubs</div>
-                  <div className="text-[11px] text-(--muted)">Most-imported files — load-bearing utilities.</div>
-                </div>
-                {dataset.hubs.length === 0 ? (
-                  <div className="px-2 py-3 text-[12px] text-(--muted)">No hubs detected.</div>
-                ) : (
-                  dataset.hubs.map((h) => (
-                    <button
-                      key={h.path}
-                      onClick={() => focusFile(h.path)}
-                      className="group mb-0.5 flex w-full items-center gap-2 px-2 py-1 text-left transition-colors hover:bg-(--bg-raised)"
-                      title={h.path}
-                    >
-                      <span className="size-1.5 shrink-0 bg-(--sev-med)" />
-                      <span className="flex-1 truncate text-[12px] text-(--cream-dark) group-hover:text-(--cream)">
-                        {h.label}
-                      </span>
-                      <span className="text-[11px] tabular-nums text-(--muted)">← {h.inDegree}</span>
-                    </button>
-                  ))
-                )}
-              </>
-            )}
+              {panelView === "hubs" &&
+                dataset.hubs.map((h) => (
+                  <button key={h.path} type="button" onClick={() => focusFile(h.path)} title={`${h.path}: imported by ${h.inDegree} files`} className={`${panelRow} w-full hover:bg-(--bg-raised) ${selectedFile === h.path ? "bg-(--bg-on)" : ""}`}>
+                    <FileIcon name={h.path.split("/").pop() ?? h.path} className="!size-3.5 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">{h.label}</span>
+                    <span className="shrink-0 text-[11.5px] tabular-nums text-(--muted)">{h.inDegree}</span>
+                  </button>
+                ))}
 
-            {panelTab === "communities" &&
-              dataset.communitySummaries.map((c) => {
-                const isExpanded = expandedCommunity === c.id
-                const visibleMembers = isExpanded ? c.members : c.hubs
-                return (
-                  <div key={c.id} className="mb-1 border border-transparent hover:border-(--border-pixel)">
-                    <button
-                      onClick={() => focusCommunity(c.members.map((m) => m.path))}
-                      className="flex w-full items-center gap-2 rounded-t-md px-2 py-1.5 text-left transition-colors hover:bg-(--bg-raised)"
-                    >
-                      <span
-                        className="size-2 shrink-0 rounded-sm"
-                        style={{ background: c.color, boxShadow: `0 0 6px ${c.color}80` }}
-                      />
-                      <span className="flex-1 truncate text-[12px] font-medium text-(--cream)">
-                        Community {c.rank + 1}
-                      </span>
-                      <span className="text-[11px] tabular-nums text-(--muted)">{c.size}</span>
-                    </button>
-                    <div className="px-1 pb-1">
-                      {visibleMembers.map((m) => (
-                        <button
-                          key={m.path}
-                          onClick={() => focusFile(m.path)}
-                          className={`group flex w-full items-center gap-2 px-2 py-0.5 text-left transition-colors hover:bg-(--bg-card) ${
-                            selectedFile === m.path ? "bg-(--bg-card)" : ""
-                          }`}
-                          title={m.path}
-                        >
-                          <span className="size-1 shrink-0 bg-(--muted) group-hover:bg-(--cream)" />
-                          <span className={`flex-1 truncate text-[10.5px] ${
-                            selectedFile === m.path ? "text-(--cream)" : "text-(--cream-dark) group-hover:text-(--cream)"
-                          }`}>
-                            {m.label}
-                          </span>
-                          <span className="text-[11px] tabular-nums text-(--muted)">{m.degree}</span>
+              {panelView === "clusters" &&
+                clusters.map((c, index) => {
+                  const isExpanded = expandedCommunity === c.id
+                  const members = isExpanded ? c.members : c.hubs
+                  return (
+                    <section key={c.id} className="pb-2">
+                      <button type="button" onClick={() => focusCommunity(c.members.map((m) => m.path))} title="Zoom to this cluster" className={`${panelRow} w-full font-medium text-(--cream) hover:bg-(--bg-raised)`}>
+                        <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: c.color }} />
+                        <span className="min-w-0 flex-1 truncate">Cluster {index + 1}</span>
+                        <span className="shrink-0 text-[11.5px] font-normal tabular-nums text-(--muted)">{c.size} files</span>
+                      </button>
+                      {members.map((m) => (
+                        <button key={m.path} type="button" onClick={() => focusFile(m.path)} title={m.path} className={`${panelRow} w-full pl-7 hover:bg-(--bg-raised) ${selectedFile === m.path ? "bg-(--bg-on)" : ""}`}>
+                          <span className="min-w-0 flex-1 truncate">{m.label}</span>
+                          <span className="shrink-0 text-[11.5px] tabular-nums text-(--muted)">{m.degree}</span>
                         </button>
                       ))}
                       {c.size > 5 && (
-                        <button
-                          onClick={() => setExpandedCommunity(isExpanded ? null : c.id)}
-                          className="ml-1 mt-0.5 px-2 py-0.5 text-[11px] text-(--muted) hover:text-(--cream-dark)"
-                        >
-                          {isExpanded ? "Show less" : `+ ${c.size - 5} more`}
+                        <button type="button" onClick={() => setExpandedCommunity(isExpanded ? null : c.id)} className="ml-7 mt-0.5 h-6 rounded-full px-2 text-[11.5px] text-(--muted) transition-colors hover:bg-(--bg-raised) hover:text-(--cream)">
+                          {isExpanded ? "Show fewer" : `Show ${c.size - 5} more`}
                         </button>
                       )}
-                    </div>
-                  </div>
-                )
-              })}
-          </div>
+                    </section>
+                  )
+                })}
+            </div>
+          )}
         </div>
       )}
 

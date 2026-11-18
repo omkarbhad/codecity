@@ -30,7 +30,7 @@ interface CityBox {
 }
 
 /** The city's footprint (district blocks, not just building centres) and skyline height. */
-function getCityBox(snapshot: CitySnapshot, bounds: CityBounds, maxHeight: number): CityBox {
+export function getCityBox(snapshot: CitySnapshot, bounds: CityBounds, maxHeight: number): CityBox {
   const box = { minX: bounds.minX, maxX: bounds.maxX, minZ: bounds.minZ, maxZ: bounds.maxZ, height: maxHeight * SKYLINE_HEADROOM }
   for (const { bounds: b } of snapshot.districts) {
     if (!(b.width > 0 && b.depth > 0)) continue
@@ -47,12 +47,18 @@ function getCityBox(snapshot: CitySnapshot, bounds: CityBounds, maxHeight: numbe
  * city's box is projected and the camera backs off until all of them clear the
  * side margins and the toolbar.
  */
-function getOverview(box: CityBox, camera: THREE.Camera, size: { width: number; height: number }) {
+export function getOverview(
+  box: CityBox,
+  camera: THREE.Camera,
+  size: { width: number; height: number },
+  /** Pixels kept clear at the top and bottom of the canvas (the toolbar, by default). */
+  clear: { top: number; bottom: number } = { top: OVERLAY_TOP_PX, bottom: OVERLAY_BOTTOM_PX }
+) {
   const fov = THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).fov ?? 50)
   const tanV = Math.tan(fov / 2)
   const tanH = tanV * (size.width / Math.max(1, size.height))
-  const top = 1 - (2 * OVERLAY_TOP_PX) / Math.max(1, size.height)
-  const bottom = 1 - (2 * OVERLAY_BOTTOM_PX) / Math.max(1, size.height)
+  const top = 1 - (2 * clear.top) / Math.max(1, size.height)
+  const bottom = 1 - (2 * clear.bottom) / Math.max(1, size.height)
 
   const toCamera = new THREE.Vector3(
     Math.sin(OVERVIEW_AZIMUTH) * Math.cos(OVERVIEW_ELEVATION),
