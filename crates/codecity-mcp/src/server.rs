@@ -207,7 +207,7 @@ impl CodecityMcp {
         let directed = args.directed.unwrap_or(true);
         match crate::query::find_path(&self.snapshot, &args.from, &args.to, directed) {
             Some(result) => json_result(&result),
-            None => Ok(CallToolResult::success(vec![Content::text(format!(
+            None => Ok(CallToolResult::success(vec![ContentBlock::text(format!(
                 "no {} path found between {} and {} within 10 hops",
                 if directed { "directed" } else { "undirected" },
                 args.from,
@@ -231,11 +231,11 @@ impl CodecityMcp {
             &args.name,
         ) {
             Ok(result) => json_result(&result),
-            Err(SourceError::NoSourceRoot) => Ok(CallToolResult::success(vec![Content::text(
+            Err(SourceError::NoSourceRoot) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 "no source root configured — relaunch with `--repo <path>` or `--snapshot file.json --source-root <path>`",
             )])),
             Err(SourceError::FileMetadataMissing) => not_found(&args.name),
-            Err(SourceError::Io(msg)) => Ok(CallToolResult::success(vec![Content::text(msg)])),
+            Err(SourceError::Io(msg)) => Ok(CallToolResult::success(vec![ContentBlock::text(msg)])),
             Err(SourceError::Resolution(r)) => resolution_to_result(r, &args.name),
         }
     }
@@ -283,13 +283,13 @@ impl CodecityMcp {
         let limit = args.limit.unwrap_or(25);
         match crate::query::recent_changes(&self.snapshot, self.source_root.as_deref(), days, limit) {
             Ok(rows) => json_result(&rows),
-            Err(RecentChangesError::NoSourceRoot) => Ok(CallToolResult::success(vec![Content::text(
+            Err(RecentChangesError::NoSourceRoot) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 "no source root configured — relaunch with `--repo <path>` or `--snapshot file.json --source-root <path>`",
             )])),
-            Err(RecentChangesError::NotAGitRepo(p)) => Ok(CallToolResult::success(vec![Content::text(
+            Err(RecentChangesError::NotAGitRepo(p)) => Ok(CallToolResult::success(vec![ContentBlock::text(
                 format!("source root `{p}` is not a git repository"),
             )])),
-            Err(RecentChangesError::GitFailed(msg)) => Ok(CallToolResult::success(vec![Content::text(msg)])),
+            Err(RecentChangesError::GitFailed(msg)) => Ok(CallToolResult::success(vec![ContentBlock::text(msg)])),
         }
     }
 }
@@ -369,7 +369,7 @@ fn resolution_to_result(r: Resolution, query: &str) -> Result<CallToolResult, Mc
 }
 
 fn not_found(name: &str) -> Result<CallToolResult, McpError> {
-    Ok(CallToolResult::success(vec![Content::text(format!(
+    Ok(CallToolResult::success(vec![ContentBlock::text(format!(
         "no node found for '{name}' (file path or unique symbol name expected)"
     ))]))
 }
