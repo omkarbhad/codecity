@@ -207,14 +207,19 @@ High-level only; for the full data flow see [docs/ARCHITECTURE.md](./ARCHITECTUR
 
 - `app/` — Routes: `dashboard`, `project`, `analyze`, `explore`, `repos`. Each route loads a
   page that ultimately hydrates `useCityStore` and renders city panels.
-- `components/city/` — The 3D scene and its panels (`city-scene.tsx`, `project-shell.tsx`,
-  `instanced-buildings.tsx`, `dependency-pipes.tsx`, `district-ground.tsx`,
-  `district-labels.tsx`, `camera-controller.tsx`, `building-labels.tsx`, `selection-marker.tsx`,
-  `side-panel.tsx`, `file-details.tsx`, `file-tree.tsx`, `search-bar.tsx`,
-  `extension-filter.tsx`, `mode-toolbar.tsx`, `top-bar.tsx`, `bottom-bar.tsx`,
-  `security-sidebar.tsx`, `commit-timeline.tsx`, `code-viewer.tsx`, `use-city-store.tsx`, …).
+- `components/city/` — The city and everything around it:
+  - the 3D scene: `city-scene.tsx`, `instanced-buildings.tsx`, `building-material.ts`,
+    `lighting.tsx`, `ground.tsx`, `district-ground.tsx`, `city-atmosphere.tsx`,
+    `dependency-pipes.tsx`, `camera-controller.tsx`, `building-labels.tsx`, `selection-marker.tsx`
+  - the other views: `city-2d-canvas.tsx`, `city-network-canvas.tsx`
+  - the shell: `project-shell.tsx` (sidebar, toolbar, panels), `side-panel.tsx` (file details),
+    `file-tree.tsx`, `extension-filter.tsx`, `district-legend.tsx`, `commit-timeline.tsx`,
+    `security-sidebar.tsx`, `settings-panel.tsx`, `help-dialog.tsx`
+  - the editor: `editor-pane.tsx`, `use-editor-store.ts`, `markdown-preview.tsx`
+  - state: `use-city-store.tsx`
 - `components/dashboard/` — Sidebar, project list, GitHub repos, new-analysis dialog.
 - `components/ui/` — Shared low-level UI primitives (used in addition to `src/ui/components/`).
+  `icons.ts` is the one place icons are imported from (Phosphor); `app-icon.tsx` renders them.
 - `hooks/` — `use-mobile`, `use-scroll`.
 - `lib/tauri.ts` — JSON-RPC client; every backend call goes through `invoke("rpc", …)` here.
 - `lib/security.ts` — Security scan polling helper.
@@ -429,7 +434,7 @@ UI primitives follow the shadcn pattern, configured via `components.json`:
 - `style`: `mira`
 - `tailwind.css`: `src/ui/styles/globals.css`
 - `tailwind.baseColor`: `zinc`, `cssVariables`: `true`
-- `iconLibrary`: `lucide`
+- `iconLibrary`: `phosphor`
 - Aliases (resolved by both `tsconfig.json` and the shadcn generator):
   - `components` → `@/components`
   - `hooks` → `@/hooks`
