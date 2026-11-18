@@ -3,6 +3,7 @@
 import "@/lib/suppress-three-warnings"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useState } from "react"
+import { ThemeApplier } from "@/lib/settings"
 
 export function Providers({
   children,
@@ -24,6 +25,7 @@ export function Providers({
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeApplier />
       {children}
     </QueryClientProvider>
   )

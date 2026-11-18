@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { X, Loader2, Copy, Check, ChevronDown, ChevronRight } from "lucide-react"
+import { TriangleAlertIcon, ChevronDownIcon, ChevronRightIcon, XIcon, CopyIcon, LoaderCircleIcon, ShieldCheckIcon, CheckIcon, RefreshCwIcon } from "@/components/ui/icons"
+import { AppIcon } from "@/components/ui/app-icon"
 import { cn } from "@codecity/ui/lib/utils"
 import type { SecurityScanResult, SecurityFinding, Severity } from "@/lib/tauri"
 
@@ -9,6 +10,8 @@ interface SecuritySidebarProps {
   result: SecurityScanResult | null
   loading: boolean
   error: string | null
+  /** Runs the scan again; shown on errors when scanning is possible. */
+  onRetry?: () => void
   onClose: () => void
 }
 
@@ -31,8 +34,7 @@ function FindingRow({ finding }: { finding: SecurityFinding }) {
   const [copied, setCopied] = useState(false)
   const fileName = finding.file_path.split("/").pop() ?? finding.file_path
 
-  function handleCopy(e: React.MouseEvent) {
-    e.stopPropagation()
+  function handleCopy() {
     const text = `[${SEV_LABEL[finding.severity]}] ${finding.file_path}:${finding.start_line} — ${finding.message} (${finding.rule_id})${finding.snippet ? `\n\n${finding.snippet.trim()}` : ""}`
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
@@ -41,74 +43,71 @@ function FindingRow({ finding }: { finding: SecurityFinding }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setExpanded((v) => !v)}
-      className="group flex w-full items-stretch gap-3 border-b border-dashed border-(--border-pixel) px-3 py-3 text-left transition-colors hover:bg-(--bg-raised)/30"
-    >
-      <span
-        className={cn(
-          "flex h-9 w-12 shrink-0 items-center justify-center font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-primary-foreground",
-          SEV_BG[finding.severity]
-        )}
+    <div className="border-b border-(--border-pixel)">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full items-stretch gap-3 px-3 py-3 text-left transition-colors hover:bg-(--bg-raised)/40"
       >
-        {SEV_LABEL[finding.severity]}
-      </span>
+        <span
+          className={cn(
+            "flex h-9 w-12 shrink-0 items-center justify-center text-[11px] font-semibold text-primary-foreground",
+            SEV_BG[finding.severity]
+          )}
+        >
+          {SEV_LABEL[finding.severity]}
+        </span>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate font-mono text-[12px] text-primary">
-            {shortRule(finding.rule_id)}
-          </span>
-          <div className="flex shrink-0 items-center gap-1">
-            <span
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-[12px] text-primary" title={finding.rule_id}>
+              {shortRule(finding.rule_id)}
+            </span>
+            <AppIcon icon={expanded ? ChevronDownIcon : ChevronRightIcon} className="size-3.5 shrink-0 text-(--muted)" />
+          </div>
+
+          <div className="flex items-baseline gap-2 text-[11px] leading-snug">
+            <span className="truncate text-(--cream-dark)" title={finding.file_path}>
+              {expanded ? finding.file_path : fileName}:{finding.start_line}
+              {expanded && finding.end_line !== finding.start_line && `–${finding.end_line}`}
+            </span>
+            <span className="shrink-0 text-(--dim)">//</span>
+            <span className={cn("text-(--cream-dark)", expanded ? "" : "truncate")}>
+              {finding.message}
+            </span>
+          </div>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="space-y-2 pb-3 pl-[72px] pr-3">
+          {finding.snippet && (
+            <pre className="overflow-x-auto border border-(--border-pixel) bg-(--bg-deep) p-2 text-[11px] leading-relaxed text-(--cream) rounded-md">
+              {finding.snippet.trim()}
+            </pre>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-[11px] text-(--muted)" title={finding.rule_id}>
+              rule: {finding.rule_id}
+            </span>
+            <button
+              type="button"
               onClick={handleCopy}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter") handleCopy(e as unknown as React.MouseEvent) }}
               aria-label="Copy finding"
-              className="cursor-pointer rounded-none p-0.5 text-(--muted) opacity-0 transition-opacity hover:text-(--cream) group-hover:opacity-100"
+              className="flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-[11px] text-(--cream-dark) transition-colors hover:text-(--cream) active:translate-y-px bg-(--bg-card) hover:bg-(--bg-raised) rounded-full"
             >
-              {copied ? <Check className="size-3 text-(--lime)" /> : <Copy className="size-3" />}
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-              {expanded ? "CLOSE" : "OPEN"}
-            </span>
-            {expanded ? (
-              <ChevronDown className="size-3 text-(--muted)" />
-            ) : (
-              <ChevronRight className="size-3 text-(--muted)" />
-            )}
+              <AppIcon icon={copied ? CheckIcon : CopyIcon} className={cn("size-3.5", copied && "text-(--lime)")} />
+              {copied ? "Copied" : "Copy"}
+            </button>
           </div>
         </div>
-
-        <div className="flex items-baseline gap-2 font-mono text-[10px] leading-snug">
-          <span className="truncate text-(--cream-dark)" title={finding.file_path}>
-            {expanded ? finding.file_path : fileName}:{finding.start_line}
-            {expanded && finding.end_line !== finding.start_line && `–${finding.end_line}`}
-          </span>
-          <span className="shrink-0 text-(--dim)">//</span>
-          <span className={cn("text-(--cream-dark)", expanded ? "" : "truncate")}>
-            {finding.message}
-          </span>
-        </div>
-
-        {expanded && finding.snippet && (
-          <pre className="mt-2 overflow-x-auto border-2 border-(--border-pixel) bg-(--bg-deep) p-2 font-mono text-[10px] leading-relaxed text-(--cream)">
-            {finding.snippet.trim()}
-          </pre>
-        )}
-        {expanded && (
-          <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-            rule: {finding.rule_id}
-          </div>
-        )}
-      </div>
-    </button>
+      )}
+    </div>
   )
 }
 
-export function SecuritySidebar({ result, loading, error, onClose }: SecuritySidebarProps) {
+export function SecuritySidebar({ result, loading, error, onRetry, onClose }: SecuritySidebarProps) {
   const [copied, setCopied] = useState(false)
   const scan = result?.scan
   const findings = result?.findings ?? []
@@ -118,7 +117,7 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
     [findings]
   )
 
-  const isRunning = loading || scan?.status === "RUNNING"
+  const isRunning = loading || scan?.status === "RUNNING" || scan?.status === "PENDING"
   const isFailed = scan?.status === "FAILED"
   const isCancelled = scan?.status === "CANCELLED"
   const totalFindings = findings.length
@@ -148,18 +147,19 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
   const infos = findings.filter((f) => f.severity === "INFO").length
 
   return (
-    <div className="pixel-shadow flex h-full flex-col overflow-hidden border-2 border-(--border-light) bg-(--bg-deep)">
+    <div className="flex h-full flex-col overflow-hidden bg-transparent">
       {/* Header */}
-      <div className="shrink-0 border-b-2 border-(--border-pixel) bg-(--bg-card) px-3 py-2.5">
-        <div className="flex items-center gap-3">
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-(--cream-dark)">
-            <span className="text-(--dim)">{">"}</span> opengrep <span className="text-primary">scan</span>
+      <div className="flex h-11 shrink-0 items-center border-b border-(--border-pixel) bg-(--bg) px-3">
+        <div className="flex w-full items-center gap-3">
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[12px] font-semibold text-(--cream)">
+            <AppIcon icon={ShieldCheckIcon} className="size-3.5 shrink-0 text-primary" />
+            Security
           </span>
 
           {/* Status + actions */}
           <div className="flex shrink-0 items-center gap-2">
-            {isRunning && <Loader2 className="size-3 animate-spin text-primary" />}
-            <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark)">
+            {isRunning && <AppIcon icon={LoaderCircleIcon} className="size-3.5 animate-spin text-primary" />}
+            <span className="flex items-center gap-1.5 text-[11px] text-(--cream-dark)">
               <span className={cn("size-1.5", statusDotClass)} />
               {statusLabel}
             </span>
@@ -168,18 +168,19 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
                 onClick={handleCopyAll}
                 aria-label="Copy all findings"
                 title="Copy all findings"
-                className="btn-press flex items-center gap-1 border-2 border-(--border-pixel) bg-(--bg-raised) px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
+                className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] text-(--cream-dark) transition-colors hover:text-(--cream) active:translate-y-px bg-(--bg-card) hover:bg-(--bg-raised) rounded-full"
               >
-                {copied ? <Check className="size-2.5 text-(--lime)" /> : <Copy className="size-2.5" />}
-                {copied ? "OK" : "COPY ALL"}
+                <AppIcon icon={copied ? CheckIcon : CopyIcon} className={cn("size-3.5", copied && "text-(--lime)")} />
+                {copied ? "Copied" : "Copy all"}
               </button>
             )}
             <button
               onClick={onClose}
               aria-label="Close security panel"
-              className="rounded-none border-2 border-transparent p-0.5 text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
+              title="Close"
+              className="flex size-6 items-center justify-center border border-transparent text-(--muted) transition-colors hover:border-(--border-pixel) hover:bg-(--bg-raised) hover:text-(--cream)"
             >
-              <X className="size-3" />
+              <AppIcon icon={XIcon} className="size-3.5" />
             </button>
           </div>
         </div>
@@ -189,31 +190,57 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
       <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
         {isRunning && !result && (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <Loader2 className="size-5 animate-spin text-primary" />
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--cream-dark)">Scanning…</p>
-            <p className="font-mono text-[10px] text-(--dim)">{`> opengrep --lang auto --json`}</p>
+            <AppIcon icon={LoaderCircleIcon} className="size-5 animate-spin text-primary" />
+            <p className="text-[12px] text-(--cream-dark)">Scanning…</p>
+            <p className="text-[11px] text-(--muted)">{`> opengrep --lang auto --json`}</p>
           </div>
         )}
 
         {error && (
-          <div className="m-3 border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] p-3">
-            <p className="font-mono text-[11px] text-(--sev-high)">{error}</p>
+          <div className="m-3 flex items-start gap-2 border border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] p-3 rounded-md">
+            <AppIcon icon={TriangleAlertIcon} className="mt-px size-3.5 shrink-0 text-(--sev-high)" />
+            <div className="min-w-0">
+              <p className="break-words text-[12px] text-(--sev-high)">{error}</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-full border border-(--sev-high) px-3 text-[12px] font-medium text-(--sev-high) hover:bg-[color-mix(in_srgb,var(--sev-high)_12%,transparent)] focus-visible:outline-2 focus-visible:outline-(--sev-high)"
+                >
+                  <AppIcon icon={RefreshCwIcon} className="size-3" />
+                  Scan again
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {isFailed && scan?.error && (
-          <div className="m-3 border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] p-3">
-            <p className="font-mono text-[11px] text-(--sev-high)">{scan.error}</p>
+          <div className="m-3 flex items-start gap-2 border border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)] p-3 rounded-md">
+            <AppIcon icon={TriangleAlertIcon} className="mt-px size-3.5 shrink-0 text-(--sev-high)" />
+            <div className="min-w-0">
+              <p className="break-words text-[12px] text-(--sev-high)">{scan.error}</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-full border border-(--sev-high) px-3 text-[12px] font-medium text-(--sev-high) hover:bg-[color-mix(in_srgb,var(--sev-high)_12%,transparent)] focus-visible:outline-2 focus-visible:outline-(--sev-high)"
+                >
+                  <AppIcon icon={RefreshCwIcon} className="size-3" />
+                  Scan again
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {scan?.status === "COMPLETED" && totalFindings === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <div className="pixel-shadow-accent flex size-12 items-center justify-center border-2 border-(--bg) bg-(--lime) font-mono text-[16px] font-bold text-primary-foreground">
-              ✓
+            <div className="flex size-12 items-center justify-center border border-(--bg) bg-(--lime) text-primary-foreground rounded-md">
+              <AppIcon icon={CheckIcon} className="size-6" />
             </div>
-            <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-(--lime)">No issues</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">scan complete · 0 findings</p>
+            <p className="text-[12px] font-semibold text-(--lime)">No issues</p>
+            <p className="text-[11px] text-(--muted)">scan complete · 0 findings</p>
           </div>
         )}
 
@@ -223,8 +250,8 @@ export function SecuritySidebar({ result, loading, error, onClose }: SecuritySid
       </div>
 
       {/* Terminal footer */}
-      <div className="shrink-0 border-t-2 border-(--border-pixel) bg-(--bg-card) px-3 py-1.5">
-        <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
+      <div className="shrink-0 border-t border-(--border-pixel) bg-(--bg-card) px-3 py-1.5">
+        <div className="flex items-center justify-between gap-2 text-[11px] text-(--muted)">
           <span className="truncate">
             <span className="text-(--dim)">{">"}</span>{" "}
             {totalFindings > 0 ? `showing ${sortedFindings.length} of ${totalFindings}` : "no findings"}

@@ -7,13 +7,14 @@ interface IconButtonProps extends React.ComponentProps<"button"> {
   asChild?: boolean
 }
 
+/** The app's icon-only button: a 28px soft square that fills on hover. Always pass aria-label. */
 export function IconButton({ asChild = false, className, ...props }: IconButtonProps) {
   const Comp = asChild ? Slot.Root : "button"
 
   return (
     <Comp
       className={cn(
-        "inline-flex size-7 shrink-0 cursor-pointer items-center justify-center border-2 border-(--border-pixel) bg-(--bg-raised) text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream) disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5",
+        "inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-(--muted) transition-[color,background-color,transform] duration-150 hover:bg-(--bg-raised) hover:text-(--cream) active:translate-y-px aria-pressed:text-(--cream) disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4",
         className
       )}
       {...props}

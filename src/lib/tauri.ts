@@ -5,6 +5,7 @@
  * command (`rpc`). Tauri only transports the request; Rust owns the method
  * router and analysis contract.
  */
+import { recolorSnapshot } from "@/lib/district-colors"
 import { invoke } from "@tauri-apps/api/core"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
 
@@ -99,12 +100,17 @@ export interface DeviceCodeResponse {
   interval: number
 }
 
-export interface TokenResponse {
-  access_token: string | null
-  token_type: string | null
-  scope: string | null
-  error: string | null
-  error_description: string | null
+/** Device-flow poll result. The token itself stays in the backend (OS keychain). */
+export interface LoginPollResult {
+  connected: boolean
+  login?: string
+  error?: string | null
+  error_description?: string | null
+}
+
+export interface GithubStatus {
+  connected: boolean
+  login: string | null
 }
 
 export interface GitHubUser {
@@ -226,6 +232,36 @@ export async function getSourceFile(repoUrl: string, filePath: string): Promise<
   return rpc<string>("analysis.getSourceFile", { repoUrl, filePath })
 }
 
+// ── File editing (local projects only; GitHub downloads are read-only) ──
+
+export interface FileCapabilities {
+  editable: boolean
+  reason: string | null
+}
+
+export async function fileCapabilities(repoUrl: string): Promise<FileCapabilities> {
+  return rpc<FileCapabilities>("files.capabilities", { repoUrl }).catch(
+    emptyWhenBackendUnavailable({ editable: false, reason: "Editing needs the desktop app." })
+  )
+}
+
+export async function writeFile(repoUrl: string, filePath: string, content: string): Promise<void> {
+  await rpc<null>("files.write", { repoUrl, filePath, content })
+}
+
+export async function createFile(repoUrl: string, filePath: string, content = ""): Promise<void> {
+  await rpc<null>("files.create", { repoUrl, filePath, content })
+}
+
+/** Moves the file to the Trash. */
+export async function deleteFile(repoUrl: string, filePath: string): Promise<void> {
+  await rpc<null>("files.delete", { repoUrl, filePath })
+}
+
+export async function renameFile(repoUrl: string, fromPath: string, toPath: string): Promise<void> {
+  await rpc<null>("files.rename", { repoUrl, fromPath, toPath })
+}
+
 // ── Projects ──
 
 export async function getProjects(): Promise<ProjectRecord[]> {
@@ -237,7 +273,9 @@ export async function getProject(projectId: string): Promise<ProjectRecord | nul
 }
 
 export async function getProjectSnapshot(projectId: string): Promise<Record<string, unknown> | null> {
-  return rpc<Record<string, unknown> | null>("projects.getSnapshot", { projectId }).catch(emptyWhenBackendUnavailable(null))
+  return rpc<Record<string, unknown> | null>("projects.getSnapshot", { projectId })
+    .then(recolorSnapshot)
+    .catch(emptyWhenBackendUnavailable(null))
 }
 
 export async function getProjectParsedFiles(projectId: string): Promise<ParsedFileRecord[] | null> {
@@ -272,20 +310,21 @@ export async function githubLoginStart(): Promise<DeviceCodeResponse> {
   return rpc<DeviceCodeResponse>("github.loginStart")
 }
 
-export async function githubLoginPoll(deviceCode: string): Promise<TokenResponse> {
-  return rpc<TokenResponse>("github.loginPoll", { deviceCode })
+export async function githubLoginPoll(deviceCode: string): Promise<LoginPollResult> {
+  return rpc<LoginPollResult>("github.loginPoll", { deviceCode })
 }
 
-export async function githubGetUser(token: string): Promise<GitHubUser> {
-  return rpc<GitHubUser>("github.getUser", { token })
+/** The signed-in GitHub user, or null when GitHub isn't connected. */
+export async function githubGetUser(): Promise<GitHubUser | null> {
+  return rpc<GitHubUser | null>("github.getUser").catch(emptyWhenBackendUnavailable(null))
 }
 
 export async function githubImportCliSession(): Promise<GitHubUser> {
   return rpc<GitHubUser>("github.importCliSession")
 }
 
-export async function getGithubToken(): Promise<string | null> {
-  return rpc<string | null>("github.getToken").catch(emptyWhenBackendUnavailable(null))
+export async function githubStatus(): Promise<GithubStatus> {
+  return rpc<GithubStatus>("github.status").catch(emptyWhenBackendUnavailable({ connected: false, login: null }))
 }
 
 export async function listGithubRepos(
@@ -314,13 +353,6 @@ export async function listTrendingGithubRepos(): Promise<GitHubRepoSummary[]> {
   return rpc<GitHubRepoSummary[]>("github.trendingRepos").catch(emptyWhenBackendUnavailable([]))
 }
 
-export async function setGithubToken(token: string): Promise<void> {
-  await rpc<null>("github.setToken", { token })
-}
-
-export async function setGithubSession(token: string, login: string): Promise<void> {
-  await rpc<null>("github.setSession", { token, login })
-}
 
 export async function logoutGithub(): Promise<void> {
   await rpc<null>("github.logout")
@@ -350,7 +382,7 @@ export interface SecurityFinding {
 export interface SecurityScanRecord {
   id: string
   project_id: string
-  status: "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED"
+  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED"
   ruleset: string
   total_findings: number
   error: string | null

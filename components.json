@@ -12,7 +12,7 @@
     "baseColor": "zinc",
     "cssVariables": true
   },
-  "iconLibrary": "lucide",
+  "iconLibrary": "phosphor",
   "aliases": {
     "components": "@/components",
     "hooks": "@/hooks",

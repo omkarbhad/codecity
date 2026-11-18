@@ -7,8 +7,11 @@ import type { CitySnapshot } from "@/lib/types/city"
 import { useCityStore, isPathHidden } from "./use-city-store"
 import { getExtension } from "./extension-filter"
 import { getBuildingColor, clamp, easeOutQuint } from "@/lib/visualization/color-utils"
-import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
+import { getBuildingHeight, getBuildingWidth } from "@/lib/visualization/building-dimensions"
+import { useSceneLook } from "@/lib/theme"
+import { isTypingTarget } from "@/lib/keyboard"
 import { createBuildingDepthMaterial, createBuildingGeometry, createBuildingMaterial } from "./building-material"
+import { UNKNOWN_COLOR } from "@/lib/theme"
 
 interface InstancedBuildingsProps {
   snapshot: CitySnapshot
@@ -37,6 +40,13 @@ const CHUNK_LOAD_DELAY_MS = 45
 const MOVEMENT_IDLE_MS = 220
 const MOVING_CHUNK_DELAY_MS = 650
 const snapshotLoadProgress = new Map<string, number>()
+
+/** Width of the top roof: towers tall enough for a setback have a narrower crown (see building-material.ts). */
+const SPIRE_COUNT = 5
+
+function getRoofWidth(dim: { height: number; width: number; depth: number }): number {
+  return Math.min(dim.width, dim.depth) * (dim.height >= 6 ? 0.78 : 1)
+}
 
 function getTopFolder(path: string): string {
   const slashIndex = path.indexOf("/")
@@ -86,8 +96,12 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   const platformRef = useRef<THREE.InstancedMesh>(null)
   const antennaCylRef = useRef<THREE.InstancedMesh>(null)
   const antennaTipRef = useRef<THREE.InstancedMesh>(null)
+  const beaconMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const domeRef = useRef<THREE.InstancedMesh>(null)
-  const typeRingRef = useRef<THREE.InstancedMesh>(null)
+  const roofUnitRef = useRef<THREE.InstancedMesh>(null)
+  const spireRef = useRef<THREE.InstancedMesh>(null)
+  const needleRef = useRef<THREE.InstancedMesh>(null)
+  const roofDecorRef = useRef<THREE.Group>(null)
 
   // Track pointer for click vs drag detection
   const pointerDownPos = useRef<{ x: number; y: number; instanceId: number | undefined } | null>(null)
@@ -147,6 +161,11 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
 
   // Facade material + geometry (per-instance aLit = window light level)
   const buildingMaterial = useMemo(() => createBuildingMaterial(), [])
+  const look = useSceneLook()
+  useEffect(() => {
+    const glow = buildingMaterial.userData.windowGlow as { value: number } | undefined
+    if (glow) glow.value = look.windowGlow
+  }, [buildingMaterial, look.windowGlow])
   const buildingDepthMaterial = useMemo(() => createBuildingDepthMaterial(), [])
   useEffect(() => () => buildingDepthMaterial.dispose(), [buildingDepthMaterial])
   const buildingGeometry = useMemo(() => createBuildingGeometry(count), [count])
@@ -293,7 +312,7 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   const getBuildingBaseColor = useCallback(
     (file: CitySnapshot["files"][number]) => {
       const sf = file.subFolder ?? "_root"
-      return subDistrictColorMap.get(`${file.district}::${sf}`) ?? districtColorMap.get(file.district) ?? "#888888"
+      return subDistrictColorMap.get(`${file.district}::${sf}`) ?? districtColorMap.get(file.district) ?? UNKNOWN_COLOR
     },
     [districtColorMap, subDistrictColorMap]
   )
@@ -310,33 +329,44 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   const getDimensions = useCallback(
     (f: CitySnapshot["files"][number]) => {
       const height = getBuildingHeight(f)
-      const width = clamp(1.0 + f.functions.length * 0.12, 1.0, 2.2)
+      const width = getBuildingWidth(f)
       return { height, width, depth: width }
     },
     []
   )
 
+  // The five tallest towers get a pointed spire; they skip the antenna mast.
+  const spires = useMemo(() => {
+    return snapshot.files
+      .map((f, i) => ({ i, h: getBuildingHeight(f) }))
+      .filter((b) => b.h >= 6)
+      .sort((a, b) => b.h - a.h)
+      .slice(0, SPIRE_COUNT)
+      .map((b) => b.i)
+  }, [snapshot.files])
+
   // LOD gating: skip expensive decorations for very large codebases
   const enableDecorations = count < 1500
 
   const decorationData = useMemo(() => {
-    if (!enableDecorations) return { platforms: [], antennas: [], domes: [], typeRings: [] }
+    if (!enableDecorations) return { platforms: [], antennas: [], domes: [], roofUnits: [] }
 
     const platforms: number[] = []
     const antennas: number[] = []
     const domes: number[] = []
-    const typeRings: number[] = []
+    const roofUnits: number[] = []
+    const spireSet = new Set(spires)
 
     for (let i = 0; i < count; i++) {
       const file = snapshot.files[i]
       if (file.lines > 200) platforms.push(i)
-      if (file.complexity > 20) antennas.push(i)
+      if (file.complexity > 20 && !spireSet.has(i)) antennas.push(i)
       if (file.isReactComponent) domes.push(i)
-      if (file.types.length > 3) typeRings.push(i)
+      if (file.types.length > 3) roofUnits.push(i)
     }
 
-    return { platforms, antennas, domes, typeRings }
-  }, [snapshot.files, count, enableDecorations])
+    return { platforms, antennas, domes, roofUnits }
+  }, [snapshot.files, count, enableDecorations, spires])
 
   const visibleMask = useMemo(() => {
     const hasSearch = !!searchQuery
@@ -371,14 +401,19 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
   // Escape / Tab keyboard
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).tagName === "INPUT") return
-
+      if (e.defaultPrevented || isTypingTarget(e)) return
+      const target = e.target as HTMLElement | null
+      // Escape belongs to an open dialog or menu first; otherwise it clears the selection.
       if (e.key === "Escape" && selectedFile) {
+        if (target?.closest('[role="dialog"], [role="menu"], [role="listbox"]')) return
         selectFile(null, null)
         return
       }
 
-      if (e.key === "Tab" && selectedFile) {
+      // Tab steps through buildings only when focus is on the page or the canvas,
+      // so it keeps moving through panels, toolbars and dialogs as usual.
+      const onCity = !target || target === document.body || target.tagName === "CANVAS"
+      if (e.key === "Tab" && selectedFile && onCity) {
         e.preventDefault()
         const currentFile = snapshot.files.find((f) => f.path === selectedFile)
         if (!currentFile) return
@@ -440,6 +475,9 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
 
     meshRef.current.instanceMatrix.needsUpdate = true
     if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true
+    matrixVersion.current++
+    // InstancedMesh raycasting caches a bounding sphere; refresh it so later-loaded districts stay clickable
+    meshRef.current.computeBoundingSphere()
 
     // Update platforms
     if (platformRef.current) {
@@ -468,28 +506,71 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       if (platformRef.current.instanceColor) platformRef.current.instanceColor.needsUpdate = true
     }
 
-    // Update antennas
+    const isHidden = (i: number) => (loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])
+    const hide = () => {
+      dummy.position.set(0, -1000, 0)
+      dummy.rotation.set(0, 0, 0)
+      dummy.scale.set(0, 0, 0)
+      dummy.updateMatrix()
+    }
+
+    // Spires: a four-sided pyramid in the tower's colour, topped with a steel needle
+    if (spireRef.current && needleRef.current) {
+      for (let si = 0; si < spires.length; si++) {
+        const i = spires[si]
+        const file = snapshot.files[i]
+        if (isHidden(i)) {
+          hide()
+          spireRef.current.setMatrixAt(si, dummy.matrix)
+          needleRef.current.setMatrixAt(si, dummy.matrix)
+          continue
+        }
+        const dim = getDimensions(file)
+        const roof = getRoofWidth(dim)
+        const spireH = clamp(dim.height * 0.22, 2.2, 7)
+        const needleH = spireH * 0.45
+        dummy.position.set(file.position.x, dim.height + spireH / 2, file.position.z)
+        // Unit cone has radius 1 at the base; a quarter turn puts its corners on the roof's corners
+        dummy.rotation.set(0, Math.PI / 4, 0)
+        dummy.scale.set(roof * 0.5 * Math.SQRT2 * 0.92, spireH, roof * 0.5 * Math.SQRT2 * 0.92)
+        dummy.updateMatrix()
+        spireRef.current.setMatrixAt(si, dummy.matrix)
+        getBuildingColor(file, visualizationMode, getBuildingBaseColor(file), !!(relatedFiles && !relatedFiles.has(file.path)), _color)
+        spireRef.current.setColorAt(si, _color)
+
+        dummy.position.set(file.position.x, dim.height + spireH + needleH / 2 - 0.1, file.position.z)
+        dummy.rotation.set(0, 0, 0)
+        dummy.scale.set(1, needleH, 1)
+        dummy.updateMatrix()
+        needleRef.current.setMatrixAt(si, dummy.matrix)
+      }
+      spireRef.current.instanceMatrix.needsUpdate = true
+      if (spireRef.current.instanceColor) spireRef.current.instanceColor.needsUpdate = true
+      needleRef.current.instanceMatrix.needsUpdate = true
+    }
+
+    // Antennas: a steel mast sized to the tower, set to the back corner of the roof
     if (antennaCylRef.current && antennaTipRef.current) {
       for (let ai = 0; ai < decorationData.antennas.length; ai++) {
         const i = decorationData.antennas[ai]
         const file = snapshot.files[i]
-        const dim = getDimensions(file)
-
-        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
-          dummy.position.set(0, -1000, 0)
-          dummy.scale.set(0, 0, 0)
-        } else {
-          dummy.position.set(file.position.x, dim.height + 0.6, file.position.z)
-          dummy.scale.set(1, 1, 1)
+        if (isHidden(i)) {
+          hide()
+          antennaCylRef.current.setMatrixAt(ai, dummy.matrix)
+          antennaTipRef.current.setMatrixAt(ai, dummy.matrix)
+          continue
         }
+        const dim = getDimensions(file)
+        const roof = getRoofWidth(dim)
+        const mastH = clamp(dim.height * 0.14, 0.9, 2.6)
+        const x = file.position.x + roof * 0.27
+        const z = file.position.z - roof * 0.27
+        dummy.position.set(x, dim.height + mastH / 2, z)
+        dummy.scale.set(1, mastH, 1)
         dummy.updateMatrix()
         antennaCylRef.current.setMatrixAt(ai, dummy.matrix)
-
-        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
-          dummy.position.set(0, -1000, 0)
-        } else {
-          dummy.position.set(file.position.x, dim.height + 1.2, file.position.z)
-        }
+        dummy.position.set(x, dim.height + mastH, z)
+        dummy.scale.set(1, 1, 1)
         dummy.updateMatrix()
         antennaTipRef.current.setMatrixAt(ai, dummy.matrix)
       }
@@ -497,65 +578,80 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       antennaTipRef.current.instanceMatrix.needsUpdate = true
     }
 
-    // Update domes
+    // Domes: a glass skylight in the middle of the roof
     if (domeRef.current) {
       for (let di = 0; di < decorationData.domes.length; di++) {
         const i = decorationData.domes[di]
         const file = snapshot.files[i]
-        const dim = getDimensions(file)
-
-        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
-          dummy.position.set(0, -1000, 0)
-          dummy.scale.set(0, 0, 0)
+        if (isHidden(i)) {
+          hide()
         } else {
+          const dim = getDimensions(file)
+          const r = getRoofWidth(dim) * 0.17
           dummy.position.set(file.position.x, dim.height, file.position.z)
-          dummy.scale.set(1, 1, 1)
-          dummy.rotation.set(-Math.PI / 2, 0, 0)
+          dummy.rotation.set(0, 0, 0)
+          dummy.scale.set(r, r * 0.6, r)
+          dummy.updateMatrix()
         }
-        dummy.updateMatrix()
         domeRef.current.setMatrixAt(di, dummy.matrix)
-        dummy.rotation.set(0, 0, 0)
       }
       domeRef.current.instanceMatrix.needsUpdate = true
     }
 
-    // Update type rings
-    if (typeRingRef.current) {
-      for (let ti = 0; ti < decorationData.typeRings.length; ti++) {
-        const i = decorationData.typeRings[ti]
+    // Roof plant: two mechanical units on the front corner of the roof
+    if (roofUnitRef.current) {
+      for (let ri = 0; ri < decorationData.roofUnits.length; ri++) {
+        const i = decorationData.roofUnits[ri]
         const file = snapshot.files[i]
-        const dim = getDimensions(file)
-
-        if ((loadedIndices && !loadedIndices.has(i)) || (visibleMask && !visibleMask[i])) {
-          dummy.position.set(0, -1000, 0)
-          dummy.scale.set(0, 0, 0)
-        } else {
-          const ringScale = (Math.min(dim.width, dim.depth) * 0.34) / 0.85
-          dummy.position.set(file.position.x, dim.height + 0.02, file.position.z)
-          dummy.scale.set(ringScale, ringScale, ringScale * 0.5)
-          dummy.rotation.set(-Math.PI / 2, 0, 0)
+        if (isHidden(i)) {
+          hide()
+          roofUnitRef.current.setMatrixAt(ri * 2, dummy.matrix)
+          roofUnitRef.current.setMatrixAt(ri * 2 + 1, dummy.matrix)
+          continue
         }
-        dummy.updateMatrix()
-        typeRingRef.current.setMatrixAt(ti, dummy.matrix)
-        dummy.rotation.set(0, 0, 0)
+        const dim = getDimensions(file)
+        const roof = getRoofWidth(dim)
+        const units: [number, number, number, number, number][] = [
+          // x offset, z offset, width, height, depth (in roof widths, height in world units)
+          [-0.2, 0.22, 0.34, 0.2, 0.22],
+          [0.2, 0.25, 0.16, 0.13, 0.16],
+        ]
+        units.forEach(([ox, oz, w, h, d], k) => {
+          dummy.position.set(file.position.x + ox * roof, dim.height + h / 2, file.position.z + oz * roof)
+          dummy.rotation.set(0, 0, 0)
+          dummy.scale.set(w * roof, h, d * roof)
+          dummy.updateMatrix()
+          roofUnitRef.current!.setMatrixAt(ri * 2 + k, dummy.matrix)
+        })
       }
-      typeRingRef.current.instanceMatrix.needsUpdate = true
+      roofUnitRef.current.instanceMatrix.needsUpdate = true
     }
-  }, [snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visualizationMode, visibleMask, decorationData, relatedFiles, loadedIndices, loadedFileIndices, buildingGeometry, selectedFile])
+  }, [spires, snapshot.files, districtColorMap, getBuildingBaseColor, getDimensions, visualizationMode, visibleMask, decorationData, relatedFiles, loadedIndices, loadedFileIndices, buildingGeometry, selectedFile])
 
   // Track previous selected/hovered indices for smooth scale reset
   const prevSelectedIndex = useRef<number | null>(null)
   const prevHoveredIndex = useRef<number | null>(null)
+  const matrixVersion = useRef(0)
+  const appliedMatrixVersion = useRef(0)
+  const loadedFileSet = useMemo(() => new Set(loadedFileIndices), [loadedFileIndices])
 
   // Animate: grow-in + selection/hover
   useFrame(({ clock }) => {
     if (!meshRef.current) return
-    const t = clock.getElapsedTime()
+    const t = clock.elapsedTime
     const dummy = _dummy.current
+
+    // Aircraft-warning beacons: a short flash every 1.6 s
+    if (beaconMatRef.current) {
+      const flash = Math.pow(Math.max(0, Math.sin(t * 3.9)), 6)
+      beaconMatRef.current.color.setRGB(0.45 + 0.55 * flash, 0.08 + 0.2 * flash, 0.06 + 0.14 * flash)
+    }
 
     if (!enableGrowAnimation && !growComplete.current) {
       growComplete.current = true
     }
+    // Roof pieces sit at full height, so they wait for the towers to finish rising
+    if (roofDecorRef.current) roofDecorRef.current.visible = growComplete.current
 
     if (enableGrowAnimation && !growComplete.current) {
       if (growStartTime.current === null) growStartTime.current = t
@@ -583,7 +679,10 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       }
 
       meshRef.current.instanceMatrix.needsUpdate = true
-      if (allDone) growComplete.current = true
+      if (allDone) {
+        growComplete.current = true
+        meshRef.current.computeBoundingSphere()
+      }
       return
     }
 
@@ -618,24 +717,29 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
       }
     }
 
+    // Scales are static, so only rewrite them when the selection/hover changed or the
+    // layout effect rewrote every matrix (which resets them to 1)
+    const changed =
+      prevSel !== selectedIndex || prevHov !== hoveredIndex || appliedMatrixVersion.current !== matrixVersion.current
     prevSelectedIndex.current = selectedIndex
     prevHoveredIndex.current = hoveredIndex
+    appliedMatrixVersion.current = matrixVersion.current
 
-    if (selectedIndex !== null || hoveredIndex !== null) {
-      for (const i of loadedFileIndices) {
+    if (changed && (selectedIndex !== null || hoveredIndex !== null)) {
+      for (const i of [selectedIndex, hoveredIndex]) {
+        if (i === null || !loadedFileSet.has(i)) continue
         if (visibleMask && !visibleMask[i]) continue
 
         const isSelected = i === selectedIndex
         const isHovered = i === hoveredIndex
-
-        if (!isSelected && !isHovered) continue
 
         const file = snapshot.files[i]
         const dim = getDimensions(file)
 
         let scale = 1
         if (isSelected) {
-          scale = 1.12 + Math.sin(t * 2) * 0.015
+          // Static, not pulsing: a changing height would reshuffle the facade's window grid every frame
+          scale = 1.12
         } else if (isHovered) {
           scale = 1.06
         }
@@ -744,56 +848,75 @@ export function InstancedBuildings({ snapshot, onLoadProgress }: InstancedBuildi
         </instancedMesh>
       )}
 
-      {decorationData.antennas.length > 0 && (
-        <>
+      <group ref={roofDecorRef}>
+        {spires.length > 0 && (
+          <>
+            <instancedMesh ref={spireRef} args={[undefined, undefined, spires.length]} castShadow receiveShadow frustumCulled={false}>
+              <coneGeometry args={[1, 1, 4, 1]} />
+              <meshStandardMaterial roughness={0.35} metalness={0.45} flatShading />
+            </instancedMesh>
+            <instancedMesh ref={needleRef} args={[undefined, undefined, spires.length]} castShadow frustumCulled={false}>
+              <cylinderGeometry args={[0.012, 0.05, 1, 6]} />
+              <meshStandardMaterial color="#c9d0d8" roughness={0.3} metalness={0.8} />
+            </instancedMesh>
+          </>
+        )}
+
+        {decorationData.antennas.length > 0 && (
+          <>
+            <instancedMesh
+              ref={antennaCylRef}
+              args={[undefined, undefined, decorationData.antennas.length]}
+              castShadow
+              frustumCulled={false}
+            >
+              <cylinderGeometry args={[0.016, 0.045, 1, 6]} />
+              <meshStandardMaterial color="#9ba3ad" roughness={0.45} metalness={0.7} />
+            </instancedMesh>
+            <instancedMesh
+              ref={antennaTipRef}
+              args={[undefined, undefined, decorationData.antennas.length]}
+              frustumCulled={false}
+            >
+              <sphereGeometry args={[0.055, 10, 8]} />
+              <meshBasicMaterial ref={beaconMatRef} color="#ff3b30" toneMapped={false} />
+            </instancedMesh>
+          </>
+        )}
+
+        {decorationData.domes.length > 0 && (
           <instancedMesh
-            ref={antennaCylRef}
-            args={[undefined, undefined, decorationData.antennas.length]}
+            ref={domeRef}
+            args={[undefined, undefined, decorationData.domes.length]}
+            castShadow
             frustumCulled={false}
           >
-            <cylinderGeometry args={[0.025, 0.035, 1.2, 6]} />
-            <meshStandardMaterial color="#3a3f4b" roughness={0.5} metalness={0.6} />
+            <sphereGeometry args={[1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <meshStandardMaterial
+              color="#b9d4ff"
+              transparent
+              opacity={0.7}
+              metalness={0.5}
+              roughness={0.12}
+              emissive="#6a9cff"
+              emissiveIntensity={0.18}
+            />
           </instancedMesh>
+        )}
+
+        {decorationData.roofUnits.length > 0 && (
           <instancedMesh
-            ref={antennaTipRef}
-            args={[undefined, undefined, decorationData.antennas.length]}
+            ref={roofUnitRef}
+            args={[undefined, undefined, decorationData.roofUnits.length * 2]}
+            castShadow
+            receiveShadow
             frustumCulled={false}
           >
-            <sphereGeometry args={[0.09, 8, 8]} />
-            <meshBasicMaterial color="#ff3b30" />
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial color="#d3d8de" roughness={0.6} metalness={0.35} />
           </instancedMesh>
-        </>
-      )}
-
-      {decorationData.domes.length > 0 && (
-        <instancedMesh
-          ref={domeRef}
-          args={[undefined, undefined, decorationData.domes.length]}
-          frustumCulled={false}
-        >
-          <sphereGeometry args={[0.35, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial
-            color="#a8c8ff"
-            transparent
-            opacity={0.55}
-            metalness={0.6}
-            roughness={0.15}
-            emissive="#6a9cff"
-            emissiveIntensity={0.3}
-          />
-        </instancedMesh>
-      )}
-
-      {decorationData.typeRings.length > 0 && (
-        <instancedMesh
-          ref={typeRingRef}
-          args={[undefined, undefined, decorationData.typeRings.length]}
-          frustumCulled={false}
-        >
-          <torusGeometry args={[0.85, 0.06, 6, 24]} />
-          <meshBasicMaterial color="#fbbf24" transparent opacity={0.85} />
-        </instancedMesh>
-      )}
+        )}
+      </group>
     </group>
   )
 }

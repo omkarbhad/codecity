@@ -1,10 +1,11 @@
 "use client"
 
-import { AlertTriangle } from "lucide-react"
+import { TriangleAlertIcon as AlertTriangle } from "@/components/ui/icons"
 import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useRef, useCallback } from "react"
 import dynamic from "next/dynamic"
 import type { CitySnapshot, LayoutMode } from "@/lib/types/city"
 import { recomputeSnapshot } from "@/lib/tauri"
+import { isTypingTarget } from "@/lib/keyboard"
 import { isPathHidden, useCityStore } from "./use-city-store"
 import { getExtension } from "./extension-filter"
 import { ProjectShell } from "./project-shell"
@@ -70,16 +71,16 @@ class SceneErrorBoundary extends Component<
       return (
         <div className="flex h-full w-full items-center justify-center bg-(--bg-deep)">
           <div className="flex flex-col items-center gap-4 max-w-md text-center px-6">
-            <div className="flex size-12 items-center justify-center border-2 border-(--sev-high) bg-[color-mix(in_srgb,var(--sev-high)_8%,transparent)]">
+            <div className="flex size-12 items-center justify-center bg-[color-mix(in_srgb,var(--sev-high)_14%,transparent)] rounded-full">
               <AlertTriangle className="size-5 text-(--sev-high)" aria-hidden="true" />
             </div>
-            <h3 className="font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-(--cream)">Scene failed to render</h3>
+            <h3 className="text-[12px] font-semibold text-(--cream)">Scene failed to render</h3>
             <p className="font-sans text-xs text-(--muted)">
               {this.state.error?.message ?? "An unexpected error occurred in the 3D visualization."}
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="pixel-shadow-sm btn-press h-8 border-2 border-(--border-pixel) bg-(--bg-raised) px-4 font-mono text-[11px] uppercase tracking-[0.05em] text-(--cream-dark) transition-colors hover:border-(--border-light) hover:text-(--cream)"
+              className="h-8 px-4 text-[12px] text-(--cream-dark) transition-colors hover:text-(--cream) active:translate-y-px bg-(--bg-card) hover:bg-(--bg-raised) rounded-full"
             >
               Retry
             </button>
@@ -99,6 +100,8 @@ interface Props {
   projectRoot?: string
   repoUrl?: string
   navbarActions?: ReactNode
+  /** Called after files are created, renamed or deleted, to rebuild the city. */
+  onFilesChanged?: () => void
 }
 
 function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgress; leaving: boolean }) {
@@ -107,7 +110,7 @@ function BuildingLoadStrip({ progress, leaving }: { progress: BuildingLoadProgre
   return <LoadStrip label="Loading city geometry" percent={percent} detail={detail} leaving={leaving} />
 }
 
-function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, projectId, projectRoot, repoUrl, navbarActions }: Props) {
+function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, projectId, projectRoot, repoUrl, navbarActions, onFilesChanged }: Props) {
   const [currentSnapshot, setCurrentSnapshot] = useState(originalSnapshot)
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [isBuildingLoadLeaving, setIsBuildingLoadLeaving] = useState(false)
@@ -253,7 +256,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, pr
     }
 
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).tagName === "INPUT") return
+      if (e.defaultPrevented || isTypingTarget(e)) return
       if (MODE_KEYS[e.key]) {
         e.preventDefault()
         setMode(MODE_KEYS[e.key])
@@ -285,6 +288,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, pr
         projectRoot={projectRoot}
         repoUrl={repoUrl}
         navbarActions={navbarActions}
+        onFilesChanged={onFilesChanged}
       >
         <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? "opacity-60" : "opacity-100"}`} aria-hidden="true">
           <SceneErrorBoundary key={viewDimension}>
@@ -310,7 +314,7 @@ function ProjectVisualizationInner({ snapshot: originalSnapshot, projectName, pr
         {/* Layout transition overlay */}
         {isTransitioning && (
           <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/40 backdrop-blur-2xl border border-(--border-pixel) rounded-lg shadow-2xl shadow-black/50 px-5 py-3">
+            <div className="bg-[color-mix(in_srgb,var(--bg-card)_85%,transparent)] backdrop-blur-2xl border border-(--border-pixel) rounded-[10px] shadow-(--shadow-lg) px-5 py-3">
               <Loader size="sm" text="Rebuilding layout..." />
             </div>
           </div>

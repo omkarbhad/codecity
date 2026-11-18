@@ -1,47 +1,17 @@
 "use client"
 
 import { useMemo } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { FileIcon } from "./file-icons"
+import { EyeIcon, EyeOffIcon } from "@/components/ui/icons"
 import type { CitySnapshot } from "@/lib/types/city"
+import { AppIcon } from "@/components/ui/app-icon"
 import { useCityStore } from "./use-city-store"
 
 interface ExtensionFilterProps {
   snapshot: CitySnapshot
 }
 
-const EXT_ICONS: Record<string, string> = {
-  ".tsx": "Rx",
-  ".ts": "TS",
-  ".jsx": "Jx",
-  ".js": "JS",
-  ".css": "CS",
-  ".scss": "SC",
-  ".json": "{}",
-  ".md": "Md",
-  ".yaml": "Ym",
-  ".yml": "Ym",
-  ".html": "<>",
-  ".py": "Py",
-  ".go": "Go",
-  ".rs": "Rs",
-  ".vue": "Vu",
-  ".svelte": "Sv",
-}
-
-const EXT_COLORS: Record<string, string> = {
-  ".tsx": "#4d94ff",
-  ".ts": "#3178c6",
-  ".jsx": "#f7df1e",
-  ".js": "#f0db4f",
-  ".css": "#264de4",
-  ".scss": "#cd6799",
-  ".json": "#5b9e2d",
-  ".md": "#ffffff",
-  ".py": "#3572a5",
-  ".go": "#00add8",
-  ".rs": "#dea584",
-}
-
+// Same file-type icon set the explorer uses; vscode-icons' "light_" variants vanish on dark backgrounds.
 function getExtension(path: string): string {
   const lastDot = path.lastIndexOf(".")
   if (lastDot === -1) return ".other"
@@ -72,77 +42,73 @@ export function ExtensionFilter({ snapshot }: ExtensionFilterProps) {
     (f) => !hiddenExtensions.has(getExtension(f.path))
   ).length
 
+  const pctShown = snapshot.files.length > 0 ? Math.round((visibleCount / snapshot.files.length) * 100) : 100
+
   return (
-    <div className="flex h-full flex-col overflow-hidden border-2 border-(--border-pixel) bg-(--bg-card)">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Section header */}
-      <div className="flex shrink-0 items-center gap-2 border-b-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1.5">
-        <span className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-(--cream)">
-          Ext
-        </span>
-        <button
-          onClick={showAllExtensions}
-          disabled={noneHidden}
-          className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
-        >
-          ALL
-        </button>
-        <span className="font-mono text-(--very-dim)">·</span>
-        <button
-          onClick={() => hideAllExtensions(allExts)}
-          disabled={allHidden}
-          className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark) transition-colors hover:text-primary disabled:text-(--dim) disabled:hover:text-(--dim)"
-        >
-          NONE
-        </button>
+      <div className="flex shrink-0 items-center gap-2 px-3.5 pb-2">
+        <span className="flex-1 text-[12px] text-(--muted)">Show in the city</span>
+        <div className="cc-seg" role="group" aria-label="Show or hide all file types">
+          <button
+            type="button"
+            onClick={showAllExtensions}
+            disabled={noneHidden}
+            className="cc-seg-btn h-6 px-2.5 text-[12px] disabled:pointer-events-none disabled:opacity-40"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => hideAllExtensions(allExts)}
+            disabled={allHidden}
+            className="cc-seg-btn h-6 px-2.5 text-[12px] disabled:pointer-events-none disabled:opacity-40"
+          >
+            None
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin">
+      <div className="flex-1 overflow-y-auto overscroll-contain py-1 scroll-thin">
         {extensionData.map(({ ext, count }) => {
           const isHidden = hiddenExtensions.has(ext)
-          const icon = EXT_ICONS[ext] ?? ext.replace(".", "").slice(0, 2).toUpperCase()
-          const color = EXT_COLORS[ext] ?? "#888"
+          const label = ext === ".other" ? "no extension" : ext
 
           return (
             <button
               key={ext}
+              type="button"
               onClick={() => toggleExtension(ext)}
-              className={`flex w-full items-center gap-2 border-b border-dashed border-(--border-pixel) px-2 py-1.5 text-left font-mono text-[11px] transition-colors
-                ${isHidden
-                  ? "text-(--dim) hover:bg-(--bg-deep)"
-                  : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
-                }`}
+              aria-pressed={!isHidden}
+              title={isHidden ? `Show ${label} files` : `Hide ${label} files`}
+              className={`group mx-1.5 flex h-7 w-[calc(100%-12px)] items-center gap-2 rounded-md px-2.5 text-left text-[13px] transition-colors ${
+                isHidden ? "text-(--muted) hover:bg-(--bg-raised) hover:text-(--cream-dark)" : "text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
+              }`}
             >
-              {isHidden ? (
-                <EyeOff className="size-3 shrink-0 text-(--very-dim)" />
-              ) : (
-                <Eye className="size-3 shrink-0 text-(--lime)" />
-              )}
-              <span
-                className={`inline-block w-6 shrink-0 border-2 px-0.5 py-px text-center font-mono text-[10px] font-bold uppercase tracking-[0.04em] ${
-                  isHidden ? "border-(--very-dim) opacity-30" : "border-(--border-pixel)"
-                }`}
-                style={{ color }}
-              >
-                {icon}
+              <FileIcon name={ext === ".other" ? "file" : `file${ext}`} className={isHidden ? "opacity-30 grayscale" : ""} />
+              <span className={`flex-1 truncate ${isHidden ? "line-through opacity-60" : ""}`}>
+                {label}
               </span>
-              <span className={`flex-1 truncate ${isHidden ? "line-through opacity-50" : ""}`}>
-                {ext}
-              </span>
-              <span className={`ml-1 shrink-0 font-mono text-[10px] tabular-nums ${isHidden ? "text-(--very-dim)" : "text-(--muted)"}`}>
+              <span className={`shrink-0 text-[12px] tabular-nums ${isHidden ? "text-(--muted)" : "text-(--muted)"}`}>
                 {count}
               </span>
+              <AppIcon
+                icon={isHidden ? EyeOffIcon : EyeIcon}
+                className={`size-3.5 shrink-0 ${isHidden ? "text-(--dim)" : "text-(--muted) group-hover:text-(--cream)"}`}
+              />
             </button>
           )
         })}
       </div>
 
-      {hiddenExtensions.size > 0 && (
-        <div className="border-t-2 border-(--border-pixel) bg-(--bg-raised) px-2 py-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--muted)">
-            <span className="text-(--dim)">{">"}</span> <span className="text-(--cream-dark) tabular-nums">{visibleCount}</span>/<span className="text-(--cream-dark) tabular-nums">{snapshot.files.length}</span> shown
-          </span>
-        </div>
-      )}
+      <div className="flex shrink-0 items-center gap-2.5 border-t border-(--border-pixel) px-3.5 py-2">
+        <span className="text-[12px] text-(--muted)">
+          <span className="tabular-nums text-(--cream-dark)">{visibleCount}</span>/<span className="tabular-nums">{snapshot.files.length}</span> shown
+        </span>
+        <span className="h-1 flex-1 overflow-hidden rounded-full bg-(--bg-raised)" aria-hidden="true">
+          <span className="block h-full rounded-full bg-(--cream-dark) transition-[width] duration-300" style={{ width: `${pctShown}%` }} />
+        </span>
+      </div>
     </div>
   )
 }

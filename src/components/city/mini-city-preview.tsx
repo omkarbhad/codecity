@@ -6,9 +6,10 @@ import { Canvas, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
 import { getCityBounds, type CityBounds } from "@/lib/visualization/city-bounds"
+import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { DistrictGround } from "./district-ground"
 import { InstancedBuildings } from "./instanced-buildings"
-import { NIGHT_HORIZON } from "./city-atmosphere"
+import { useSceneLook } from "@/lib/theme"
 
 interface MiniCityPreviewProps {
   snapshot: CitySnapshot
@@ -22,7 +23,7 @@ function MiniCameraFit({ cityBounds, maxLines }: { cityBounds: CityBounds; maxLi
   const { camera } = useThree()
   const { center, radius, height } = useMemo(() => {
     const spread = Math.max(cityBounds.spread, 8)
-    const estimatedHeight = Math.max(8, Math.min(80, Math.sqrt(Math.max(maxLines, 1)) * 2.2))
+    const estimatedHeight = Math.max(8, getBuildingHeight({ lines: maxLines }))
     return {
       center: [cityBounds.centerX, cityBounds.centerZ] as const,
       radius: Math.max(15, spread * 0.78),
@@ -40,23 +41,25 @@ function MiniCameraFit({ cityBounds, maxLines }: { cityBounds: CityBounds; maxLi
 }
 
 function MiniPreviewLights() {
+  const look = useSceneLook()
   return (
     <>
-      <hemisphereLight color="#6f82b4" groundColor="#0b0d14" intensity={0.9} />
-      <ambientLight color="#26304a" intensity={0.5} />
-      <directionalLight color="#c9d6ff" intensity={1.6} position={[45, 70, 52]} />
-      <directionalLight color="#4d6bb3" intensity={0.45} position={[-55, 35, -34]} />
-      <directionalLight color="#ff9a5c" intensity={0.3} position={[-20, 12, 60]} />
+      <hemisphereLight color={look.hemi.sky} groundColor={look.hemi.ground} intensity={look.hemi.intensity} />
+      <ambientLight color={look.ambient.color} intensity={look.ambient.intensity} />
+      <directionalLight color={look.key.color} intensity={look.key.intensity} position={[45, 70, 52]} />
+      <directionalLight color={look.fill.color} intensity={look.fill.intensity} position={[-55, 35, -34]} />
+      <directionalLight color={look.warm.color} intensity={look.warm.intensity} position={[-20, 12, 60]} />
     </>
   )
 }
 
 function MiniPreviewGround({ cityBounds }: { cityBounds: CityBounds }) {
+  const look = useSceneLook()
   const groundSize = Math.max(160, cityBounds.spread * 3.8)
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cityBounds.centerX, -0.015, cityBounds.centerZ]}>
       <planeGeometry args={[groundSize, groundSize]} />
-      <meshStandardMaterial color="#0c0e13" roughness={0.92} />
+      <meshStandardMaterial color={look.ground} roughness={0.92} />
     </mesh>
   )
 }
@@ -90,11 +93,9 @@ function MiniCityPreviewInner({ snapshot, className }: MiniCityPreviewProps) {
           shadows={false} // no shadows for thumbnails — big perf win
           camera={{ position: [30, 20, 30], fov: 42, near: 0.5, far: 5000 }}
           style={{ width: "100%", height: "100%" }}
-          onCreated={({ gl }) => {
-            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-          }}
+          dpr={[1, 1.5]} // capped for thumbnails; a prop, since fiber re-applies dpr over setPixelRatio
         >
-          <color attach="background" args={[NIGHT_HORIZON]} />
+          <SceneBackground />
           <Suspense fallback={null}>
             <MiniCameraFit cityBounds={cityBounds} maxLines={maxLines} />
             <MiniPreviewLights />
@@ -115,3 +116,9 @@ export const MiniCityPreview = dynamic(
   () => Promise.resolve(MiniCityPreviewInner),
   { ssr: false }
 )
+
+/** Canvas background in the scene's fog colour (dusk or day). */
+function SceneBackground() {
+  const look = useSceneLook()
+  return <color attach="background" args={[look.fog]} />
+}

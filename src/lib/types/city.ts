@@ -197,6 +197,8 @@ export interface FileData {
   hasUnusedExports: boolean
   fileType: FileType
   position: { x: number; z: number }
+  /** Footprint side the layout sized the lot for; absent on older snapshots. */
+  width?: number
   district: string
   subFolder?: string
   /** From Rust network analysis; absent on pre-schema snapshots. */

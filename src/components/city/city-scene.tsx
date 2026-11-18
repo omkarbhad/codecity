@@ -1,7 +1,8 @@
 "use client"
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Canvas, type ThreeEvent } from "@react-three/fiber"
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber"
+import { PerformanceMonitor } from "@react-three/drei"
 import * as THREE from "three"
 import type { CitySnapshot } from "@/lib/types/city"
 import { Lighting } from "./lighting"
@@ -12,7 +13,9 @@ import { DependencyPipes } from "./dependency-pipes"
 import { CameraController } from "./camera-controller"
 import { SelectionMarker } from "./selection-marker"
 import { BuildingLabels } from "./building-labels"
-import { NightSky, StreetLights, NIGHT_HORIZON } from "./city-atmosphere"
+import { NightSky, StreetLights } from "./city-atmosphere"
+import { SceneEnvironment } from "./scene-environment"
+import { useSceneLook } from "@/lib/theme"
 import { useCityStore } from "./use-city-store"
 import { getCityBounds } from "@/lib/visualization/city-bounds"
 
@@ -80,11 +83,24 @@ function ClickCatcher() {
   )
 }
 
+/** The Canvas builds its camera once; keep the far plane in step with the city size. */
+function CameraFarPlane({ far }: { far: number }) {
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    camera.far = far
+    camera.updateProjectionMatrix()
+  }, [camera, far])
+  return null
+}
+
 /** Canvas-only scene — zustand store is global, no provider needed. */
 export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneProps) {
+  const look = useSceneLook()
   const [buildingLoadProgress, setBuildingLoadProgress] = useState<BuildingLoadProgress | null>(null)
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
+  // Resolution follows the measured frame rate: full (up to 2x) while smooth, 1x when it struggles
+  const [dpr, setDpr] = useState<number | [number, number]>([1, 2])
   const containerRef = useRef<HTMLDivElement>(null)
   const cityBounds = useMemo(() => getCityBounds(snapshot.files), [snapshot.files])
   const isProgressivelyLoading = !!buildingLoadProgress && !buildingLoadProgress.complete
@@ -115,7 +131,7 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
   const cityMetrics = useMemo(() => {
     const spread = Math.max(cityBounds.spread, 20)
     return {
-      fogDensity: Math.max(0.0003, Math.min(0.01, 0.2 / spread)),
+      fogDensity: Math.max(0.0002, Math.min(0.006, 0.12 / spread)),
       spread,
     }
   }, [cityBounds])
@@ -129,16 +145,17 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
       key={canvasKey}
       gl={{
         antialias: true,
-        toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.25,
+        // Neutral keeps saturated district colours saturated; ACES washed lit walls out to pastel
+        toneMapping: THREE.NeutralToneMapping,
+        toneMappingExposure: 1.0,
         powerPreference: "high-performance",
       }}
-      shadows={{ type: THREE.PCFShadowMap }}
-      camera={{ position: [40, 40, 40], fov: 50, near: 0.5, far: farPlane }}
+      shadows="percentage"
+      dpr={dpr}
+      camera={{ position: [40, 40, 40], fov: 50, near: 1, far: farPlane }}
       style={{ width: "100%", height: "100%" }}
       eventSource={containerRef as React.RefObject<HTMLElement>}
       onCreated={({ gl, invalidate }) => {
-        gl.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         const canvas = gl.domElement
 
         const handleContextLost = (e: Event) => {
@@ -159,10 +176,12 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
         }
       }}
     >
-      <color attach="background" args={[NIGHT_HORIZON]} />
+      <color attach="background" args={[look.fog]} />
+      <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr([1, 2])} flipflops={3} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
         <Lighting snapshot={snapshot} cityBounds={cityBounds} />
-        <Ground snapshot={snapshot} cityBounds={cityBounds} />
+        <Ground snapshot={snapshot} cityBounds={cityBounds} farPlane={farPlane} />
+        <SceneEnvironment intensity={look.envIntensity} />
         <ClickCatcher />
 
         {snapshot.districts
@@ -180,13 +199,14 @@ export function CitySceneCanvas({ snapshot, onBuildingLoadProgress }: CitySceneP
           </>
         )}
         <CameraController snapshot={snapshot} cityBounds={cityBounds} />
+        <CameraFarPlane far={farPlane} />
 
         {/* Night atmosphere */}
         <NightSky centerX={cityBounds.centerX} centerZ={cityBounds.centerZ} radius={farPlane * 0.8} />
         <StreetLights districts={snapshot.districts} />
       </Suspense>
 
-      <fogExp2 attach="fog" args={[NIGHT_HORIZON, cityMetrics.fogDensity]} />
+      <fogExp2 attach="fog" args={[look.fog, cityMetrics.fogDensity * look.fogScale]} />
     </Canvas>
     </div>
   )

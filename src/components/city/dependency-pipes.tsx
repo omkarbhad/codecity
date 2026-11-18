@@ -6,6 +6,7 @@ import * as THREE from "three"
 import type { CitySnapshot, FileData } from "@/lib/types/city"
 import { getBuildingHeight } from "@/lib/visualization/building-dimensions"
 import { useCityStore } from "./use-city-store"
+import { INCOMING_COLOR, OUTGOING_COLOR } from "@/lib/theme"
 
 interface DependencyPipesProps {
   snapshot: CitySnapshot
@@ -20,8 +21,6 @@ const GLOW_OPACITY = 0.14
 const TRAVERSE_SPEED = 5
 const PARTICLES_PER_PIPE = 3
 
-const OUTGOING_COLOR = "#ff6b6b"
-const INCOMING_COLOR = "#4dabf7"
 
 interface PipeData {
   curve: THREE.CurvePath<THREE.Vector3>
@@ -309,7 +308,7 @@ export const DependencyPipes = memo(function DependencyPipes({ snapshot }: Depen
   // Animate particles along their curves
   useFrame(({ clock }) => {
     if (!particlesRef.current || !particleData || pipes.length === 0) return
-    const t = clock.getElapsedTime()
+    const t = clock.elapsedTime
     const posAttr = particlesRef.current.geometry.getAttribute("position") as THREE.BufferAttribute
     if (!posAttr) return
 

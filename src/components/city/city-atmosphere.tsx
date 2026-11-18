@@ -2,23 +2,29 @@
 
 import { useEffect, useMemo } from "react"
 import * as THREE from "three"
+import { DUSK_SCENE, useSceneLook } from "@/lib/theme"
 import type { DistrictData } from "@/lib/types/city"
 
 /** Night horizon color; the scene fog uses the same color so distant buildings fade into the sky. */
-export const NIGHT_HORIZON = "#0d1222"
+/** Dusk horizon; the scene fog follows the active SceneLook. */
+export const NIGHT_HORIZON = DUSK_SCENE.sky.horizon
 
 /** Gradient night sky with a faint city glow on the horizon and sparse stars. */
 export function NightSky({ centerX, centerZ, radius }: { centerX: number; centerZ: number; radius: number }) {
+  const look = useSceneLook()
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
         side: THREE.BackSide,
         depthWrite: false,
         fog: false,
+        // Fog and the background colour are not tone-mapped; matching them keeps the horizon seamless
+        toneMapped: false,
         uniforms: {
-          uZenith: { value: new THREE.Color("#03040a") },
-          uHorizon: { value: new THREE.Color(NIGHT_HORIZON) },
-          uGlow: { value: new THREE.Color("#2b2742") },
+          uZenith: { value: new THREE.Color(DUSK_SCENE.sky.zenith) },
+          uHorizon: { value: new THREE.Color(DUSK_SCENE.sky.horizon) },
+          uGlow: { value: new THREE.Color(DUSK_SCENE.sky.glow) },
+          uStars: { value: 1 },
         },
         vertexShader: /* glsl */ `
           varying vec3 vDir;
@@ -31,16 +37,20 @@ export function NightSky({ centerX, centerZ, radius }: { centerX: number; center
           uniform vec3 uZenith;
           uniform vec3 uHorizon;
           uniform vec3 uGlow;
+          uniform float uStars;
           varying vec3 vDir;
           float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           void main() {
             vec3 d = normalize(vDir);
             float h = d.y;
             vec3 col = mix(uHorizon, uZenith, smoothstep(0.0, 0.55, h));
-            col += uGlow * (1.0 - smoothstep(0.0, 0.2, abs(h))) * 0.7;
+            // The glow starts at zero on the horizon line, where the sky meets the fogged ground,
+            // so no seam shows there; it peaks just above and fades out.
+            col += uGlow * smoothstep(0.0, 0.05, h) * (1.0 - smoothstep(0.05, 0.26, h)) * 0.7;
             vec2 sp = vec2(atan(d.z, d.x) * 95.0, h * 190.0);
             vec2 id = floor(sp);
             float star = step(0.993, hash(id)) * smoothstep(0.38, 0.0, length(fract(sp) - 0.5)) * smoothstep(0.12, 0.45, h);
+            star *= uStars;
             col += vec3(0.85, 0.9, 1.0) * star * (0.35 + 0.65 * hash(id + 3.1));
             gl_FragColor = vec4(col, 1.0);
             #include <tonemapping_fragment>
@@ -50,6 +60,12 @@ export function NightSky({ centerX, centerZ, radius }: { centerX: number; center
       }),
     []
   )
+  useEffect(() => {
+    material.uniforms.uZenith.value.set(look.sky.zenith)
+    material.uniforms.uHorizon.value.set(look.sky.horizon)
+    material.uniforms.uGlow.value.set(look.sky.glow)
+    material.uniforms.uStars.value = look.streetLights > 0 ? 1 : 0
+  }, [material, look])
   useEffect(() => () => material.dispose(), [material])
 
   return (
@@ -64,8 +80,9 @@ const LAMP_OFFSET = 0.45
 const LAMP_HEIGHT = 0.55
 const MAX_LAMPS = 4000
 
-/** Warm street lamps along the streets around each district block. */
+/** Soft white street lamps along the streets around each district block. */
 export function StreetLights({ districts }: { districts: DistrictData[] }) {
+  const look = useSceneLook()
   const positions = useMemo(() => {
     const points: number[] = []
     for (const { bounds } of districts) {
@@ -109,7 +126,7 @@ export function StreetLights({ districts }: { districts: DistrictData[] }) {
   }, [])
   useEffect(() => () => glow.dispose(), [glow])
 
-  if (positions.length === 0) return null
+  if (positions.length === 0 || look.streetLights === 0) return null
 
   return (
     <points frustumCulled={false}>
@@ -118,11 +135,11 @@ export function StreetLights({ districts }: { districts: DistrictData[] }) {
       </bufferGeometry>
       <pointsMaterial
         map={glow}
-        color="#e8954a"
+        color="#dfe6f5"
         size={0.55}
         sizeAttenuation
         transparent
-        opacity={0.7}
+        opacity={look.streetLights}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />

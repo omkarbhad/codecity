@@ -28,21 +28,21 @@ export function LoadStrip({
 
   return (
     <div
-      className={`pixel-shadow pointer-events-none absolute bottom-4 left-1/2 z-40 w-[min(440px,calc(100%-32px))] -translate-x-1/2 border-2 border-(--border-light) bg-(--bg-card) px-3 py-2.5 transition-all duration-300 ${
+      className={`pointer-events-none absolute bottom-4 left-1/2 z-40 w-[min(440px,calc(100%-32px))] -translate-x-1/2 border border-(--border-light) bg-(--bg-card) px-3 py-2.5 transition-all duration-300 ${
         leaving ? "translate-y-1 opacity-0" : "opacity-100"
       }`}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-5 shrink-0 grid-cols-2 gap-[2px] border-2 border-(--border-pixel) bg-(--bg-deep) p-[2px]">
+          <span className="grid size-5 shrink-0 grid-cols-2 gap-[2px] border border-(--border-pixel) bg-(--bg-deep) p-[2px] rounded-md">
             <span className="bg-primary" />
             <span className="bg-(--border-light)" />
             <span className="bg-(--border-light)" />
             <span className="bg-primary" />
           </span>
-          <span className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-(--cream-dark)">{label}</span>
+          <span className="truncate text-[11px] text-(--cream-dark)">{label}</span>
         </div>
-        <span className="shrink-0 font-mono text-[10px] tabular-nums uppercase tracking-[0.05em] text-(--cream)">
+        <span className="shrink-0 text-[11px] tabular-nums text-(--cream)">
           {detail ? <><span className="text-primary">{percentLabel}%</span><span className="text-(--dim)"> · </span>{detail}</> : <span className="text-primary">{percentLabel}%</span>}
         </span>
       </div>

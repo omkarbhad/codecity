@@ -45,7 +45,7 @@ export function Loader({ size = "md", text, className }: LoaderProps) {
     <div className={cn("flex items-center", s.gap, className)}>
       <BuildingSVG className={cn(s.svg, "animate-pulse shrink-0")} />
       {text && (
-        <span className={cn("font-mono uppercase tracking-[0.08em] text-(--cream-dark)", s.text)}>{text}</span>
+        <span className={cn("text-(--cream-dark)", s.text)}>{text}</span>
       )}
     </div>
   )

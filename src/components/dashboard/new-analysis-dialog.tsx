@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { open as openDialog } from "@tauri-apps/plugin-dialog"
-import { Loader2 } from "lucide-react"
-import { FolderOpenIcon, GithubIcon, GitBranchIcon } from "@hugeicons/core-free-icons"
+import { FolderOpenIcon, GithubIcon, GitBranchIcon, LoaderCircleIcon } from "@/components/ui/icons"
 import {
   Dialog,
   DialogContent,
@@ -15,7 +14,7 @@ import {
 import { Input } from "@codecity/ui/components/input"
 import { Button } from "@codecity/ui/components/button"
 import { enqueueAnalysis, isTauri } from "@/lib/tauri"
-import { HugeIcon } from "@/components/ui/huge-icon"
+import { AppIcon } from "@/components/ui/app-icon"
 import { LogoMark } from "@/components/logo"
 
 const QUICK_REPOS = [
@@ -41,6 +40,16 @@ export function NewAnalysisDialog({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const queryClient = useQueryClient()
+
+  // Radix only calls onOpenChange for its own open/close events, so a dialog the parent
+  // opens through `open` must reset (and prefill) here, not in the onOpenChange handler.
+  useEffect(() => {
+    if (!open) return
+    setUrl(initialInput ?? "")
+    setSourceMode("github")
+    setError(null)
+    setSubmitting(false)
+  }, [open, initialInput])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,30 +90,20 @@ export function NewAnalysisDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!submitting) {
-          if (next) {
-            setUrl(initialInput ?? "")
-            setSourceMode("github")
-            setError(null)
-            setSubmitting(false)
-          } else {
-            setError(null)
-          }
-          onOpenChange(next)
-        }
+        if (!submitting) onOpenChange(next)
       }}
     >
-      <DialogContent className="pixel-shadow-lg overflow-hidden rounded-none border-2 border-[var(--border-light)] bg-card p-0 sm:max-w-[440px]">
+      <DialogContent className="overflow-hidden rounded-[16px] border border-(--border-pixel) bg-(--bg) p-0 shadow-(--shadow-lg) sm:max-w-[440px]">
         <div className="relative p-5">
           {/* Header */}
           <DialogHeader className="mb-5">
             <div className="flex items-center gap-3">
               <LogoMark className="size-9" />
               <div>
-                <DialogTitle className="text-[15px] font-semibold uppercase tracking-[0.05em] text-[var(--cream)] leading-none">
-                  New City
+                <DialogTitle className="text-[15px] font-semibold text-[var(--cream)] leading-none">
+                  New city
                 </DialogTitle>
-                <DialogDescription className="mt-1.5 text-xs leading-none text-[var(--cream-dark)]">
+                <DialogDescription className="mt-1.5 text-[13px] leading-none text-(--muted)">
                   {sourceMode === "local" ? "Analyze files from this computer" : "Download a GitHub repo and build a city"}
                 </DialogDescription>
               </div>
@@ -113,7 +112,7 @@ export function NewAnalysisDialog({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!submitting && isTauri() && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="cc-seg w-full" role="group" aria-label="Source">
                 {([
                   { mode: "github" as const, label: "GitHub", icon: GithubIcon },
                   { mode: "local" as const, label: "Offline folder", icon: FolderOpenIcon },
@@ -128,13 +127,10 @@ export function NewAnalysisDialog({
                         setUrl("")
                         setError(null)
                       }}
-                      className={`flex h-10 items-center justify-center gap-2 rounded-none border-2 text-[11px] font-medium uppercase tracking-[0.05em] transition-colors ${
-                        active
-                          ? "pixel-shadow-sm border-primary bg-[color-mix(in_srgb,var(--lime)_10%,var(--bg-card))] text-[var(--cream)]"
-                          : "border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--cream-dark)] hover:border-[var(--border-light)] hover:text-[var(--cream)]"
-                      }`}
+                      aria-pressed={active}
+                      className="cc-seg-btn h-8 flex-1 justify-center"
                     >
-                      <HugeIcon icon={item.icon} className="size-3.5" />
+                      <AppIcon icon={item.icon} className="size-3.5" />
                       {item.label}
                     </button>
                   )
@@ -144,32 +140,33 @@ export function NewAnalysisDialog({
 
             {/* URL input */}
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+              <label htmlFor="new-city-source" className="block text-[12px] font-medium text-(--muted)">
                 {sourceMode === "local" ? "Folder path" : "Repository URL"}
               </label>
               <div className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
                 {sourceMode === "local" || (isTauri() && (url.startsWith("/") || url.startsWith("~"))) ? (
-                  <HugeIcon icon={FolderOpenIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
+                  <AppIcon icon={FolderOpenIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
                 ) : (
-                  <HugeIcon icon={GitBranchIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
+                  <AppIcon icon={GitBranchIcon} className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
                 )}
                 <Input
+                  id="new-city-source"
                   type={isTauri() ? "text" : "url"}
                   placeholder={sourceMode === "local" ? "/Users/you/code/project" : "https://github.com/owner/repo"}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   disabled={submitting}
-                  className="h-10 rounded-none border-2 border-[var(--border-pixel)] bg-[var(--bg-deep)] pl-9 font-mono text-[12px] text-[var(--cream)] transition-colors placeholder:text-[var(--dim)] focus-visible:border-primary focus-visible:ring-0"
+                  className="h-10 pl-9"
                   required
                 />
                 </div>
                 {isTauri() && sourceMode === "local" && !submitting && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     onClick={handleBrowseFolder}
-                    className="pixel-shadow-sm btn-press h-10 shrink-0 rounded-none border-2 border-[var(--border-light)] bg-[var(--bg-raised)] px-3 text-[11px] uppercase tracking-[0.05em] text-[var(--cream-dark)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
+                    className="h-10 shrink-0"
                   >
                     Browse
                   </Button>
@@ -184,10 +181,8 @@ export function NewAnalysisDialog({
                       key={repo.url}
                       type="button"
                       onClick={() => setUrl(repo.url)}
-                      className={`rounded-none border-2 px-2 py-1 font-mono text-[10px] transition-colors ${
-                        url === repo.url
-                          ? "border-primary bg-[color-mix(in_srgb,var(--lime)_12%,transparent)] text-primary"
-                          : "border-[var(--border-pixel)] bg-[var(--bg-raised)] text-[var(--cream-dark)] hover:border-[var(--border-light)] hover:text-[var(--cream)]"
+                      className={`h-6 rounded-full px-2.5 text-[12px] transition-colors ${
+                        url === repo.url ? "bg-(--bg-on) text-(--cream)" : "bg-(--bg-card) text-(--cream-dark) hover:bg-(--bg-raised) hover:text-(--cream)"
                       }`}
                     >
                       {repo.label}
@@ -199,10 +194,10 @@ export function NewAnalysisDialog({
 
             {/* Submitting state */}
             {submitting && (
-              <div className="rounded-none border-2 border-primary bg-[color-mix(in_srgb,var(--lime)_6%,var(--bg-card))] px-4 py-4 text-center">
+              <div className="rounded-[10px] bg-(--bg-card) px-4 py-4 text-center">
                 <div className="flex items-center justify-center gap-2.5">
-                  <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream)]">
+                  <AppIcon icon={LoaderCircleIcon} className="size-4 shrink-0 animate-spin text-primary" />
+                  <span className="text-[12px] text-[var(--cream)]">
                     Adding city to queue…
                   </span>
                 </div>
@@ -211,8 +206,8 @@ export function NewAnalysisDialog({
 
             {/* Error */}
             {error && (
-              <div className="rounded-none border-2 border-[var(--sev-high)] bg-[color-mix(in_srgb,var(--sev-high)_8%,var(--bg-card))] px-3 py-2.5">
-                <p className="font-mono text-[11px] text-[var(--sev-high)]">{error}</p>
+              <div className="rounded-[10px] bg-[color-mix(in_srgb,var(--sev-high)_12%,transparent)] px-3 py-2.5">
+                <p className="text-[12px] text-[var(--sev-high)]">{error}</p>
               </div>
             )}
 
@@ -222,8 +217,8 @@ export function NewAnalysisDialog({
                 <Button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  variant="outline"
-                  className="btn-press h-10 flex-1 rounded-none border-2 border-[var(--border-pixel)] bg-transparent text-[11px] uppercase tracking-[0.05em] text-[var(--cream-dark)] transition-colors hover:border-[var(--border-light)] hover:bg-[var(--bg-raised)] hover:text-[var(--cream)]"
+                  variant="secondary"
+                  className="h-10 flex-1"
                 >
                   Cancel
                 </Button>
@@ -231,14 +226,14 @@ export function NewAnalysisDialog({
               <Button
                 type="submit"
                 disabled={submitting}
-                className={`pixel-shadow-accent btn-press h-10 rounded-none border-2 border-(--bg) bg-primary text-[11px] font-semibold uppercase tracking-[0.05em] text-primary-foreground transition-colors hover:bg-primary ${submitting ? "w-full" : "flex-[2]"}`}
+                className={`h-10 bg-primary text-[12px] font-semibold text-primary-foreground transition-colors active:translate-y-px rounded-full hover:brightness-105 ${submitting ? "w-full" : "flex-[2]"}`}
               >
                 {submitting ? (
                   "Queueing…"
                 ) : (
                   <span className="flex items-center justify-center gap-1.5">
-                    {sourceMode === "local" ? <HugeIcon icon={FolderOpenIcon} className="size-3.5" /> : <HugeIcon icon={GitBranchIcon} className="size-3.5" />}
-                    {sourceMode === "local" ? "Analyze Folder" : "Start Analysis"}
+                    {sourceMode === "local" ? <AppIcon icon={FolderOpenIcon} className="size-3.5" /> : <AppIcon icon={GitBranchIcon} className="size-3.5" />}
+                    {sourceMode === "local" ? "Analyze folder" : "Start analysis"}
                   </span>
                 )}
               </Button>

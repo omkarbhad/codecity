@@ -1,18 +1,19 @@
 import type { Metadata } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
+import { DM_Mono, Instrument_Sans } from "next/font/google"
 import "@codecity/ui/styles/globals.css"
 import { Providers } from "./providers"
 
-const inter = Inter({
+// Same type as Ghostly: Instrument Sans for the interface, DM Mono for code.
+const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+  variable: "--font-ui",
   display: "swap",
 })
 
-const jetbrainsMono = JetBrains_Mono({
+const dmMono = DM_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500"],
   variable: "--font-mono",
   display: "swap",
 })
@@ -28,7 +29,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`dark ${instrumentSans.variable} ${dmMono.variable}`}>
+      <head>
+        {/* Apply the saved colour scheme before first paint (no dark→light flash). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var a=(JSON.parse(localStorage.getItem("codecity-settings")||"{}").state||{}).appearance||"system";var l=a==="light"||(a==="system"&&matchMedia("(prefers-color-scheme: light)").matches);var r=document.documentElement;r.dataset.theme=l?"light":"dark";r.classList.toggle("dark",!l)}catch(e){}`,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning className="min-h-screen antialiased bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>
